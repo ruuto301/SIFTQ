@@ -49,9 +49,9 @@ tasks:
           IFS= read -r secret
         fi
         mkdir -p tmp
-        umask 077
         {
           printf 'AUTH_PASSWORD=%s\n' "$password"
           printf 'SESSION_SECRET=%s\n' "$secret"
         } > tmp/cloudflare-secrets.env
+        chmod 600 tmp/cloudflare-secrets.env
         echo "Wrote secrets to tmp/cloudflare-secrets.env"
