@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import getpass
 import json
+import os
 import re
 import subprocess
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -131,6 +134,43 @@ def require_clean() -> None:
         raise ValueError("worktree must be clean")
 
 
+def deploy_command(secrets_file: Path | None) -> list[str]:
+    command_args = ["bun", "x", "cf", "deploy"]
+    if secrets_file is not None:
+        command_args += ["--secrets-file", str(secrets_file)]
+    return command_args
+
+
+def secrets_merge_patch(auth_password: str, session_secret: str) -> str:
+    return json.dumps(
+        {
+            "AUTH_PASSWORD": {"type": "secret_text", "text": auth_password},
+            "SESSION_SECRET": {"type": "secret_text", "text": session_secret},
+        },
+        ensure_ascii=False,
+    )
+
+
+def read_secret(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    return value or getpass.getpass(f"{name}: ").strip()
+
+
+def apply_secrets(worker: str, payload: str) -> None:
+    Path("tmp").mkdir(exist_ok=True)
+    descriptor, raw_path = tempfile.mkstemp(dir="tmp", prefix="cloudflare-secrets-", suffix=".json")
+    path = Path(raw_path)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(payload)
+        subprocess.run(
+            ["bun", "x", "cf", "workers", "secrets", "bulk", "--worker", worker, "--file", str(path)],
+            check=True,
+        )
+    finally:
+        path.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Plan and execute releases and Worker deployments.")
     subparsers = parser.add_subparsers(dest="operation", required=True)
@@ -145,8 +185,11 @@ def main() -> int:
     release.add_argument("--execute", action="store_true")
     deploy = subparsers.add_parser("deploy")
     deploy.add_argument("--tag", required=True)
-    deploy.add_argument("--secrets-file", default="tmp/cloudflare-secrets.env")
+    deploy.add_argument("--secrets-file")
     deploy.add_argument("--execute", action="store_true")
+    secrets = subparsers.add_parser("secrets")
+    secrets.add_argument("--worker", default="app")
+    secrets.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     try:
         if args.operation == "plan":
@@ -167,20 +210,28 @@ def main() -> int:
             subprocess.run(["git", "tag", "-a", tag, ref, "-m", tag], check=True)
             subprocess.run(["git", "push", "origin", f"refs/tags/{tag}"], check=True)
             print(f"pushed {tag} at {ref}")
+        elif args.operation == "secrets":
+            require_execute(args)
+            auth_password = read_secret("AUTH_PASSWORD")
+            session_secret = read_secret("SESSION_SECRET")
+            if not auth_password or not session_secret:
+                raise ValueError("AUTH_PASSWORD and SESSION_SECRET are required")
+            apply_secrets(args.worker, secrets_merge_patch(auth_password, session_secret))
+            print(f"Updated secrets for Worker {args.worker}")
         else:
             require_execute(args)
             require_clean()
             tagged = command("git", "rev-parse", f"{args.tag}^{{commit}}")
             if tagged != command("git", "rev-parse", "HEAD"):
                 raise ValueError("checked-out HEAD must equal the deployment tag")
-            secrets_file = Path(args.secrets_file)
-            if not secrets_file.is_file():
-                raise ValueError(f"secrets file not found: {secrets_file}; run 'task deploy:secrets' first")
+            secrets_file = Path(args.secrets_file) if args.secrets_file else None
+            if secrets_file is not None and not secrets_file.is_file():
+                raise ValueError(f"secrets file not found: {secrets_file}")
             subprocess.run(
                 ["bun", "x", "cf", "d1", "migrations", "list", d1_database_id(), "--dir", "migrations"],
                 check=True,
             )
-            subprocess.run(["bun", "x", "cf", "deploy", "--secrets-file", str(secrets_file)], check=True)
+            subprocess.run(deploy_command(secrets_file), check=True)
     except (ValueError, subprocess.CalledProcessError) as error:
         parser.error(str(error))
     return 0
