@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -243,7 +244,9 @@ def test_plan_cli_accepts_repeated_pr_without_version(monkeypatch, capsys) -> No
     assert payload["worker_change"] is True
 
 
-def _prepare_deploy(monkeypatch, tmp_path, *, migration_fails: bool = False) -> list[list[str]]:
+def _prepare_deploy(
+    monkeypatch, tmp_path, *, migration_fails: bool = False, secrets_file: str | None = None
+) -> list[list[str]]:
     (tmp_path / "cloudflare.config.ts").write_text(CF_CONFIG, encoding="utf-8")
     (tmp_path / "tmp").mkdir()
     (tmp_path / "tmp" / "cloudflare-secrets.env").write_text(
@@ -271,7 +274,10 @@ def _prepare_deploy(monkeypatch, tmp_path, *, migration_fails: bool = False) -> 
         return subprocess.CompletedProcess(args, 0, stdout="No migrations to apply\n")
 
     monkeypatch.setattr(release_deploy.subprocess, "run", fake_run)
-    monkeypatch.setattr(sys, "argv", ["release_deploy.py", "deploy", "--tag", "v0.5.3", "--execute"])
+    argv = ["release_deploy.py", "deploy", "--tag", "v0.5.3", "--execute"]
+    if secrets_file is not None:
+        argv += ["--secrets-file", secrets_file]
+    monkeypatch.setattr(sys, "argv", argv)
     return calls
 
 
@@ -281,7 +287,7 @@ def test_deploy_checks_configured_d1_binding_before_worker(monkeypatch, tmp_path
     assert release_deploy.main() == 0
     assert calls == [
         ["bun", "x", "cf", "d1", "migrations", "list", "20ca1496-cadc-4b40-9265-1d59d55d5b82", "--dir", "migrations"],
-        ["bun", "x", "cf", "deploy", "--secrets-file", "tmp/cloudflare-secrets.env"],
+        ["bun", "x", "cf", "deploy"],
     ]
 
 
@@ -296,22 +302,56 @@ def test_deploy_does_not_deploy_when_migration_check_fails(monkeypatch, tmp_path
     ]
 
 
-def test_deploy_requires_secrets_file(monkeypatch, tmp_path) -> None:
-    (tmp_path / "cloudflare.config.ts").write_text(CF_CONFIG, encoding="utf-8")
-    monkeypatch.chdir(tmp_path)
+def test_deploy_with_explicit_secrets_file_passes_it(monkeypatch, tmp_path) -> None:
+    calls = _prepare_deploy(monkeypatch, tmp_path, secrets_file="tmp/cloudflare-secrets.env")
 
-    def fake_command(*args: str) -> str:
-        if args == ("git", "status", "--porcelain"):
-            return ""
-        if args in {
-            ("git", "rev-parse", "v0.5.3^{commit}"),
-            ("git", "rev-parse", "HEAD"),
-        }:
-            return "commit"
-        raise AssertionError(args)
+    assert release_deploy.main() == 0
+    assert calls[-1] == ["bun", "x", "cf", "deploy", "--secrets-file", "tmp/cloudflare-secrets.env"]
 
-    monkeypatch.setattr(release_deploy, "command", fake_command)
-    monkeypatch.setattr(sys, "argv", ["release_deploy.py", "deploy", "--tag", "v0.5.3", "--execute"])
+
+def test_deploy_with_missing_secrets_file_is_rejected(monkeypatch, tmp_path) -> None:
+    calls = _prepare_deploy(monkeypatch, tmp_path, secrets_file="tmp/missing.env")
 
     with pytest.raises(SystemExit):
         release_deploy.main()
+
+    assert calls == []
+
+
+def test_deploy_command_without_secrets_file() -> None:
+    assert release_deploy.deploy_command(None) == ["bun", "x", "cf", "deploy"]
+
+
+def test_deploy_command_with_secrets_file(tmp_path) -> None:
+    path = tmp_path / "secrets.env"
+
+    assert release_deploy.deploy_command(path) == ["bun", "x", "cf", "deploy", "--secrets-file", str(path)]
+
+
+def test_secrets_merge_patch_encodes_both_secrets() -> None:
+    payload = json.loads(release_deploy.secrets_merge_patch("pw", "ss"))
+
+    assert payload == {
+        "AUTH_PASSWORD": {"type": "secret_text", "text": "pw"},
+        "SESSION_SECRET": {"type": "secret_text", "text": "ss"},
+    }
+
+
+def test_apply_secrets_posts_bulk_file_and_cleans_up(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    seen: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        seen.append(args)
+        file_path = Path(args[args.index("--file") + 1])
+        assert file_path.is_file()
+        assert (file_path.stat().st_mode & 0o777) == 0o600
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(release_deploy.subprocess, "run", fake_run)
+
+    release_deploy.apply_secrets("app", "{}")
+
+    assert seen[0][:8] == ["bun", "x", "cf", "workers", "secrets", "bulk", "--worker", "app"]
+    assert seen[0][8] == "--file"
+    assert not Path(seen[0][9]).exists()

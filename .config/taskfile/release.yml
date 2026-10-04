@@ -22,36 +22,11 @@ tasks:
       - uv run python scripts/release_deploy.py deploy {{.CLI_ARGS}}
 
   deploy:
-    desc: Deploy the Worker to Cloudflare.
+    desc: Deploy the Worker to Cloudflare without changing secrets.
     cmds:
-      - |
-        set -eu
-        secrets_file="${SECRETS_FILE:-tmp/cloudflare-secrets.env}"
-        if [ ! -f "$secrets_file" ]; then
-          echo "Missing $secrets_file. Run 'task deploy:secrets' first or set SECRETS_FILE." >&2
-          exit 1
-        fi
-        bun x cf deploy --secrets-file "$secrets_file"
+      - bun x cf deploy
 
   deploy:secrets:
-    desc: Write Worker auth secrets to a local file for cf deploy.
+    desc: Set or rotate Worker auth secrets directly on the Worker.
     cmds:
-      - |
-        set -eu
-        password="${AUTH_PASSWORD:-}"
-        secret="${SESSION_SECRET:-}"
-        if [ -z "$password" ]; then
-          printf 'AUTH_PASSWORD: '
-          IFS= read -r password
-        fi
-        if [ -z "$secret" ]; then
-          printf 'SESSION_SECRET: '
-          IFS= read -r secret
-        fi
-        mkdir -p tmp
-        {
-          printf 'AUTH_PASSWORD=%s\n' "$password"
-          printf 'SESSION_SECRET=%s\n' "$secret"
-        } > tmp/cloudflare-secrets.env
-        chmod 600 tmp/cloudflare-secrets.env
-        echo "Wrote secrets to tmp/cloudflare-secrets.env"
+      - uv run python scripts/release_deploy.py secrets {{.CLI_ARGS}}

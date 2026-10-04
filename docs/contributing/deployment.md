@@ -65,13 +65,15 @@ bun x wrangler d1 migrations apply siftq --local -c .config/wrangler.jsonc --per
 
 ## Worker 認証の secrets を設定する
 
-共有パスワード認証に必要な secrets をファイルへ書き出す。
+共有パスワード認証に必要な secrets は Worker に直接設定する。通常のデプロイでは secrets を渡さず、既存の値が保持される。
+
+初回設定とローテーション時だけ次を実行する。
 
 ```bash
 task -t .config/Taskfile.yml deploy:secrets
 ```
 
-対話入力を避ける場合は環境変数で渡す。
+`AUTH_PASSWORD` と `SESSION_SECRET` を対話入力する。対話入力を避ける場合は環境変数で渡す。
 
 ```bash
 AUTH_PASSWORD="<password>" SESSION_SECRET="<long-random-secret>" task -t .config/Taskfile.yml deploy:secrets
@@ -79,7 +81,7 @@ AUTH_PASSWORD="<password>" SESSION_SECRET="<long-random-secret>" task -t .config
 
 `SESSION_SECRET` は長いランダム文字列を設定する。
 `openssl rand -hex 32` で生成できる。
-secrets は `tmp/cloudflare-secrets.env`（git 管理外）に保存され、デプロイ時に `cf deploy --secrets-file` で version へ注入される。
+内部では `cf workers secrets bulk` で Worker（`app`）へ設定し、値は一時ファイル（0600、実行後に削除）経由で渡す。
 ローカル開発では `.dev.vars` に `AUTH_PASSWORD` / `SESSION_SECRET` を記載し、`.gitignore` 済みであることを確認する。
 
 ## Worker をデプロイする
@@ -88,6 +90,7 @@ secrets は `tmp/cloudflare-secrets.env`（git 管理外）に保存され、デ
 task -t .config/Taskfile.yml deploy
 ```
 
+secrets は渡さない。既存の Worker secrets がそのまま使われる。
 コマンド末尾に表示される production URL で UI を確認する。
 
 ## 動作確認
