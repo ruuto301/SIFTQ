@@ -9,13 +9,14 @@ describe("BRAND_NAME", () => {
 });
 
 describe("FAVICON_HREF", () => {
-  it("encodes a four-quadrant SVG as an inline data URI", () => {
+  it("encodes a brand-green arrow SVG as an inline data URI", () => {
     const prefix = "data:image/svg+xml,";
     expect(FAVICON_HREF.startsWith(prefix)).toBe(true);
 
     const svg = decodeURIComponent(FAVICON_HREF.slice(prefix.length));
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg.endsWith("</svg>")).toBe(true);
-    expect(svg.match(/<rect\b/g)).toHaveLength(5);
+    expect(svg).toContain("<path");
+    expect(svg).toContain("#1f883d");
   });
 });
