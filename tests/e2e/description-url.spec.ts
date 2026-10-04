@@ -58,6 +58,72 @@ test("linkifies pasted URLs and submits plain text", async ({ page }) => {
   await expect(descriptionEditor(page).locator("a")).toHaveAttribute("href", taskUrl);
   await expect(page.locator('textarea[data-description-value]')).toHaveValue(description);
 });
+test("keeps the caret right after a URL pasted at the end of a description", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("link", { name: "New task" }).click();
+  await page.getByLabel("Title").fill(`E2E caret paste end ${Date.now()}`);
+  const editor = descriptionEditor(page);
+  const description = "Pasted https://example.com/tasks";
+  await editor.click();
+
+  const caretOffset = await editor.evaluate((element, text) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    const selection = window.getSelection();
+    if (!selection) throw new Error("Selection is unavailable");
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const data = new DataTransfer();
+    data.setData("text/plain", text);
+    element.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: data }));
+    const caret = window.getSelection()?.getRangeAt(0);
+    if (!caret) throw new Error("Caret is unavailable after paste");
+    const prefix = document.createRange();
+    prefix.selectNodeContents(element);
+    prefix.setEnd(caret.startContainer, caret.startOffset);
+    return prefix.toString().length;
+  }, description);
+
+  await expect(editor.locator("a")).toHaveAttribute("href", "https://example.com/tasks");
+  expect(caretOffset).toBe(description.length);
+});
+test("keeps the caret right after a URL pasted in the middle of a description", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("link", { name: "New task" }).click();
+  await page.getByLabel("Title").fill(`E2E caret paste middle ${Date.now()}`);
+  const editor = descriptionEditor(page);
+  const taskUrl = "https://example.com/tasks";
+  const beforeText = "Before ";
+  const content = `${beforeText} after`;
+
+  const caretOffset = await editor.evaluate((element, { url, position, text }) => {
+    element.focus();
+    element.textContent = text;
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode();
+    if (!node) throw new Error("Text node is unavailable");
+    const range = document.createRange();
+    range.setStart(node, position);
+    range.collapse(true);
+    const selection = window.getSelection();
+    if (!selection) throw new Error("Selection is unavailable");
+    selection.removeAllRanges();
+    selection.addRange(range);
+    const data = new DataTransfer();
+    data.setData("text/plain", url);
+    element.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, clipboardData: data }));
+    const caret = window.getSelection()?.getRangeAt(0);
+    if (!caret) throw new Error("Caret is unavailable after paste");
+    const prefix = document.createRange();
+    prefix.selectNodeContents(element);
+    prefix.setEnd(caret.startContainer, caret.startOffset);
+    return prefix.toString().length;
+  }, { url: taskUrl, position: beforeText.length, text: content });
+
+  await expect(editor.locator("a")).toHaveAttribute("href", taskUrl);
+  expect(caretOffset).toBe(beforeText.length + taskUrl.length);
+});
 test("deletes text before a description URL at the URL boundary", async ({ page }) => {
   const taskTitle = `E2E description URL backspace ${Date.now()}`;
   const taskUrl = "https://example.com/tasks";
