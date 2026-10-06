@@ -146,10 +146,12 @@ def secrets_merge_patch(
 ) -> str:
     return json.dumps(
         {
-            "GITHUB_CLIENT_ID": {"type": "secret_text", "text": client_id},
-            "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": client_secret},
-            "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": allowed_login},
-            "SESSION_SECRET": {"type": "secret_text", "text": session_secret},
+            "secrets": {
+                "GITHUB_CLIENT_ID": {"type": "secret_text", "text": client_id},
+                "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": client_secret},
+                "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": allowed_login},
+                "SESSION_SECRET": {"type": "secret_text", "text": session_secret},
+            }
         },
         ensure_ascii=False,
     )
