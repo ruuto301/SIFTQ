@@ -332,10 +332,12 @@ def test_secrets_merge_patch_encodes_all_secrets() -> None:
     payload = json.loads(release_deploy.secrets_merge_patch("id", "cs", "login", "ss"))
 
     assert payload == {
-        "GITHUB_CLIENT_ID": {"type": "secret_text", "text": "id"},
-        "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": "cs"},
-        "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": "login"},
-        "SESSION_SECRET": {"type": "secret_text", "text": "ss"},
+        "secrets": {
+            "GITHUB_CLIENT_ID": {"type": "secret_text", "text": "id"},
+            "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": "cs"},
+            "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": "login"},
+            "SESSION_SECRET": {"type": "secret_text", "text": "ss"},
+        }
     }
 
 
