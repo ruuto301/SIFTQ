@@ -5,7 +5,6 @@ import { createMemoryIdeaRepository } from "../src/preview/MemoryIdeaRepository"
 import { createMemoryTaskRepository } from "../src/preview/MemoryTaskRepository";
 
 const SECRET = "idea-api-test-secret";
-const PASSWORD = atob("dGVzdC1wYXNzd29yZA==");
 const taskRepository = createMemoryTaskRepository();
 const ideaRepository = createMemoryIdeaRepository();
 
@@ -14,7 +13,6 @@ async function request(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set("Cookie", `${SESSION_COOKIE_NAME}=${cookie}`);
   return app.request(path, { ...init, headers }, {
-    AUTH_PASSWORD: PASSWORD,
     SESSION_SECRET: SECRET,
     TASK_REPOSITORY: taskRepository,
     IDEA_REPOSITORY: ideaRepository,

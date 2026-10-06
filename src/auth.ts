@@ -2,6 +2,9 @@ const encoder = new TextEncoder();
 
 export const SESSION_COOKIE_NAME = "app_session";
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+export const OAUTH_STATE_COOKIE_NAME = "github_oauth_state";
+export const OAUTH_NEXT_COOKIE_NAME = "github_oauth_next";
+export const OAUTH_STATE_DURATION_MS = 10 * 60 * 1000;
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -10,17 +13,6 @@ function timingSafeEqual(a: string, b: string): boolean {
     difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
   }
   return difference === 0;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function sha256(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(value));
-  return bytesToHex(new Uint8Array(digest));
 }
 
 async function sign(secret: string, payload: string): Promise<string> {
@@ -53,9 +45,4 @@ export async function isValidSession(secret: string, value: string): Promise<boo
 
   const expectedSignature = await sign(secret, payload);
   return timingSafeEqual(expectedSignature, suppliedSignature);
-}
-
-export async function isPasswordValid(input: string, expected: string): Promise<boolean> {
-  const [inputDigest, expectedDigest] = await Promise.all([sha256(input), sha256(expected)]);
-  return timingSafeEqual(inputDigest, expectedDigest);
 }

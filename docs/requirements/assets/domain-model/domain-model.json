@@ -137,7 +137,7 @@
       ],
       "onLoad": "html_login_page",
       "actions": [
-        "login"
+        "github-login"
       ]
     },
     "P01": {
@@ -250,21 +250,6 @@
       "path": "/login",
       "operation": "load",
       "success": 200
-    },
-    "html_login": {
-      "kind": "html",
-      "method": "POST",
-      "path": "/login",
-      "operation": "login",
-      "success": 302,
-      "errors": [
-        {
-          "status": 401
-        },
-        {
-          "status": 503
-        }
-      ]
     },
     "html_logout": {
       "kind": "html",
@@ -744,9 +729,8 @@
   "navigation": [
     {
       "from": "P00",
-      "on": "ログイン成功",
-      "to": "P08",
-      "call": "html_login"
+      "on": "GitHub ログイン成功",
+      "to": "P08"
     },
     {
       "from": "P01",

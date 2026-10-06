@@ -237,7 +237,7 @@
       ],
       "onLoad": "html_login_page",
       "actions": [
-        "login"
+        "github-login"
       ]
     },
     "P01": {
@@ -346,9 +346,8 @@
   "navigation": [
     {
       "from": "P00",
-      "on": "ログイン成功",
-      "to": "P08",
-      "call": "html_login"
+      "on": "GitHub ログイン成功",
+      "to": "P08"
     },
     {
       "from": "P01",

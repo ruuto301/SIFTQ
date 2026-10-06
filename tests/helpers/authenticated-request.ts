@@ -2,17 +2,14 @@ import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
 import type { TaskRepository } from "../../src/repository/task-repository";
 
-export const TEST_PASSWORD = atob("dGVzdC1wYXNzd29yZA==");
-const TEST_SECRET = "test-secret";
+export const TEST_SECRET = "test-secret";
 
 export function authBindings(repo: TaskRepository): {
   TASK_REPOSITORY: TaskRepository;
-  AUTH_PASSWORD: string;
   SESSION_SECRET: string;
 } {
   return {
     TASK_REPOSITORY: repo,
-    AUTH_PASSWORD: TEST_PASSWORD,
     SESSION_SECRET: TEST_SECRET,
   };
 }

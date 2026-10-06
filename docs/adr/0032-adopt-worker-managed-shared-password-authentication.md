@@ -1,5 +1,7 @@
 # ADR 0032: Adopt Worker-managed shared-password authentication
 
+> Status: Superseded by [ADR 0072](0072-adopt-github-oauth-login-with-allowlist.md).
+
 ## 決定
 
 - Worker のアクセス制御は、Cloudflare Access ではなく Worker 内の共有パスワード認証で行う。

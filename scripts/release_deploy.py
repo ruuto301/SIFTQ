@@ -141,10 +141,14 @@ def deploy_command(secrets_file: Path | None) -> list[str]:
     return command_args
 
 
-def secrets_merge_patch(auth_password: str, session_secret: str) -> str:
+def secrets_merge_patch(
+    client_id: str, client_secret: str, allowed_login: str, session_secret: str
+) -> str:
     return json.dumps(
         {
-            "AUTH_PASSWORD": {"type": "secret_text", "text": auth_password},
+            "GITHUB_CLIENT_ID": {"type": "secret_text", "text": client_id},
+            "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": client_secret},
+            "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": allowed_login},
             "SESSION_SECRET": {"type": "secret_text", "text": session_secret},
         },
         ensure_ascii=False,
@@ -212,11 +216,18 @@ def main() -> int:
             print(f"pushed {tag} at {ref}")
         elif args.operation == "secrets":
             require_execute(args)
-            auth_password = read_secret("AUTH_PASSWORD")
+            client_id = read_secret("GITHUB_CLIENT_ID")
+            client_secret = read_secret("GITHUB_CLIENT_SECRET")
+            allowed_login = read_secret("GITHUB_ALLOWED_LOGIN")
             session_secret = read_secret("SESSION_SECRET")
-            if not auth_password or not session_secret:
-                raise ValueError("AUTH_PASSWORD and SESSION_SECRET are required")
-            apply_secrets(args.worker, secrets_merge_patch(auth_password, session_secret))
+            if not client_id or not client_secret or not allowed_login or not session_secret:
+                raise ValueError(
+                    "GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_ALLOWED_LOGIN and SESSION_SECRET are required"
+                )
+            apply_secrets(
+                args.worker,
+                secrets_merge_patch(client_id, client_secret, allowed_login, session_secret),
+            )
             print(f"Updated secrets for Worker {args.worker}")
         else:
             require_execute(args)

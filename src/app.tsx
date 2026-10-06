@@ -36,6 +36,8 @@ const previewImageRepository = createMemoryImageRepository();
 
 const PUBLIC_PATHS = new Set([
   "/login",
+  "/auth/github",
+  "/auth/github/callback",
   "/styles.css",
   "/htmx-conflict.js",
   "/popover-dismiss.js",
@@ -50,11 +52,8 @@ function isPublicPath(path: string): boolean {
   return PUBLIC_PATHS.has(path);
 }
 
-function authConfig(c: Context<AppEnv>): { password: string; secret: string } | null {
-  const password = c.env.AUTH_PASSWORD;
-  const secret = c.env.SESSION_SECRET;
-  if (password === undefined || secret === undefined) return null;
-  return { password, secret };
+function sessionSecret(c: Context<AppEnv>): string | null {
+  return c.env.SESSION_SECRET ?? null;
 }
 
 function unauthorizedResponse(c: Context<AppEnv>): Response {
@@ -78,10 +77,10 @@ function unauthorizedResponse(c: Context<AppEnv>): Response {
 
 app.use("*", async (c, next) => {
   if (isPublicPath(c.req.path)) return next();
-  const auth = authConfig(c);
-  if (auth === null) return c.text("Authentication is not configured", 503);
+  const secret = sessionSecret(c);
+  if (secret === null) return c.text("Authentication is not configured", 503);
   const session = getCookie(c, SESSION_COOKIE_NAME);
-  if (session !== undefined && (await isValidSession(auth.secret, session))) return next();
+  if (session !== undefined && (await isValidSession(secret, session))) return next();
   return unauthorizedResponse(c);
 });
 

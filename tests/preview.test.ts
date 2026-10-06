@@ -11,7 +11,6 @@ async function previewRequest(path: string): Promise<Response> {
     { headers: { Cookie: `${SESSION_COOKIE_NAME}=${session}` } },
     {
       PREVIEW_MODE: "true",
-      AUTH_PASSWORD: "preview",
       SESSION_SECRET: PREVIEW_SECRET,
     },
   );

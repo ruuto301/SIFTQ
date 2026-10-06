@@ -5,7 +5,7 @@
   "packageManager": "bun@1.4.0",
   "scripts": {
     "dev": "cf dev",
-    "preview:mock": "PREVIEW_MODE=true AUTH_PASSWORD=preview SESSION_SECRET=preview-session-secret cf dev",
+    "preview:mock": "PREVIEW_MODE=true SESSION_SECRET=preview-session-secret GITHUB_CLIENT_ID=preview GITHUB_CLIENT_SECRET=preview GITHUB_ALLOWED_LOGIN=preview GITHUB_OAUTH_BASE=http://localhost:8788 GITHUB_API_BASE=http://localhost:8788 sh -c 'GITHUB_MOCK_PORT=8788 GITHUB_MOCK_LOGIN=preview GITHUB_MOCK_CALLBACK=http://localhost:8787/auth/github/callback bun tests/e2e/mock-github-server.ts & exec cf dev --port 8787'",
     "build": "tsc -p tsconfig.json && cf deploy --dry-run",
     "deploy": "cf deploy",
     "typegen": "cf workers types",

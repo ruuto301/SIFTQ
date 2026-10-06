@@ -3,18 +3,17 @@ import { describe, expect, it } from "vite-plus/test";
 import { LoginPage, safeNextPath } from "../src/components/LoginPage";
 
 describe("LoginPage", () => {
-  it("renders the password form", () => {
+  it("renders the GitHub sign-in link", () => {
     const html = renderToString(<LoginPage />);
 
-    expect(html).toContain('method="post"');
-    expect(html).toContain('type="password"');
-    expect(html).toContain('name="password"');
+    expect(html).toContain('href="/auth/github?next=%2Fideas"');
+    expect(html).toContain("Sign in with GitHub");
   });
 
   it("shows an error when authentication fails", () => {
     const html = renderToString(<LoginPage error />);
 
-    expect(html).toContain("Incorrect password");
+    expect(html).toContain("GitHub sign-in failed");
   });
 
   it("declares an inline SVG favicon", () => {

@@ -7,21 +7,6 @@
       "operation": "load",
       "success": 200
     },
-    "html_login": {
-      "kind": "html",
-      "method": "POST",
-      "path": "/login",
-      "operation": "login",
-      "success": 302,
-      "errors": [
-        {
-          "status": 401
-        },
-        {
-          "status": 503
-        }
-      ]
-    },
     "html_logout": {
       "kind": "html",
       "method": "POST",

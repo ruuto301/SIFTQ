@@ -328,11 +328,13 @@ def test_deploy_command_with_secrets_file(tmp_path) -> None:
     assert release_deploy.deploy_command(path) == ["bun", "x", "cf", "deploy", "--secrets-file", str(path)]
 
 
-def test_secrets_merge_patch_encodes_both_secrets() -> None:
-    payload = json.loads(release_deploy.secrets_merge_patch("pw", "ss"))
+def test_secrets_merge_patch_encodes_all_secrets() -> None:
+    payload = json.loads(release_deploy.secrets_merge_patch("id", "cs", "login", "ss"))
 
     assert payload == {
-        "AUTH_PASSWORD": {"type": "secret_text", "text": "pw"},
+        "GITHUB_CLIENT_ID": {"type": "secret_text", "text": "id"},
+        "GITHUB_CLIENT_SECRET": {"type": "secret_text", "text": "cs"},
+        "GITHUB_ALLOWED_LOGIN": {"type": "secret_text", "text": "login"},
         "SESSION_SECRET": {"type": "secret_text", "text": "ss"},
     }
 

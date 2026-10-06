@@ -63,9 +63,16 @@ bun x cf d1 migrations apply 20ca1496-cadc-4b40-9265-1d59d55d5b82 --dir migratio
 bun x wrangler d1 migrations apply siftq --local -c .config/wrangler.jsonc --persist-to .wrangler/state
 ```
 
+## GitHub OAuth App を作成する
+
+1. GitHub の Settings > Developer settings > OAuth Apps で新しい OAuth App を作成する。
+2. Authorization callback URL に `https://app.siftq-app.workers.dev/auth/github/callback` を設定する。
+3. Client ID と Client secret を控える。
+4. ログインを許可する GitHub login を 1 つ決める。
+
 ## Worker 認証の secrets を設定する
 
-共有パスワード認証に必要な secrets は Worker に直接設定する。通常のデプロイでは secrets を渡さず、既存の値が保持される。
+GitHub OAuth に必要な secrets は Worker に直接設定する。通常のデプロイでは secrets を渡さず、既存の値が保持される。
 
 初回設定とローテーション時だけ次を実行する。
 
@@ -73,16 +80,18 @@ bun x wrangler d1 migrations apply siftq --local -c .config/wrangler.jsonc --per
 task -t .config/Taskfile.yml deploy:secrets
 ```
 
-`AUTH_PASSWORD` と `SESSION_SECRET` を対話入力する。対話入力を避ける場合は環境変数で渡す。
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_ALLOWED_LOGIN` / `SESSION_SECRET` を対話入力する。対話入力を避ける場合は環境変数で渡す。
 
 ```bash
-AUTH_PASSWORD="<password>" SESSION_SECRET="<long-random-secret>" task -t .config/Taskfile.yml deploy:secrets
+GITHUB_CLIENT_ID="<client-id>" GITHUB_CLIENT_SECRET="<client-secret>" \
+GITHUB_ALLOWED_LOGIN="<github-login>" SESSION_SECRET="<long-random-secret>" \
+task -t .config/Taskfile.yml deploy:secrets
 ```
 
 `SESSION_SECRET` は長いランダム文字列を設定する。
 `openssl rand -hex 32` で生成できる。
 内部では `cf workers secrets bulk` で Worker（`app`）へ設定し、値は一時ファイル（0600、実行後に削除）経由で渡す。
-ローカル開発では `.dev.vars` に `AUTH_PASSWORD` / `SESSION_SECRET` を記載し、`.gitignore` 済みであることを確認する。
+ローカル開発では `.dev.vars` に `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_ALLOWED_LOGIN` / `SESSION_SECRET` を記載し、`.gitignore` 済みであることを確認する。
 
 ## Worker をデプロイする
 
