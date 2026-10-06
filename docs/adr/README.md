@@ -35,11 +35,11 @@
 | [ADR 0029: Adopt Result type in domain and usecase](0029-adopt-result-type-in-domain-usecase.md) | Accepted. | domain / usecase は期待される失敗を inline union の `Result<T, E>` で返す。 |
 | [ADR 0030: Adopt static component catalog](0030-adopt-static-component-catalog.md) | Accepted. | Hono JSX component を static HTML catalog 化し、Review 済み component を再利用する。 |
 | [ADR 0031: Adopt Cloudflare Access for Worker access control](0031-adopt-cloudflare-access-for-worker.md) | Superseded by ADR 0032. | Worker の公開アクセス制御に Cloudflare Access を採用していた。 |
-| [ADR 0032: Adopt Worker-managed shared-password authentication](0032-adopt-worker-managed-shared-password-authentication.md) | Accepted. | Worker 内の共有パスワード認証と署名付き Cookie でアクセスを制御する。 |
+| [ADR 0032: Adopt Worker-managed shared-password authentication](0032-adopt-worker-managed-shared-password-authentication.md) | Superseded by ADR 0072. | Worker 内の共有パスワード認証と署名付き Cookie でアクセスを制御していた。 |
 | [ADR 0033: md2idx は Bun の devDependency として導入する](0033-introduce-md2idx-as-bun-devdependency.md) | Accepted. | `md2idx` を `package.json` の devDependency で導入し、`bun x md2idx` で実行する。 |
 | [ADR 0034: リリースと Worker デプロイを分離する](0034-separate-release-and-worker-deployment.md) | Accepted. | GitHub Release はリポジトリ変更、Worker デプロイは本番更新として分離し、変更種別で実施有無を判断する。 |
 | [ADR 0035: 画面遷移図の生成ツールとして、D2を採用する](0035-adopt-d2-for-screen-flow-diagram.md) | Suspended by ADR 0044. | 画面遷移図の生成ツールとして、D2を採用する |
-| [ADR 0036: Adopt Better Auth as future authentication migration target](0036-adopt-better-auth-as-future-auth-migration-target.md) | Accepted. | 将来のユーザー別認証・認可の移行先として Better Auth を採用し、当面は共有パスワード認証を維持する。 |
+| [ADR 0036: Adopt Better Auth as future authentication migration target](0036-adopt-better-auth-as-future-auth-migration-target.md) | Partially superseded by ADR 0072. | 将来のユーザー別認証・認可の移行先として Better Auth を採用する。 |
 | [ADR 0037: LLMクライアントをcodexからopencodeに変更する](0037-switch-llm-client-to-opencode.md) | Accepted. | LLMクライアントをcodexからopencodeに変更する。 |
 | [ADR 0038: Task一覧のページングにoffset方式を採用する](0038-task-list-offset-pagination.md) | Accepted. | Task一覧を25件固定のoffset分割とし、`?page=`で指定する。 |
 | [ADR 0039: Task一覧のページングUIはGitHub issue一覧と同様にする](0039-task-list-pagination-ui.md) | Accepted. | ページ番号＋前へ/次へ、中間省略、status切替で1ページ目、一覧下のみ配置。 |
@@ -75,6 +75,7 @@
 | [ADR 0069: セッションを age で暗号化して公開リポジトリへバックアップする](0069-encrypt-session-backup-with-age.md) | Accepted. | セッションを zstd + age で暗号化して公開リポジトリへ保存し、秘密鍵はリポジトリ外に置いて手動のバックアップ・復元タスクを用意する。 |
 | [ADR 0070: ドメインモデルをコード由来の自動グラフと表現層から生成する](0070-generate-domain-model-from-code-graph-and-presentation.md) | Accepted. | ドメインモデルをコードから抽出する自動部分と人が編集する表現部分に分け、マージ結果を正本として生成する。 |
 | [ADR 0071: Cloudflare 操作 CLI に統合 CLI を採用する](0071-adopt-cloudflare-unified-cli.md) | Accepted. | Cloudflare 操作の主 CLI を統合 CLI とし、ローカル D1 migration は Wrangler を併用する。 |
+| [ADR 0072: 認証を GitHub OAuth と login allowlist に置き換える](0072-adopt-github-oauth-login-with-allowlist.md) | Accepted. | 共有パスワード認証を GitHub OAuth App 認証へ置き換え、login allowlist のアカウントのみ許可し、署名付き Cookie セッションを維持する。 |
 
 ## 検証待ち
 

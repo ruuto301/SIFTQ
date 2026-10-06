@@ -24,18 +24,16 @@ export function LoginPage({
       </head>
       <body>
         <main class="login">
-          <form class="login-card" method="post" action="/login">
+          <div class="login-card">
             <h1 class="brand">{BRAND_NAME}</h1>
-            <input type="hidden" name="next" value={safeNextPath(next)} />
-            <label>
-              Password
-              <input type="password" name="password" required />
-            </label>
-            {error ? <p class="error">Incorrect password</p> : null}
-            <button class="button primary" type="submit">
-              Sign in
-            </button>
-          </form>
+            <a
+              class="button primary"
+              href={`/auth/github?next=${encodeURIComponent(safeNextPath(next))}`}
+            >
+              Sign in with GitHub
+            </a>
+            {error ? <p class="error">GitHub sign-in failed</p> : null}
+          </div>
         </main>
       </body>
     </html>

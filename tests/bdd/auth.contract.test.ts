@@ -1,21 +1,8 @@
 import { describe, expect, it } from "vite-plus/test";
 import app from "../../src/index";
-import { SESSION_COOKIE_NAME } from "../../src/auth";
-import { TEST_PASSWORD, authBindings } from "../helpers/authenticated-request";
+import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
+import { TEST_SECRET, authBindings } from "../helpers/authenticated-request";
 import { createMemoryTaskRepository } from "../helpers/memory-task-repository";
-import type { TaskRepository } from "../../src/repository/task-repository";
-
-function loginRequest(repo: TaskRepository, body: string) {
-  return app.request(
-    "/login",
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-    },
-    authBindings(repo),
-  );
-}
 
 describe("authentication contract", () => {
   it("redirects unauthenticated HTML to /login", async () => {
@@ -36,39 +23,13 @@ describe("authentication contract", () => {
     expect((await response.json()).code).toBe("UNAUTHORIZED");
   });
 
-  it("issues an HttpOnly session cookie after a successful login", async () => {
-    const response = await loginRequest(
-      createMemoryTaskRepository(),
-      `password=${TEST_PASSWORD}`,
-    );
-
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/ideas");
-    expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=`);
-    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
-  });
-
-  it("does not issue a session cookie after a failed login", async () => {
-    const response = await loginRequest(createMemoryTaskRepository(), "password=wrong");
-
-    expect(response.status).toBe(401);
-    expect(response.headers.get("set-cookie")).toBeNull();
-  });
-
   it("clears the session cookie on logout", async () => {
-    const login = await loginRequest(
-      createMemoryTaskRepository(),
-      `password=${TEST_PASSWORD}&next=%2Ftasks`,
-    );
-    const cookie = login.headers.get("set-cookie")?.split(";")[0];
-    const headers: Record<string, string> = {};
-    if (cookie !== undefined) headers["Cookie"] = cookie;
-
+    const session = await createSession(TEST_SECRET, Date.now() + 60_000);
     const response = await app.request(
       "/logout",
       {
         method: "POST",
-        headers,
+        headers: { Cookie: `${SESSION_COOKIE_NAME}=${session}` },
       },
       authBindings(createMemoryTaskRepository()),
     );

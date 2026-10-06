@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { createSession, isPasswordValid, isValidSession } from "../src/auth";
+import { createSession, isValidSession } from "../src/auth";
 
 describe("session signing", () => {
   it("accepts a session signed with the same secret", async () => {
@@ -25,17 +25,5 @@ describe("session signing", () => {
     const tampered = session.slice(0, -1) + (session.endsWith("a") ? "b" : "a");
 
     expect(await isValidSession("secret", tampered)).toBe(false);
-  });
-});
-
-describe("password validation", () => {
-  it("accepts the expected password", async () => {
-    expect(await isPasswordValid("correct horse battery staple", "correct horse battery staple")).toBe(
-      true,
-    );
-  });
-
-  it("rejects a different password", async () => {
-    expect(await isPasswordValid("wrong", "correct")).toBe(false);
   });
 });

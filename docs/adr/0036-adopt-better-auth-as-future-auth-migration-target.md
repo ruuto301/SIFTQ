@@ -1,5 +1,7 @@
 # ADR 0036: Adopt Better Auth as future authentication migration target
 
+> Status: Partially superseded by [ADR 0072](0072-adopt-github-oauth-login-with-allowlist.md): 共有パスワード認証の維持は置き換え、Better Auth を移行先とする判断は維持する。
+
 ## 決定
 
 - 将来のユーザー別認証・認可の移行先として Better Auth を採用する。

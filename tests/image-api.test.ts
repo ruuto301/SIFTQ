@@ -6,7 +6,6 @@ import type { ImageRepository } from "../src/repository/image-repository";
 import { IMAGE_MAX_BYTES } from "../src/image";
 
 const SECRET = "image-api-test-secret";
-const PASSWORD = atob("dGVzdC1wYXNzd29yZA==");
 
 let repository: ImageRepository;
 
@@ -15,7 +14,7 @@ beforeEach(() => {
 });
 
 function bindings() {
-  return { AUTH_PASSWORD: PASSWORD, SESSION_SECRET: SECRET, IMAGE_REPOSITORY: repository };
+  return { SESSION_SECRET: SECRET, IMAGE_REPOSITORY: repository };
 }
 
 async function request(path: string, init: RequestInit = {}) {
