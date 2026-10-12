@@ -10,6 +10,7 @@ describe("Layout", () => {
     expect(html).toContain('src="/htmx-conflict.js"');
     expect(html).toContain('src="/popover-dismiss.js"');
     expect(html).toContain('src="/task-form-shortcut.js"');
+    expect(html).toContain('src="/escape-cancel.js"');
   });
 
   it("declares an inline SVG favicon", () => {

@@ -73,7 +73,7 @@ function IdeaComposer() {
         <input class="ideas-composer__title" name="title" type="text" maxlength={256} autocomplete="off" placeholder="タイトル" aria-label="Idea title" />
         <textarea class="ideas-composer__description" name="description" placeholder="メモを入力..." aria-label="Idea description" rows={1}></textarea>
         <div class="ideas-composer__actions">
-          <button class="ideas-composer__close" type="button" data-idea-composer-close>キャンセル</button>
+          <button class="ideas-composer__close" type="button" data-idea-composer-close data-cancel>キャンセル</button>
         </div>
       </div>
     </div>

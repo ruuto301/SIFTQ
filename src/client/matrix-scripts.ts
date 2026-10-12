@@ -347,6 +347,7 @@ export const MATRIX_DND_SCRIPT = [
   "  cancelButton.className = \"matrix-modal-button matrix-modal-button--cancel\";",
   "  cancelButton.textContent = \"キャンセル\";",
   "  cancelButton.setAttribute(\"data-matrix-modal-action\", \"cancel\");",
+  "  cancelButton.setAttribute(\"data-cancel\", \"true\");",
   "  row.appendChild(cancelButton);",
   "  const confirmButton = document.createElement(\"button\");",
   "  confirmButton.type = \"button\";",
