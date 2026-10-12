@@ -1,3 +1,4 @@
+// covers: BDD-TM-010
 import { describe, expect, it } from "vite-plus/test";
 import app from "../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../src/auth";

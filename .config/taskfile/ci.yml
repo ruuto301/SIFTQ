@@ -25,6 +25,7 @@ tasks:
       - task: ci:adr
       - task: ci:docs
       - task: ci:domain
+      - task: ci:traceability
       - task: ci:typecheck
       - task: ci:e2e:checks
       - task: ci:test
@@ -56,6 +57,7 @@ tasks:
       - ci:adr
       - ci:docs
       - ci:domain
+      - ci:traceability
       - ci:typecheck
       - ci:e2e:checks
       - ci:test:unit
@@ -154,6 +156,11 @@ tasks:
     cmds:
       - bun tools/domain-blueprint/src/cli.ts sync --config .config/domain-blueprint.json --check
       - bun tools/domain-blueprint/src/cli.ts generate --config .config/domain-blueprint.json
+
+  ci:traceability:
+    desc: Reject dangling or missing acceptance-criteria IDs in tests.
+    cmds:
+      - uv run python scripts/ci/check_traceability.py
 
   ci:llm-eval:
     desc: Run the LLM evaluation smoke suite.

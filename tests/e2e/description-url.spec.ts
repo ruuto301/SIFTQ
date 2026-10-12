@@ -1,3 +1,4 @@
+// covers: BDD-TM-017, BDD-TM-018
 import { signIn, descriptionEditor, waitForPageSettle, createMatrixTask } from "./matrix-helpers";
 import { e2eBaseUrl, expect, test } from "./fixtures";
 
