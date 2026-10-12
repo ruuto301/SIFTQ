@@ -12,6 +12,7 @@ import { IdeaDetailPage } from "../views/IdeaDetailPage";
 import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
+import { NAV_SCREENS } from "../screens";
 import { changeTaskArea, changeTaskStatus, changeTaskWorking, createTask, isTaskStatus, is_working } from "../task";
 import type { Task, TaskStatus } from "../task";
 import {
@@ -38,9 +39,8 @@ type Repository = (c: Context<AppEnv>) => TaskRepository;
 type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
 function activePage(path: string): "ideas" | "matrix" | "tasks" {
-  if (path === "/matrix") return "matrix";
-  if (path === "/ideas" || path.startsWith("/ideas/")) return "ideas";
-  return "tasks";
+  const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
+  return match?.activeKey ?? "tasks";
 }
 
 function renderPage(c: Context<AppEnv>, content: JSX.Element) {

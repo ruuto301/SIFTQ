@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import type { JSX } from "hono/jsx/jsx-runtime";
 import { BRAND_NAME, FAVICON_HREF } from "../brand";
+import { NAV_SCREENS } from "../screens";
 
 const HTMX_SCRIPT = "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js";
 
@@ -29,15 +30,11 @@ export const Layout: FC<{ active: "ideas" | "matrix" | "tasks"; children?: JSX.E
       <header class="topbar">
         <a class="brand" href="/ideas">{BRAND_NAME}</a>
         <nav class="nav" aria-label="Primary">
-          <a class={active === "ideas" ? "active" : undefined} href="/ideas">
-            Ideas
-          </a>
-          <a class={active === "matrix" ? "active" : undefined} href="/matrix">
-            Matrix
-          </a>
-          <a class={active === "tasks" ? "active" : undefined} href="/tasks">
-            Tasks
-          </a>
+          {NAV_SCREENS.map((screen) => (
+            <a class={active === screen.activeKey ? "active" : undefined} href={screen.path} key={screen.path}>
+              {screen.label}
+            </a>
+          ))}
         </nav>
         <form action="/logout" method="post" class="logout">
           <button type="submit" class="button">Logout</button>
