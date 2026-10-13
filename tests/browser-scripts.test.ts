@@ -10,6 +10,7 @@ import {
 } from "typescript";
 import type { Node } from "typescript";
 import {
+  ESCAPE_CANCEL_SCRIPT,
   HTMX_CONFLICT_SWAP_SCRIPT,
   POPOVER_DISMISS_SCRIPT,
   TASK_FORM_SHORTCUT_SCRIPT,
@@ -22,6 +23,7 @@ const scripts = [
   ["HTMX conflict swap", HTMX_CONFLICT_SWAP_SCRIPT],
   ["popover dismissal", POPOVER_DISMISS_SCRIPT],
   ["task form shortcut", TASK_FORM_SHORTCUT_SCRIPT],
+  ["escape cancel", ESCAPE_CANCEL_SCRIPT],
   ["description editor", DESCRIPTION_EDITOR_SCRIPT],
   ["task list selection", TASK_LIST_SELECTION_SCRIPT],
   ["Matrix drag and drop", MATRIX_DND_SCRIPT],

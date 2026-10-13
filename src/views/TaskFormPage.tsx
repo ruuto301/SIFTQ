@@ -52,7 +52,7 @@ export function TaskVersionInput({ version, outOfBand = false }: { version: numb
 function TaskFormActions({ submitLabel, cancelHref }: { submitLabel: string; cancelHref: string }) {
   return (
     <div class="form-actions">
-      <a class="button" href={cancelHref}>
+      <a class="button" href={cancelHref} data-cancel>
         Cancel
       </a>
       <button class="button primary" type="submit">
