@@ -246,9 +246,11 @@ function TaskListToolbar({
             <details class="task-bulk-menu">
               <summary class="button small">Mark as</summary>
               <div class="task-bulk-menu-items">
-                <button type="button" data-task-action="do">do</button>
-                <button type="button" data-task-action="done">done</button>
-                <button type="button" data-task-action="skip">skip</button>
+                {TASK_STATUSES.map((status) => (
+                  <button type="button" data-task-action={status} key={status}>
+                    {status}
+                  </button>
+                ))}
               </div>
             </details>
           </div>

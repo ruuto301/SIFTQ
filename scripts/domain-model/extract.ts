@@ -1,36 +1,16 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { htmlPageIds, pageEntities, screenByFile } from "../../src/screens";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 const ENTITIES = new Set(["tasks", "ideas"]);
 const HTTP_VERBS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 
-const HTML_PAGE_IDS: Record<string, string> = {
-  "/login": "html_login_page",
-  "/matrix": "html_matrix_page",
-  "/ideas": "html_ideas_page",
-  "/ideas/:id": "html_ideas_detail",
-  "/tasks": "html_tasks_page",
-  "/tasks/new": "html_new_task_page",
-  "/tasks/:id": "html_task_page",
-};
-
-const PAGE_ENTITY: Record<string, string> = {
-  "/matrix": "tasks",
-  "/ideas": "ideas",
-  "/ideas/:id": "ideas",
-  "/tasks": "tasks",
-  "/tasks/:id": "tasks",
-};
-
-const SCREEN_BY_FILE: Record<string, string[]> = {
-  "matrix-scripts.ts": ["P01"],
-  "task-list-scripts.ts": ["P02"],
-  "task-form-scripts.ts": ["P03", "P04"],
-  "idea-scripts.ts": ["P08"],
-};
+const HTML_PAGE_IDS = htmlPageIds();
+const PAGE_ENTITY = pageEntities();
+const SCREEN_BY_FILE = screenByFile();
 
 export type ApiError = { status: number; code?: string };
 export type ApiOperation = {
