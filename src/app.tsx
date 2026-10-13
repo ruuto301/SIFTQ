@@ -1,15 +1,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
-import {
-  HTMX_CONFLICT_SWAP_SCRIPT,
-  POPOVER_DISMISS_SCRIPT,
-  TASK_FORM_SHORTCUT_SCRIPT,
-} from "./client/browser-scripts";
-import { MATRIX_DND_SCRIPT } from "./client/matrix-scripts";
-import { DESCRIPTION_EDITOR_SCRIPT } from "./client/task-form-scripts";
-import { TASK_LIST_SELECTION_SCRIPT } from "./client/task-list-scripts";
-import { IDEA_DETAIL_SCRIPT, IDEAS_DND_SCRIPT } from "./client/idea-scripts";
+import { CLIENT_ASSETS, CLIENT_ASSET_PATHS } from "./client/scripts";
 import { SESSION_COOKIE_NAME, isValidSession } from "./auth";
 import { createD1TaskRepository } from "./repository/d1-task-repository";
 import type { TaskRepository } from "./repository/task-repository";
@@ -17,7 +9,6 @@ import { createD1IdeaRepository } from "./repository/d1-idea-repository";
 import type { IdeaRepository } from "./repository/idea-repository";
 import { createD1ImageRepository, createMemoryImageRepository } from "./repository/image-repository";
 import type { ImageRepository } from "./repository/image-repository";
-import { STYLES_CSS } from "./styles";
 import { createMemoryTaskRepository } from "./preview/MemoryTaskRepository";
 import { createMemoryIdeaRepository } from "./preview/MemoryIdeaRepository";
 import { PREVIEW_TASKS } from "./preview/tasks";
@@ -38,14 +29,7 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/auth/github",
   "/auth/github/callback",
-  "/styles.css",
-  "/htmx-conflict.js",
-  "/popover-dismiss.js",
-  "/task-form-shortcut.js",
-  "/matrix-dnd.js",
-  "/ideas-dnd.js",
-  "/idea-detail.js",
-  "/task-list-selection.js",
+  ...CLIENT_ASSET_PATHS,
 ]);
 
 function isPublicPath(path: string): boolean {
@@ -112,38 +96,8 @@ registerIdeaApiRoutes(app, ideaRepository);
 registerImageApiRoutes(app, imageRepository);
 registerTaskScreenRoutes(app, repository, ideaRepository);
 
-app.get("/matrix-dnd.js", (c) => {
-  return c.body(MATRIX_DND_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/ideas-dnd.js", (c) => {
-  return c.body(IDEAS_DND_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/idea-detail.js", (c) => {
-  return c.body(IDEA_DETAIL_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/htmx-conflict.js", (c) => {
-  return c.body(HTMX_CONFLICT_SWAP_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/popover-dismiss.js", (c) => {
-  return c.body(POPOVER_DISMISS_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/task-form-shortcut.js", (c) => {
-  return c.body(TASK_FORM_SHORTCUT_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/description-editor.js", (c) => {
-  return c.body(DESCRIPTION_EDITOR_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/task-list-selection.js", (c) => {
-  return c.body(TASK_LIST_SELECTION_SCRIPT, 200, { "content-type": "application/javascript" });
-});
-
-app.get("/styles.css", (c) => c.body(STYLES_CSS, 200, { "content-type": "text/css" }));
+for (const asset of CLIENT_ASSETS) {
+  app.get(asset.path, (c) => c.body(asset.body, 200, { "content-type": asset.contentType }));
+}
 
 export default app;

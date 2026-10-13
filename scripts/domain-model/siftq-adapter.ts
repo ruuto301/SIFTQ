@@ -122,6 +122,69 @@ export function checkApiRoutes(model: Model, routes: string[]): string[] {
   ].sort();
 }
 
+type ApiMetaError = { status: number; code?: string };
+export type ApiMeta = Record<string, { errors?: ApiMetaError[] }>;
+
+export function checkApiMeta(model: Model, meta: ApiMeta, errorCodes: Set<string>): string[] {
+  const errors: string[] = [];
+  const operations = model.api ?? {};
+  for (const [id, op] of Object.entries(operations)) {
+    if (op.kind === "api" && meta[id] === undefined) {
+      errors.push(`api-meta に api operation "${id}" の entry が無い`);
+    }
+  }
+  for (const [id, entry] of Object.entries(meta)) {
+    if (operations[id] === undefined) {
+      errors.push(`api-meta の "${id}" に対応する operation が domain-model.json に無い`);
+    }
+    if (errorCodes.size === 0) continue;
+    for (const error of entry.errors ?? []) {
+      if (error.code !== undefined && !errorCodes.has(error.code)) {
+        errors.push(`api-meta.${id} の code "${error.code}" が既知の error code に無い`);
+      }
+    }
+  }
+  return errors.sort();
+}
+
+const ERROR_CODE_PATTERNS = [
+  /\bcode:\s*"([A-Z][A-Z0-9_]*)"/g,
+  /problem\(\s*\w+\s*,\s*\d+\s*,\s*"([A-Z][A-Z0-9_]*)"/g,
+  /\|\s*"([A-Z][A-Z0-9_]*)"/g,
+];
+
+function sourcePaths(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const paths: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const child = join(dir, entry.name);
+    if (entry.isDirectory()) paths.push(...sourcePaths(child));
+    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) paths.push(child);
+  }
+  return paths;
+}
+
+function collectCodesFromText(text: string, into: Set<string>): void {
+  for (const pattern of ERROR_CODE_PATTERNS) {
+    for (const match of text.matchAll(pattern)) {
+      if (match[1] !== undefined) into.add(match[1]);
+    }
+  }
+}
+
+function collectErrorCodes(dir: string): Set<string> {
+  const codes = new Set<string>();
+  for (const path of sourcePaths(dir)) {
+    collectCodesFromText(readFileSync(path, "utf8"), codes);
+  }
+  return codes;
+}
+
+function readApiMeta(path: string): ApiMeta {
+  if (!existsSync(path)) return {};
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 function readInvariantIds(path: string): string[] | null {
   if (!existsSync(path)) return null;
   const ids = [...readFileSync(path, "utf8").matchAll(/INV-TM-\d{3}/g)].map((m) => m[0]);
@@ -169,7 +232,12 @@ export const adapter = ({ model }: AdapterContext): AdapterResult => {
   const root = fileURLToPath(new URL("../../", import.meta.url));
   const rules = checkInvariantRules(model, readInvariantIds(join(root, "docs/requirements/domain.md")), readInvariantTestIds(join(root, "tests")));
   return {
-    errors: [...(rules.errors ?? []), ...checkMigrations(model, readMigrations(join(root, "migrations"))), ...checkApiRoutes(model, readApiRoutes(join(root, "src/routes")))],
+    errors: [
+      ...(rules.errors ?? []),
+      ...checkMigrations(model, readMigrations(join(root, "migrations"))),
+      ...checkApiRoutes(model, readApiRoutes(join(root, "src/routes"))),
+      ...checkApiMeta(model, readApiMeta(join(root, "scripts/domain-model/api-meta.json")), collectErrorCodes(join(root, "src"))),
+    ],
     warnings: rules.warnings ?? [],
   };
 };
