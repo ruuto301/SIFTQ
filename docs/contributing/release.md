@@ -42,4 +42,12 @@ Release はリポジトリ変更の配布単位であり、Cloudflare Workers �
 
 ## 本番確認
 
-デプロイ対象では、正規URL <https://app.siftq-app.workers.dev/> に対して、未認証時のログイン画面、ログイン後の主要な作成・更新操作、DnD を確認する。認証情報が必要な確認は、認証可能な担当者が実施結果を Release Notes に記録する。
+デプロイ対象では、正規URL <https://app.siftq-app.workers.dev/> に対して本番スモークを実行する。目的はデプロイと環境結合の確認であり、振る舞いの検証は CI の E2E（モック GitHub）が担う。
+
+- スモークは `deploy:release` の後段で自動実行する（`task -t .config/Taskfile.yml smoke:prod`）。
+- 認証付きフローは署名済みセッションで通す。アプリに認証バイパスは追加しない（[ADR 0073](../adr/0073-automate-authenticated-production-smoke.md)）。
+- セッション署名鍵は環境変数 `SMOKE_SESSION_SECRET` で供給する。ログや平文ファイルに残さない。ローテーションは既存の利用者セッションを無効化する点に注意する。
+- スモークは本番データを作成・削除する。作成データには `[smoke]` を付け、削除に失敗した場合は失敗として扱う。
+- 実 GitHub OAuth と実利用者の UI 操作は自動検証しない。必要な場合は認証可能な担当者が手動で確認し、Release Notes に記録する。
+
+Release Notes には、対象 SHA、Worker デプロイ有無、migration の確認、スモークの範囲と結果、作成データの削除有無を記録する。

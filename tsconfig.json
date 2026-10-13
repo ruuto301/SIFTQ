@@ -32,6 +32,7 @@
     "vite.config.ts",
     "eslint.config.js",
     ".config/playwright.config.ts",
+    ".config/playwright.prod.config.ts",
     "cloudflare.config.ts",
     "wrangler.config.ts"
   ]
