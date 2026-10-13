@@ -65,7 +65,7 @@ export const NewTaskMeta: FC<{ state: NewTaskState }> = ({ state }) => {
 };
 
 const PopoverCancelButton: FC = () => (
-  <button type="button" class="status-choice" data-popover-cancel>
+  <button type="button" class="status-choice" data-popover-cancel data-cancel>
     Cancel
   </button>
 );
