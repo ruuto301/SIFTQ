@@ -19,6 +19,7 @@ export const Layout: FC<{ active: "ideas" | "matrix" | "tasks"; children?: JSX.E
       <script src="/htmx-conflict.js" defer></script>
       <script src="/popover-dismiss.js" defer></script>
       <script src="/task-form-shortcut.js" defer></script>
+      <script src="/escape-cancel.js" defer></script>
       <script src="/description-editor.js" defer></script>
         <script src="/matrix-dnd.js" defer></script>
         <script src="/ideas-dnd.js" defer></script>

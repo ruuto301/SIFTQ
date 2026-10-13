@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
+  ESCAPE_CANCEL_SCRIPT,
   HTMX_CONFLICT_SWAP_SCRIPT,
   POPOVER_DISMISS_SCRIPT,
   TASK_FORM_SHORTCUT_SCRIPT,
@@ -42,6 +43,7 @@ const PUBLIC_PATHS = new Set([
   "/htmx-conflict.js",
   "/popover-dismiss.js",
   "/task-form-shortcut.js",
+  "/escape-cancel.js",
   "/matrix-dnd.js",
   "/ideas-dnd.js",
   "/idea-detail.js",
@@ -134,6 +136,10 @@ app.get("/popover-dismiss.js", (c) => {
 
 app.get("/task-form-shortcut.js", (c) => {
   return c.body(TASK_FORM_SHORTCUT_SCRIPT, 200, { "content-type": "application/javascript" });
+});
+
+app.get("/escape-cancel.js", (c) => {
+  return c.body(ESCAPE_CANCEL_SCRIPT, 200, { "content-type": "application/javascript" });
 });
 
 app.get("/description-editor.js", (c) => {
