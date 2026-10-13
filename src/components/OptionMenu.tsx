@@ -109,7 +109,7 @@ export const OptionMenu: FC<{
         {selected.map(renderChoice)}
         <div class="status-group-title">Suggestions</div>
         {suggestions.map(renderChoice)}
-        <a class="status-choice" href={cancelHref}>
+        <a class="status-choice" href={cancelHref} data-cancel>
           Cancel
         </a>
       </section>
