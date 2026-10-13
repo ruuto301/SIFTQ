@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
-import { adapter, checkApiRoutes, checkMigrations, parseMigrations, type Model } from "./siftq-adapter";
+import { adapter, checkApiMeta, checkApiRoutes, checkMigrations, parseMigrations, type Model } from "./siftq-adapter";
 
 const realModel: Model = JSON.parse(
   readFileSync(new URL("../../docs/requirements/assets/domain-model/domain-model.json", import.meta.url), "utf8"),
@@ -38,5 +38,25 @@ describe("siftq adapter", () => {
     };
     expect(checkApiRoutes(model, ["GET /api/tasks"])).toEqual([]);
     expect(checkApiRoutes(model, ["GET /api/ghost"])).toHaveLength(2);
+  });
+
+  it("checkApiMeta detects missing entries, orphans, and unknown codes", () => {
+    const model: Model = {
+      domains: {},
+      entities: {},
+      api: {
+        tasks_list: { kind: "api", method: "GET", path: "/api/tasks" },
+        html_login_page: { kind: "html", method: "GET", path: "/login" },
+      },
+    };
+    const codes = new Set(["NOT_FOUND"]);
+    expect(checkApiMeta(model, { tasks_list: { errors: [{ status: 404, code: "NOT_FOUND" }] } }, codes)).toEqual([]);
+    expect(checkApiMeta(model, {}, codes)).toContain('api-meta に api operation "tasks_list" の entry が無い');
+    expect(checkApiMeta(model, { tasks_list: {}, ghost_op: {} }, codes)).toContain(
+      'api-meta の "ghost_op" に対応する operation が domain-model.json に無い',
+    );
+    expect(checkApiMeta(model, { tasks_list: { errors: [{ status: 400, code: "INVALID_TITEL" }] } }, codes)).toContain(
+      'api-meta.tasks_list の code "INVALID_TITEL" が既知の error code に無い',
+    );
   });
 });
