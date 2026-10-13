@@ -17,9 +17,20 @@ tasks:
       - uv run python scripts/release_deploy.py plan {{.CLI_ARGS}}
 
   deploy:release:
-    desc: Verify a release tag and deploy the Worker.
+    desc: Verify a release tag, deploy the Worker, then run the production smoke.
     cmds:
       - uv run python scripts/release_deploy.py deploy {{.CLI_ARGS}}
+      - task: smoke:prod
+
+  smoke:prod:
+    desc: Run the authenticated production smoke (requires SMOKE_SESSION_SECRET).
+    cmds:
+      - |
+        if [ -z "${SMOKE_SESSION_SECRET:-}" ]; then
+          echo "SMOKE_SESSION_SECRET is required to run the production smoke." >&2
+          exit 1
+        fi
+        vp exec playwright test -c .config/playwright.prod.config.ts {{.CLI_ARGS}}
 
   deploy:
     desc: Deploy the Worker to Cloudflare without changing secrets.

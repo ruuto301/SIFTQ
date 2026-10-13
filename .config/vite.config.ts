@@ -430,6 +430,7 @@ export default defineConfig({
       "**/node_modules/**",
       "**/dist/**",
       "**/tests/e2e/**",
+      "**/tests/smoke-prod/**",
       "**/.taqt/**",
       "**/tmp/**",
     ],

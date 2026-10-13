@@ -107,6 +107,7 @@ prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "release:plan"], deci
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "release:create"], decision="allow")
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "deploy:plan"], decision="allow")
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "deploy:release"], decision="allow")
+prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "smoke:prod"], decision="allow")
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "graphify:update"], decision="allow")
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "repo:pull-main"], decision="allow")
 prefix_rule(pattern=["task", "-t", ".config/Taskfile.yml", "session:backup"], decision="allow")
