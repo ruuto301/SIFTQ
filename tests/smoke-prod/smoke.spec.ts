@@ -78,8 +78,11 @@ test("creates, reorders, and edits with an authenticated session", async ({ page
   await page.goto(`/tasks/${id}`);
   const editedTitle = `${title} edited`;
   await page.getByLabel("Title").fill(editedTitle);
+  const saved = page.waitForResponse(
+    (response) => response.url().includes(`/tasks/${id}`) && response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Save" }).click();
-  await page.waitForLoadState("load");
+  await saved;
   const detail: TaskRow = await (await page.request.get(`/api/tasks/${id}`)).json();
   expect(detail.title).toBe(editedTitle);
 });
