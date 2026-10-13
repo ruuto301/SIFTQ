@@ -1,3 +1,4 @@
+// covers: BDD-TM-023, BDD-TM-024
 import type { Page } from "@playwright/test";
 import { e2eBaseUrl, expect, test } from "./fixtures";
 

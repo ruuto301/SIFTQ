@@ -223,7 +223,7 @@ describe("BDD-TM-009: reorder conflict", () => {
   });
 });
 
-describe("BDD-TM-020: bulk status update", () => {
+describe("bulk status update", () => {
   it("updates selected tasks in one request", async () => {
     await repo.insert(taskFixture({ id: "task-1", status: "do", version: 1 }));
     await repo.insert(taskFixture({ id: "task-2", status: "do", version: 1 }));
@@ -284,7 +284,7 @@ describe("BDD-TM-020: bulk status update", () => {
 
 });
 
-describe("BDD-TM-020: bulk input parsing", () => {
+describe("bulk input parsing", () => {
   it.each([
     ["PATCH", "/api/tasks/bulk/status"],
     ["DELETE", "/api/tasks/bulk"],
@@ -303,7 +303,7 @@ describe("BDD-TM-020: bulk input parsing", () => {
   });
 });
 
-describe("BDD-TM-021: bulk deletion", () => {
+describe("bulk deletion", () => {
   it("deletes selected tasks", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
     await repo.insert(taskFixture({ id: "task-2" }));
@@ -321,7 +321,7 @@ describe("BDD-TM-021: bulk deletion", () => {
   });
 });
 
-describe("BDD-TM-013 / BDD-TM-015: task deletion", () => {
+describe("BDD-TM-015: task deletion", () => {
   it("deletes a task with the current version", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 1 }));
 

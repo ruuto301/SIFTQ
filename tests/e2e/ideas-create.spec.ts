@@ -1,3 +1,4 @@
+// covers: BDD-TM-020, BDD-TM-021, BDD-TM-022
 import { expect, test } from "./fixtures";
 
 async function signIn(page: import("@playwright/test").Page) {
