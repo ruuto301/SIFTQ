@@ -10,7 +10,7 @@ describe("NewTaskMeta", () => {
     expect(html).toContain("Apply status to this task");
     expect(html).toContain('name="status" value="done" checked');
     expect(html).toContain('name="area" value="3" checked');
-    expect(html).toContain('<button type="button" class="status-choice" data-popover-cancel="true">');
+    expect(html).toContain('<button type="button" class="status-choice" data-popover-cancel="true" data-cancel="true">');
   });
 
   it("renders area radio choices with the selected area", () => {
