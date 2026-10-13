@@ -6,11 +6,28 @@ import type { RepositoryError, TaskRepository } from "./task-repository";
 
 const OWNER_ID = "local";
 
+export const TASK_COLUMN_NAMES = [
+  "id",
+  "owner_id",
+  "title",
+  "description",
+  "status",
+  "working",
+  "area",
+  '"order"',
+  "version",
+  "created_at",
+  "updated_at",
+] as const;
+
+const TASK_COLUMNS = TASK_COLUMN_NAMES.join(", ");
+const TASK_PLACEHOLDERS = TASK_COLUMN_NAMES.map(() => "?").join(", ");
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function toTask(value: unknown): Task | undefined {
+export function toTask(value: unknown): Task | undefined {
   if (!isRecord(value)) return undefined;
 
   const { id, owner_id, title, description, status, working, area, order, version, created_at, updated_at } =
@@ -84,7 +101,7 @@ async function bulkUpdateStatus(
 async function listTasks(db: D1Database): Promise<Result<Task[], RepositoryError>> {
   const result = await db
     .prepare(
-      'SELECT id, owner_id, title, description, status, working, area, "order", version, created_at, updated_at FROM tasks WHERE owner_id = ? ORDER BY updated_at DESC, id ASC',
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE owner_id = ? ORDER BY updated_at DESC, id ASC`,
     )
     .bind(OWNER_ID)
     .all<Record<string, unknown>>();
@@ -99,7 +116,7 @@ async function findTask(
 ): Promise<Result<Task | undefined, RepositoryError>> {
   const row = await db
     .prepare(
-      'SELECT id, owner_id, title, description, status, working, area, "order", version, created_at, updated_at FROM tasks WHERE id = ? AND owner_id = ?',
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE id = ? AND owner_id = ?`,
     )
     .bind(id, owner_id)
     .first<Record<string, unknown>>();
@@ -110,7 +127,7 @@ async function findTask(
 async function insertTask(db: D1Database, task: Task): Promise<Result<Task, RepositoryError>> {
   await db
     .prepare(
-      'INSERT INTO tasks (id, owner_id, title, description, status, working, area, "order", version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      `INSERT INTO tasks (${TASK_COLUMNS}) VALUES (${TASK_PLACEHOLDERS})`,
     )
     .bind(
       task.id,
@@ -197,7 +214,7 @@ async function findBulkTasks(
   const placeholders = inputs.map(() => "?").join(", ");
   const result = await db
     .prepare(
-      `SELECT id, owner_id, title, description, status, working, area, "order", version, created_at, updated_at FROM tasks WHERE owner_id = ? AND id IN (${placeholders})`,
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE owner_id = ? AND id IN (${placeholders})`,
     )
     .bind(OWNER_ID, ...inputs.map((input) => input.id))
     .all<Record<string, unknown>>();

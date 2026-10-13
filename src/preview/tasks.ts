@@ -1,3 +1,4 @@
+import { TASK_STATUSES } from "../task";
 import type { Task, TaskArea, TaskStatus } from "../task";
 
 const SEED_TASKS: readonly Task[] = [
@@ -55,7 +56,7 @@ const SEED_TASKS: readonly Task[] = [
   },
 ];
 
-const BULK_STATUSES: readonly TaskStatus[] = ["do", "done", "skip"];
+const BULK_STATUSES: readonly TaskStatus[] = TASK_STATUSES;
 const BULK_PER_STATUS = 60;
 const BULK_BASE_TIME = Date.UTC(2026, 6, 1, 0, 0, 0);
 

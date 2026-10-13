@@ -691,7 +691,7 @@ def test_verification_skips_unit_and_e2e_for_non_frontend_changes(tmp_path: Path
         ([], {"setup": True, "checks": ("ci:lint", "ci:lint:python", "ci:typecheck", "ci:test:unit"), "e2e": True}),
         (["README.md"], {"setup": False, "checks": ("ci:markdown",), "e2e": False}),
         (["docs/design.md"], {"setup": False, "checks": ("ci:markdown",), "e2e": False}),
-        (["scripts/ci/check_docs.py"], {"setup": False, "checks": ("ci:lint:python",), "e2e": False}),
+        (["scripts/ci/check_architecture.py"], {"setup": False, "checks": ("ci:lint:python",), "e2e": False}),
         (
             [".taqt/scripts/loop/verification.py"],
             {"setup": False, "checks": ("ci:lint:python",), "e2e": False},
