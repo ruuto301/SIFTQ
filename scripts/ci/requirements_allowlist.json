@@ -35,11 +35,6 @@
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
-    "path": "src/repository/d1-task-repository.ts",
-    "reason": "既存Repositoryから抽出した実装で、既存Repository契約テストが検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
     "path": "src/repository/repository-validation.ts",
     "reason": "既存Repositoryから抽出した検証処理で、既存Repository契約テストが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
