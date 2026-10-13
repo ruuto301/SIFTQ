@@ -1,5 +1,6 @@
 import { STYLES_CSS } from "../styles";
 import {
+  ESCAPE_CANCEL_SCRIPT,
   HTMX_CONFLICT_SWAP_SCRIPT,
   POPOVER_DISMISS_SCRIPT,
   TASK_FORM_SHORTCUT_SCRIPT,
@@ -33,6 +34,12 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/task-form-shortcut.js",
     body: TASK_FORM_SHORTCUT_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/escape-cancel.js",
+    body: ESCAPE_CANCEL_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },
