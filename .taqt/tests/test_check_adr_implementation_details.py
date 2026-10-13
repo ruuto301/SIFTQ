@@ -27,10 +27,10 @@ def test_detects_fenced_code_block() -> None:
 
 
 def test_detects_source_path_and_code_filename() -> None:
-    text = "- 対象は `src/components/Layout.tsx` と `scripts/ci/check_docs.py` です。\n"
+    text = "- 対象は `src/components/Layout.tsx` と `scripts/ci/check_architecture.py` です。\n"
     assert checker.find_violations(text, "docs/adr/9999-example.md") == [
         "docs/adr/9999-example.md:1: source reference in inline code: `src/components/Layout.tsx`",
-        "docs/adr/9999-example.md:1: source reference in inline code: `scripts/ci/check_docs.py`",
+        "docs/adr/9999-example.md:1: source reference in inline code: `scripts/ci/check_architecture.py`",
     ]
 
 
