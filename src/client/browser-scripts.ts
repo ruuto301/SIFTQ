@@ -47,6 +47,20 @@ export const TASK_FORM_SHORTCUT_SCRIPT = [
   "});",
 ].join("\n");
 
+export const ESCAPE_CANCEL_SCRIPT = [
+  'document.addEventListener("keydown", function (event) {',
+  '  if (event.key !== "Escape") return;',
+  '  if (document.querySelector("dialog[open]")) return;',
+  '  const controls = document.querySelectorAll("[data-cancel]");',
+  "  for (let index = controls.length - 1; index >= 0; index -= 1) {",
+  "    const control = controls[index];",
+  "    if (control.getClientRects().length === 0) continue;",
+  "    control.click();",
+  "    return;",
+  "  }",
+  "});",
+].join("\n");
+
 /* Legacy Idea localStorage scripts were replaced by src/client/idea-scripts.ts.
    Keep this block out of the Worker bundle until the old source is removed. */
 /*
