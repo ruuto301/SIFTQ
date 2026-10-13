@@ -74,6 +74,7 @@ export const TASK_LIST_SELECTION_SCRIPT = [
   "      button.className = \"matrix-modal-button \" + (index === 1 ? \"matrix-modal-button--danger\" : \"matrix-modal-button--cancel\");",
   "      button.textContent = label;",
   "      button.setAttribute(\"data-task-list-delete\", index === 1 ? \"confirm\" : \"cancel\");",
+  "      if (index === 0) button.setAttribute(\"data-cancel\", \"true\");",
   "      row.appendChild(button);",
   "    });",
   "    dialog.appendChild(row);",
