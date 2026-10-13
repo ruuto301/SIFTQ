@@ -12,6 +12,8 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 - [Task Management Screens](screens.md)
 - [ユーザーストーリーマップ](user-story-map.md)
 
+テスト要求仕様の方式と因子表は [テスト要求仕様（TRS）](trs.md) を参照する。
+
 ## ID 管理
 
 - `REQ-TM-xxx`: ユーザーが達成したいこと、またはプロダクト上の要求。
@@ -63,32 +65,34 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 
 ## BDD 候補
 
-| ID | 対象仕様 | シナリオ |
-| --- | --- | --- |
-| BDD-TM-001 | SPEC-TM-001 | Task を作成すると、表示と編集に必要な属性を持つ。 |
-| BDD-TM-002 | SPEC-TM-002 | 実行対象の Task は Matrix と Task list の両方に表示される。 |
-| BDD-TM-003 | SPEC-TM-003 | 完了した Task は Matrix から外れ、Task list には残る。 |
-| BDD-TM-004 | SPEC-TM-004 | area が異なる Task は Matrix の対応する象限に表示される。 |
-| BDD-TM-005 | SPEC-TM-005 | ユーザーは Task の title と description を保存できる。 |
-| BDD-TM-006 | SPEC-TM-006 | ユーザーは detail から status と area を変更できる。 |
-| BDD-TM-007 | SPEC-TM-007 | status を完了または見送りにしても、再び実行対象に戻すと元の area に表示される。 |
-| BDD-TM-008 | SPEC-TM-008 | Task を別 area へ drag and drop すると、移動先 area に表示される。 |
-| BDD-TM-009 | SPEC-TM-009 | Task を古い version で drag and drop すると、Matrix は最新状態へ戻り、競合が通知される。 |
-| BDD-TM-010 | SPEC-TM-010 | モック BE プレビューにログインすると、固定初期データを Matrix と Task list で確認できる。 |
-| BDD-TM-011 | SPEC-TM-011 | Matrix の task card を右クリックすると、`delete`、`skip`、`done` の順で menu が表示される。 |
-| BDD-TM-012 | SPEC-TM-012 | Matrix で `done` を選択すると task が Matrix から外れ、Task list には残る。 |
-| BDD-TM-013 | SPEC-TM-012 | Matrix で `skip` を選択すると task が Matrix から外れ、Task list には残る。 |
-| BDD-TM-014 | SPEC-TM-013, SPEC-TM-014 | delete confirmation をキャンセルすると task は残り、確認中は背後を操作できない。 |
-| BDD-TM-015 | SPEC-TM-013 | delete confirmation で削除を確定すると task が Matrix と Task list から消える。 |
-| BDD-TM-016 | SPEC-TM-016 | Task list で status を切り替えると、選択した status の task だけが表示され、再読み込み後も選択状態が維持される。 |
-| BDD-TM-017 | SPEC-TM-017 | description のURLを通常クリックすると同じタブで開き、Ctrl/Command クリックでは別タブで開く。保存後もリンク表示が維持される。 |
-| BDD-TM-018 | SPEC-TM-018 | description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 |
-| BDD-TM-019 | SPEC-TM-019 | Task list は25件ごとにページを分け、番号と前へ/次へで移動できる。不正指定と範囲超過は矛盾のないページに寄せる。 |
-| BDD-TM-020 | SPEC-TM-020 | Idea list はピン留めしたIdeaを先に、各グループ内をorder順に表示する。 |
-| BDD-TM-021 | SPEC-TM-021 | Ideaを作成・編集・並べ替えすると表示中の一覧に反映され、再読み込み後も変更後の一覧を確認できる。 |
-| BDD-TM-022 | SPEC-TM-022 | Ideaのピン留めを切り替え、削除確認を経て一覧から削除できる。 |
-| BDD-TM-023 | SPEC-TM-023 | Idea 詳細の description のURLを通常クリックすると同じタブで開き、Ctrl/Command クリックでは別タブで開く。保存後もリンク表示が維持される。 |
-| BDD-TM-024 | SPEC-TM-024 | Idea の description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 |
+BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを正常・準正常・例外に分類する。該当が無い分類は「なし」と明示する。例外は現状なしとし、認証失敗や 5xx は専用の契約テストが担当する。期待値と因子水準は [テスト要求仕様（TRS）](trs.md) の因子表を正本とする。
+
+| ID | 対象仕様 | シナリオ | 振る舞い |
+| --- | --- | --- | --- |
+| BDD-TM-001 | SPEC-TM-001 | Task を作成すると、表示と編集に必要な属性を持つ。 | 正常 |
+| BDD-TM-002 | SPEC-TM-002 | 実行対象の Task は Matrix と Task list の両方に表示される。 | 正常 |
+| BDD-TM-003 | SPEC-TM-003 | 完了した Task は Matrix から外れ、Task list には残る。 | 正常 |
+| BDD-TM-004 | SPEC-TM-004 | area が異なる Task は Matrix の対応する象限に表示される。 | 正常 |
+| BDD-TM-005 | SPEC-TM-005 | ユーザーは Task の title と description を保存できる。 | 正常 |
+| BDD-TM-006 | SPEC-TM-006 | ユーザーは detail から status と area を変更できる。 | 正常 |
+| BDD-TM-007 | SPEC-TM-007 | status を完了または見送りにしても、再び実行対象に戻すと元の area に表示される。 | 正常 |
+| BDD-TM-008 | SPEC-TM-008 | Task を別 area へ drag and drop すると、移動先 area に表示される。 | 正常 |
+| BDD-TM-009 | SPEC-TM-009 | Task を古い version で drag and drop すると、Matrix は最新状態へ戻り、競合が通知される。 | 準正常 |
+| BDD-TM-010 | SPEC-TM-010 | モック BE プレビューにログインすると、固定初期データを Matrix と Task list で確認できる。 | 正常 |
+| BDD-TM-011 | SPEC-TM-011 | Matrix の task card を右クリックすると、`delete`、`skip`、`done` の順で menu が表示される。 | 正常 |
+| BDD-TM-012 | SPEC-TM-012 | Matrix で `done` を選択すると task が Matrix から外れ、Task list には残る。 | 正常 |
+| BDD-TM-013 | SPEC-TM-012 | Matrix で `skip` を選択すると task が Matrix から外れ、Task list には残る。 | 正常 |
+| BDD-TM-014 | SPEC-TM-013, SPEC-TM-014 | delete confirmation をキャンセルすると task は残り、確認中は背後を操作できない。 | 正常 |
+| BDD-TM-015 | SPEC-TM-013 | delete confirmation で削除を確定すると task が Matrix と Task list から消える。 | 正常 |
+| BDD-TM-016 | SPEC-TM-016 | Task list で status を切り替えると、選択した status の task だけが表示され、再読み込み後も選択状態が維持される。 | 正常 |
+| BDD-TM-017 | SPEC-TM-017 | description のURLを通常クリックすると同じタブで開き、Ctrl/Command クリックでは別タブで開く。保存後もリンク表示が維持される。 | 正常 |
+| BDD-TM-018 | SPEC-TM-018 | description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 | 正常 |
+| BDD-TM-019 | SPEC-TM-019 | Task list は25件ごとにページを分け、番号と前へ/次へで移動できる。不正指定と範囲超過は矛盾のないページに寄せる。 | 準正常 |
+| BDD-TM-020 | SPEC-TM-020 | Idea list はピン留めしたIdeaを先に、各グループ内をorder順に表示する。 | 正常 |
+| BDD-TM-021 | SPEC-TM-021 | Ideaを作成・編集・並べ替えすると表示中の一覧に反映され、再読み込み後も変更後の一覧を確認できる。 | 正常 |
+| BDD-TM-022 | SPEC-TM-022 | Ideaのピン留めを切り替え、削除確認を経て一覧から削除できる。 | 正常 |
+| BDD-TM-023 | SPEC-TM-023 | Idea 詳細の description のURLを通常クリックすると同じタブで開き、Ctrl/Command クリックでは別タブで開く。保存後もリンク表示が維持される。 | 正常 |
+| BDD-TM-024 | SPEC-TM-024 | Idea の description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 | 正常 |
 
 ## 未決事項
 

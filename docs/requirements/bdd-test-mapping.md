@@ -1,5 +1,7 @@
 # BDD テスト対応表
 
+> 移行中: この手動の対応表は、[テスト要求仕様（TRS）](trs.md) の ID 機械検証へ移行する。以降の対応の維持はテスト名の ID と `scripts/ci/` のチェッカーで行い、この表は移行完了まで残す。
+
 `docs/requirements/requirements-analysis.md` の BDD シナリオと検証の対応を示す。
 
 | BDD | テストファイル | 対象 |
