@@ -14,10 +14,14 @@ import {
 } from "../task";
 import type { DomainError, Result, Task } from "../task";
 import type { TaskRepository } from "../repository/task-repository";
+import type { IdeaRepository } from "../repository/idea-repository";
+import { nextIdeaOrder } from "../idea";
+import type { Idea } from "../idea";
 import { parseVersion } from "../task-input";
 
 type ApiEnv = { Bindings: Record<string, unknown> };
 type Repository<T extends ApiEnv> = (c: Context<T>) => TaskRepository;
+type IdeaRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => IdeaRepository;
 
 function problem<T extends ApiEnv>(c: Context<T>, status: ContentfulStatusCode, code: string) {
   return c.json({ code }, status);
@@ -176,9 +180,49 @@ function registerTaskReorderRoute<T extends ApiEnv>(app: Hono<T>, repository: Re
   });
 }
 
-export function registerTaskApiRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repository<T>) {
+function registerTaskMoveRoute<T extends ApiEnv>(
+  app: Hono<T>,
+  repository: Repository<T>,
+  ideaRepository: IdeaRepositoryFactory<T>,
+) {
+  app.post("/api/tasks/:id/move-to-idea", async (c) => {
+    const body = await readJsonRecord(c);
+    if (body === null) return problem(c, 400, "INVALID_ORDER");
+    const version = parseVersion(body["version"]);
+    if (version === null) return problem(c, 400, "INVALID_ORDER");
+    const found = await findApiTask(repository, c, c.req.param("id"));
+    if (!found.ok) return problem(c, found.status, found.code);
+    const ideas = await ideaRepository(c).list("local");
+    if (!ideas.ok) return problem(c, 500, ideas.error.code);
+    const idea: Idea = {
+      id: crypto.randomUUID(),
+      owner_id: "local",
+      title: found.task.title,
+      description: found.task.description,
+      order: nextIdeaOrder(ideas.value, false),
+      pinned: false,
+    };
+    const inserted = await ideaRepository(c).insert(idea);
+    if (!inserted.ok) return problem(c, 500, inserted.error.code);
+    const removed = await repository(c).remove(found.task.id, "local", version);
+    if (!removed.ok) {
+      await ideaRepository(c).remove(inserted.value.id, "local");
+      return removed.error.code === "CONFLICT"
+        ? problem(c, 409, removed.error.code)
+        : problem(c, 404, removed.error.code);
+    }
+    return c.json(inserted.value, 200);
+  });
+}
+
+export function registerTaskApiRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  repository: Repository<T>,
+  ideaRepository: IdeaRepositoryFactory<T>,
+) {
   registerTaskCollectionRoutes(app, repository);
   registerTaskBulkRoutes(app, repository);
   registerTaskItemRoutes(app, repository);
   registerTaskReorderRoute(app, repository);
+  registerTaskMoveRoute(app, repository, ideaRepository);
 }

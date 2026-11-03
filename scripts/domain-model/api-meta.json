@@ -64,6 +64,19 @@
       { "status": 409, "code": "CONFLICT" }
     ]
   },
+  "ideas_id_move_to_task": {
+    "errors": [
+      { "status": 404, "code": "NOT_FOUND" },
+      { "status": 409, "code": "CONFLICT" }
+    ]
+  },
+  "tasks_id_move_to_idea": {
+    "errors": [
+      { "status": 400, "code": "INVALID_ORDER" },
+      { "status": 404, "code": "NOT_FOUND" },
+      { "status": 409, "code": "CONFLICT" }
+    ]
+  },
   "images_create": {
     "errors": [
       { "status": 400, "code": "INVALID_IMAGE" },

@@ -10,11 +10,19 @@ import {
   parseIdeaPatch,
   type Idea,
 } from "../idea";
+import { createTask, nextTaskOrder } from "../task";
+import type { DomainError, Result, Task } from "../task";
 import type { AppEnv } from "../app-env";
 import type { IdeaOrderUpdate, IdeaRepository, IdeaRepositoryError } from "../repository/idea-repository";
 
 const OWNER_ID = "local";
 type Repository = (c: Context<AppEnv>) => IdeaRepository;
+type TaskSideEffects = {
+  list(): Promise<Result<Task[], DomainError>>;
+  insert(task: Task): Promise<Result<Task, DomainError>>;
+  remove(id: string, owner_id: string, version: number): Promise<Result<null, DomainError>>;
+};
+type TaskSideEffectFactory = (c: Context<AppEnv>) => TaskSideEffects;
 
 function problem(c: Context<AppEnv>, status: ContentfulStatusCode, code: string) {
   return c.json({ code }, status);
@@ -47,7 +55,11 @@ async function findIdea(c: Context<AppEnv>, repository: Repository, id: string):
   return result.value === undefined ? { ok: false, error: { code: "NOT_FOUND" } } : { ok: true, value: result.value };
 }
 
-export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository) {
+export function registerIdeaApiRoutes(
+  app: Hono<AppEnv>,
+  repository: Repository,
+  taskRepository: TaskSideEffectFactory,
+) {
   app.get("/api/ideas", async (c) => {
     const result = await repository(c).list(OWNER_ID);
     if (!result.ok) return problem(c, 500, result.error.code);
@@ -103,5 +115,41 @@ export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository)
     const removed = await repository(c).remove(c.req.param("id"), OWNER_ID);
     if (!removed.ok) return problem(c, errorStatus(removed.error.code), removed.error.code);
     return c.body(null, 204);
+  });
+
+  registerIdeaMoveRoute(app, repository, taskRepository);
+}
+
+function registerIdeaMoveRoute(
+  app: Hono<AppEnv>,
+  repository: Repository,
+  taskRepository: TaskSideEffectFactory,
+) {
+  app.post("/api/ideas/:id/move-to-task", async (c) => {
+    const found = await findIdea(c, repository, c.req.param("id"));
+    if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);
+    const tasks = await taskRepository(c).list();
+    if (!tasks.ok) return problem(c, 500, tasks.error.code);
+    const now = new Date().toISOString();
+    const created = createTask({
+      id: crypto.randomUUID(),
+      owner_id: OWNER_ID,
+      title: found.value.title,
+      description: found.value.description,
+      status: "do",
+      area: 1,
+      created_at: now,
+      updated_at: now,
+    });
+    if (!created.ok) return problem(c, 400, created.error.code);
+    const task = { ...created.value, order: nextTaskOrder(tasks.value, 1) };
+    const inserted = await taskRepository(c).insert(task);
+    if (!inserted.ok) return problem(c, 500, inserted.error.code);
+    const removed = await repository(c).remove(found.value.id, OWNER_ID);
+    if (!removed.ok) {
+      await taskRepository(c).remove(inserted.value.id, OWNER_ID, inserted.value.version);
+      return problem(c, errorStatus(removed.error.code), removed.error.code);
+    }
+    return c.json(inserted.value, 200);
   });
 }
