@@ -119,6 +119,15 @@ a {
   font-weight: 700;
 }
 
+.move-error {
+  background: #f8d7da;
+  border-bottom: 1px solid #d73a49;
+  color: #7a1c24;
+  font-weight: 600;
+  margin: 0;
+  padding: 12px 20px;
+}
+
 .nav {
   display: flex;
   gap: 8px;

@@ -14,6 +14,7 @@ import {
   isTaskTitleValid,
   isTaskDescriptionValid,
   moveTask,
+  nextTaskOrder,
   parseTaskPatch,
   parseTaskVersionInputs,
   selectMovedTasks,
@@ -222,6 +223,18 @@ describe("task working preservation", () => {
 });
 
 describe("task move", () => {
+  it("numbers the next order at the end of an area", () => {
+    const tasks = [
+      taskFixture({ id: "a1", area: 1, order: 1 }),
+      taskFixture({ id: "a2", area: 1, order: 4 }),
+      taskFixture({ id: "b1", area: 2, order: 9 }),
+    ];
+
+    expect(nextTaskOrder(tasks, 1)).toBe(5);
+    expect(nextTaskOrder(tasks, 2)).toBe(10);
+    expect(nextTaskOrder(tasks, 3)).toBe(1);
+  });
+
   it("INV-TM-004: normalizes order when moving to another area", () => {
     const tasks = [
       taskFixture({ id: "task-1", area: 1, order: 0 }),

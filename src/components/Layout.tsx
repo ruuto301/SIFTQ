@@ -41,6 +41,7 @@ export const Layout: FC<{ active: "ideas" | "matrix" | "tasks"; children?: JSX.E
           <button type="submit" class="button">Logout</button>
         </form>
       </header>
+      <p id="move-error" class="error move-error" hidden>移動に失敗しました。もう一度お試しください。</p>
       <main id="page">{children}</main>
     </body>
   </html>

@@ -29,7 +29,8 @@
   - task card は title のみを表示する。
   - task card は matrix 上で drag and drop できる。
   - task card を右クリックすると task action menu を表示する。
-  - task action menu の選択肢は `delete`、`skip`、`done` の順で表示する。
+  - task action menu の選択肢は `Ideasに移動`、`delete`、`skip`、`done`、`working` の順で表示する。
+  - `Ideasに移動` を選択すると task を Matrix から除外し、同じ title / description の Idea を unpinned の末尾に作成する。
   - `done` を選択すると task の status を `done` に変更し、Matrix から除外する。
   - `skip` を選択すると task の status を `skip` に変更し、Matrix から除外する。
   - `delete` を選択すると Delete confirmation dialog を表示する。
@@ -69,7 +70,12 @@
   - pin操作でカードの固定状態を切り替える。
   - カードをdrag and dropして同じグループ内の`order`を変更する。
   - ピン留め状態を切り替えたカードは移動先グループの末尾へ移動し、グループ内の`order`を振り直す。
+  - カードを右クリックすると、`Matrixに移動` と `削除` をこの順で表示する。
+  - `Matrixに移動` を選択すると Idea を一覧から除外し、同じ title / description の task を `status = do`、`area = 1`、`working = false` で area 1 の末尾に作成する。
+  - カードの `…` メニューは `削除` だけを表示する。
   - 削除操作の確認後、Ideaを一覧から除外する。
+  - Idea 詳細モーダルの表示中、および移動処理中は移動メニューを開かない。
+  - 移動に失敗した場合はカードを変更せず、画面上部に「移動に失敗しました。もう一度お試しください。」を表示する。
 
 - `Idea detail` (`/ideas/:id` と Ideas 一覧から開く詳細モーダル)
   - title と description を編集し、自動保存する。
