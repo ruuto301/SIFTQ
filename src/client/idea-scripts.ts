@@ -212,8 +212,6 @@ function createIdeaCard(idea) {
   var title = document.createElement("h2"); title.textContent = idea.title; link.appendChild(title);
   var description = document.createElement("p"); description.className = "idea-card__description"; renderIdeaDescription(description, idea.description); link.appendChild(description);
   card.appendChild(link);
-  var footer = document.createElement("footer"); footer.className = "idea-card__footer";
-  var more = document.createElement("button"); more.type = "button"; more.className = "idea-card__more"; more.setAttribute("aria-label", "More options for " + idea.title); var dots = document.createElement("span"); dots.setAttribute("aria-hidden", "true"); more.appendChild(dots); footer.appendChild(more); card.appendChild(footer);
   return card;
 }
 function createNewIdea(title, description) {
@@ -259,9 +257,9 @@ function renderIdeaDeleteModal(card) {
   backdrop.addEventListener("click", function (event) { var button = event.target.closest ? event.target.closest("[data-idea-modal-action]") : null; if (!button) return; if (button.getAttribute("data-idea-modal-action") === "confirm") { closeIdeaDeleteModal(); removeIdeaCard(card); } else closeIdeaDeleteModal(); });
   backdrop.appendChild(dialog); document.body.appendChild(backdrop); ideaDeleteModal = backdrop;
 }
-function openIdeaMenu(card, x, y, includeMove) {
+function openIdeaMenu(card, x, y) {
   closeIdeaMenu(); ideaMenuCard = card; var menu = document.createElement("div"); menu.className = "matrix-menu";
-  if (includeMove) { var moveButton = document.createElement("button"); moveButton.type = "button"; moveButton.className = "matrix-menu-item matrix-menu-item--move-to-task"; moveButton.textContent = "Matrixに移動"; moveButton.setAttribute("data-idea-action", "move-to-task"); menu.appendChild(moveButton); }
+  var moveButton = document.createElement("button"); moveButton.type = "button"; moveButton.className = "matrix-menu-item matrix-menu-item--move-to-task"; moveButton.textContent = "Matrixに移動"; moveButton.setAttribute("data-idea-action", "move-to-task"); menu.appendChild(moveButton);
   var deleteButton = document.createElement("button"); deleteButton.type = "button"; deleteButton.className = "matrix-menu-item matrix-menu-item--delete"; deleteButton.textContent = "削除"; deleteButton.setAttribute("data-idea-action", "delete"); menu.appendChild(deleteButton);
   menu.addEventListener("click", function (event) { var item = event.target.closest("[data-idea-action]"); if (!item) return; var action = item.getAttribute("data-idea-action"); if (action === "move-to-task") { persistIdeaMoveToTask(ideaMenuCard); return; } if (action === "delete") { var target = ideaMenuCard; closeIdeaMenu(); renderIdeaDeleteModal(target); } });
   document.body.appendChild(menu); var menuRect = menu.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(x, window.innerWidth - menuRect.width - 8)) + "px"; menu.style.top = Math.max(8, Math.min(y, window.innerHeight - menuRect.height - 8)) + "px"; ideaMenu = menu;
@@ -287,14 +285,13 @@ document.addEventListener("contextmenu", function (event) {
   var card = event.target.closest ? event.target.closest(".idea-card[data-idea-id]") : null;
   if (!card || ideaMovePending) return;
   event.preventDefault();
-  openIdeaMenu(card, event.clientX, event.clientY, true);
+  openIdeaMenu(card, event.clientX, event.clientY);
 });
 document.addEventListener("click", function (event) {
   if (ideaMenu && !ideaMenu.contains(event.target)) closeIdeaMenu();
   var modal = document.querySelector("[data-idea-modal]"); if (modal && modal.open) return;
   var card = event.target.closest ? event.target.closest(".idea-card[data-idea-id]") : null; if (!card) return;
   if (ideaMovePending) { event.preventDefault(); return; }
-  var more = event.target.closest(".idea-card__more"); if (more) { event.preventDefault(); var rect = more.getBoundingClientRect(); openIdeaMenu(card, rect.left, rect.bottom + 4, false); return; }
   if (event.target.closest(".idea-card__pin")) { event.preventDefault(); toggleIdeaCardPin(card); return; }
   event.preventDefault();
    openIdeaModal(card);
