@@ -241,63 +241,6 @@ export const IDEAS_CSS = `
   position: absolute;
 }
 
-.idea-card__footer {
-  align-items: center;
-  bottom: 16px;
-  color: #3f4854;
-  display: flex;
-  font-size: 11px;
-  justify-content: flex-end;
-  margin: 0;
-  opacity: 0;
-  padding-top: 0;
-  position: absolute;
-  right: 16px;
-  transition: opacity 120ms ease;
-}
-
-.idea-card:hover .idea-card__footer,
-.idea-card:focus-within .idea-card__footer {
-  opacity: 1;
-}
-
-.idea-card__more {
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-  height: 28px;
-  position: relative;
-  width: 28px;
-}
-
-.idea-card__more:hover {
-  background: #8b949e;
-}
-
-.idea-card__more span,
-.idea-card__more span::before,
-.idea-card__more span::after {
-  background: #3f4854;
-  border-radius: 50%;
-  content: "";
-  height: 3px;
-  left: 13px;
-  position: absolute;
-  top: 13px;
-  width: 3px;
-}
-
-.idea-card__more span::before {
-  left: -7px;
-  top: 0;
-}
-
-.idea-card__more span::after {
-  left: 7px;
-  top: 0;
-}
-
 .ideas-empty {
   background: #c1c9d3;
   border: 1px dashed #8b949e;

@@ -77,7 +77,7 @@ test("moves a Matrix task to the end of the unpinned Ideas", async ({ page }) =>
   await expect(unpinned.last().locator(".idea-card__description")).toHaveText(description);
 });
 
-test("moves an Idea to area 1 of the Matrix and keeps the ellipsis menu delete-only", async ({ page }) => {
+test("moves an Idea to area 1 of the Matrix from the right-click menu", async ({ page }) => {
   await signIn(page);
   await clearIdeas(page);
   await clearTasks(page);
@@ -90,11 +90,7 @@ test("moves an Idea to area 1 of the Matrix and keeps the ellipsis menu delete-o
   await page.goto("/ideas");
   const card = page.locator(`.idea-card[data-idea-id="${idea.id}"]`);
 
-  await card.locator(".idea-card__more").click();
-  await expect(page.locator(".matrix-menu [data-idea-action]")).toHaveText(["削除"]);
-  await page.mouse.click(5, 5);
-  await expect(page.locator(".matrix-menu")).toHaveCount(0);
-
+  await expect(page.locator(".idea-card__more")).toHaveCount(0);
   await card.click({ button: "right" });
   const menu = page.locator(".matrix-menu");
   await expect(menu.locator("[data-idea-action]")).toHaveText(["Matrixに移動", "削除"]);

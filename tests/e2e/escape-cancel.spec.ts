@@ -83,7 +83,7 @@ test("closes the idea delete modal with Escape", async ({ page }) => {
   await page.goto("/ideas");
 
   const card = page.locator(`.idea-card[data-idea-id="${created.id}"]`);
-  await card.locator(".idea-card__more").click();
+  await card.click({ button: "right" });
   await page.locator('.matrix-menu [data-idea-action="delete"]').click();
   await expect(page.locator(".matrix-modal")).toBeVisible();
 
