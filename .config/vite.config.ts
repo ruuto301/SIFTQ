@@ -434,6 +434,7 @@ export default defineConfig({
       "**/tests/smoke-prod/**",
       "**/.taqt/**",
       "**/tmp/**",
+      "**/poc/**",
     ],
   },
 });
