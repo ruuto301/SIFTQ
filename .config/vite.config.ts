@@ -54,6 +54,7 @@ export default defineConfig({
       "tmp",
       "tools",
       ".config",
+      "poc",
     ],
     rules: {
       "constructor-super": "error",

@@ -1,7 +1,6 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "siftq-poc-state-v1";
   const STATUS_FILTERS = ["do", "done", "skip"];
   const SOURCE_LABELS = {
     manual: "手動",
@@ -10,20 +9,17 @@
     slack: "Slack",
     discord: "Discord",
   };
-  // グループ導入前の localStorage をシードのグループへ寄せる。
-  const SEED_PROJECTS = {
-    "task-github": "Yoriwake",
-    "task-video": "YouTube",
-    "task-report": "Yoriwake",
-    "task-invoice": "生活",
-    "task-login": "Yoriwake",
-    "task-matrix": "Yoriwake",
-  };
 
-  let state = load();
-  let stream = null;
+  let state = null;
+  let dshStatus = { state: "starting", profile: "acp" };
   let pendingFocus = null;
   let toastTimer = null;
+  let saveTimer = null;
+  let settingsDraft = null;
+  let currentPermission = null;
+  const workingConversations = new Set();
+  const workingStartedAt = new Map();
+  const preparedConversations = new Set();
 
   const $ = (selector) => document.querySelector(selector);
 
@@ -38,42 +34,70 @@
     });
   }
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return window.SIFTQ_SEED();
-      const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.tasks)) {
-        return window.SIFTQ_SEED();
-      }
-      return parsed;
-    } catch (error) {
-      return window.SIFTQ_SEED();
-    }
+  async function loadState() {
+    const response = await fetch("/api/state");
+    if (!response.ok) throw new Error("状態の読み込みに失敗しました");
+    const payload = await response.json();
+    state = payload.state;
+    dshStatus = payload.dsh;
+    ensureState();
+    updateDshStatus();
   }
 
   function save() {
+    if (saveTimer !== null) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      void persistState();
+    }, 120);
+  }
+
+  async function persistState() {
+    if (state === null) return false;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const response = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(state),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error ?? "保存に失敗しました");
+      }
+      showSettingsError("");
+      return true;
     } catch (error) {
-      // localStorage が使えない環境ではメモリ上だけで動かす。
+      const message = error instanceof Error ? error.message : String(error);
+      toast(message);
+      showSettingsError(message);
+      return false;
     }
   }
 
   function ensureState() {
+    if (state === null || !Array.isArray(state.tasks)) {
+      state = {
+        version: 1,
+        statusFilter: "do",
+        selectedTaskId: null,
+        paneWidths: { left: 300, right: 400 },
+        collapsed: {},
+        tasks: [],
+        groups: [],
+        projectOrder: [],
+      };
+    }
     if (!state.paneWidths) state.paneWidths = { left: 300, right: 400 };
     if (!STATUS_FILTERS.includes(state.statusFilter)) state.statusFilter = "do";
-    if (!state.usage) {
-      state.usage = { session: { used: 0, limit: 5 }, week: { used: 0, limit: 50 } };
-    }
     if (!Array.isArray(state.projectOrder)) state.projectOrder = [];
+    if (!Array.isArray(state.groups)) state.groups = [];
     if (!state.collapsed || typeof state.collapsed !== "object") state.collapsed = {};
+    ensureProject("その他");
+    for (const name of state.projectOrder) ensureProject(name);
     for (const task of state.tasks) {
       if (!task.ui) task.ui = {};
       if (!task.ui.centerTab) task.ui.centerTab = "chat";
-      if (typeof task.project !== "string" || !task.project || task.project === "その他") {
-        task.project = SEED_PROJECTS[task.id] || "その他";
-      }
+      if (typeof task.project !== "string" || !task.project) task.project = "その他";
       if (task.kind === "task") ensureProject(projectName(task));
       if (!Array.isArray(task.conversations) || task.conversations.length === 0) {
         task.conversations = [{ id: uid("conv"), title: "メイン", messages: [] }];
@@ -86,6 +110,12 @@
         task.browserTabs = [{ id: uid("tab"), url: "about:blank", title: "新しいタブ", active: true }];
       }
       for (const conversation of task.conversations) {
+        if (typeof conversation.dshSessionId !== "string") conversation.dshSessionId = null;
+        if (conversation.permissionMode !== "ask" && conversation.permissionMode !== "allow_all") {
+          conversation.permissionMode = "ask";
+        }
+        if (!Array.isArray(conversation.configOptions)) conversation.configOptions = [];
+        if (!Array.isArray(conversation.messages)) conversation.messages = [];
         for (const message of conversation.messages) {
           if (message.status === "streaming") message.status = "stopped";
         }
@@ -110,17 +140,28 @@
 
   function ensureProject(name) {
     if (!name) return;
-    if (state.projectOrder.includes(name)) return;
-    const otherIndex = state.projectOrder.indexOf("その他");
-    if (otherIndex === -1) state.projectOrder.push(name);
-    else state.projectOrder.splice(otherIndex, 0, name);
+    if (!Array.isArray(state.groups)) state.groups = [];
+    if (!Array.isArray(state.projectOrder)) state.projectOrder = [];
+    if (!state.groups.some((group) => group.name === name)) {
+      const otherGroupIndex = state.groups.findIndex((group) => group.name === "その他");
+      const group = { name: name, workspace: "" };
+      if (otherGroupIndex === -1) state.groups.push(group);
+      else state.groups.splice(otherGroupIndex, 0, group);
+    }
+    if (!state.projectOrder.includes(name)) {
+      const otherIndex = state.projectOrder.indexOf("その他");
+      if (otherIndex === -1) state.projectOrder.push(name);
+      else state.projectOrder.splice(otherIndex, 0, name);
+    }
   }
 
   function projectList() {
-    const names = Array.from(new Set(state.tasks.map(projectName)));
-    if (!names.includes("その他")) names.push("その他");
-    const ordered = state.projectOrder.filter((name) => names.includes(name));
-    const missing = names.filter((name) => !ordered.includes(name));
+    if (state === null) return [];
+    const names = new Set(state.groups.map((group) => group.name));
+    for (const task of state.tasks) names.add(projectName(task));
+    names.add("その他");
+    const ordered = state.projectOrder.filter((name) => names.has(name));
+    const missing = Array.from(names).filter((name) => !ordered.includes(name));
     missing.sort((left, right) => {
       if (left === "その他") return 1;
       if (right === "その他") return -1;
@@ -176,14 +217,6 @@
     return task.browserTabs.find((tab) => tab.active) || task.browserTabs[0] || null;
   }
 
-  function findMessage(taskId, conversationId, messageId) {
-    const task = taskById(taskId);
-    if (!task) return null;
-    const conversation = task.conversations.find((item) => item.id === conversationId);
-    if (!conversation) return null;
-    return conversation.messages.find((item) => item.id === messageId) || null;
-  }
-
   function timeAgo(iso) {
     const diff = Math.max(0, Date.now() - new Date(iso).getTime());
     const minutes = Math.floor(diff / 60000);
@@ -204,11 +237,6 @@
 
   function sourceLabel(source) {
     return SOURCE_LABELS[source] || source || "手動";
-  }
-
-  function percent(usage) {
-    if (!usage || !usage.limit) return 0;
-    return Math.min(100, Math.round((usage.used / usage.limit) * 100));
   }
 
   function empty(message) {
@@ -244,7 +272,6 @@
     renderLeft();
     renderCenter();
     renderRight();
-    renderBottom();
     scrollChatToBottom();
     if (pendingFocus) {
       const element = document.getElementById(pendingFocus);
@@ -432,28 +459,79 @@
     pane.innerHTML = header + tabs + '<div class="center-body">' + body + "</div>";
   }
 
+  function configSelectsHtml(conversation) {
+    if (!Array.isArray(conversation.configOptions) || conversation.configOptions.length === 0) {
+      return '<span class="config-empty">モデル: 未接続</span>';
+    }
+    return conversation.configOptions
+      .map(
+        (option) =>
+          '<select class="config-select" data-action="config" data-conversation-id="' +
+          conversation.id +
+          '" data-config-id="' +
+          esc(option.id) +
+          '" aria-label="' +
+          esc(option.name) +
+          '">' +
+          option.values
+            .map(
+              (value) =>
+                '<option value="' +
+                esc(value.value) +
+                '"' +
+                (value.value === option.current ? " selected" : "") +
+                ">" +
+                esc(value.name) +
+                "</option>",
+            )
+            .join("") +
+          "</select>",
+      )
+      .join("");
+  }
+
   function chatHtml(task, conversation) {
     const messages =
       conversation.messages.map(messageHtml).join("") ||
       '<div class="chat-empty">まだメッセージはありません。</div>';
 
-    const streaming = conversation.messages.some((message) => message.status === "streaming");
+    const streaming =
+      workingConversations.has(conversation.id) ||
+      conversation.messages.some((message) => message.status === "streaming");
     const working = streaming
       ? '<div class="working-line"><span class="dot"></span>Working <span data-working-elapsed>0s</span></div>'
       : "";
     const stop = streaming
-      ? '<button type="button" class="button small danger" data-action="stop-chat">停止</button>'
+      ? '<button type="button" class="button small danger" data-action="stop-chat" data-conversation-id="' +
+        conversation.id +
+        '">停止</button>'
       : "";
+    const permission =
+      '<select class="permission-select" data-action="permission" data-conversation-id="' +
+      conversation.id +
+      '" aria-label="権限">' +
+      '<option value="ask"' +
+      (conversation.permissionMode !== "allow_all" ? " selected" : "") +
+      ">確認する</option>" +
+      '<option value="allow_all"' +
+      (conversation.permissionMode === "allow_all" ? " selected" : "") +
+      ">すべて許可</option>" +
+      "</select>";
 
     return (
-      '<div class="chat-log" id="chat-log">' +
+      '<div class="chat-log" id="chat-log" data-conversation-id="' +
+      conversation.id +
+      '">' +
       messages +
       "</div>" +
       working +
-      '<form class="chat-composer" id="chat-form">' +
+      '<form class="chat-composer" id="chat-form" data-conversation-id="' +
+      conversation.id +
+      '">' +
       '<textarea id="chat-input" rows="3" placeholder="メッセージ（Enterで改行・Ctrl/Cmd+Enterで送信）"></textarea>' +
       '<div class="composer-bar">' +
-      '<select id="model-select" aria-label="モデル"><option>siftq-fast</option><option>siftq-pro</option></select>' +
+      configSelectsHtml(conversation) +
+      permission +
       '<span class="context-hint">' +
       esc(contextLine(task)) +
       "</span>" +
@@ -612,25 +690,6 @@
     );
   }
 
-  function renderBottom() {
-    const session = state.usage.session;
-    const week = state.usage.week;
-    $("#bottombar").innerHTML =
-      '<div class="usage">' +
-      '<span class="usage-label">USAGE</span>' +
-      '<span class="usage-item">Session <span class="bar"><i style="width:' +
-      percent(session) +
-      '%"></i></span> ' +
-      percent(session) +
-      "%</span>" +
-      '<span class="usage-item">Week <span class="bar"><i style="width:' +
-      percent(week) +
-      '%"></i></span> ' +
-      percent(week) +
-      "%</span>" +
-      "</div>";
-  }
-
   function scrollChatToBottom() {
     const log = document.getElementById("chat-log");
     if (log) log.scrollTop = log.scrollHeight;
@@ -653,6 +712,7 @@
     if (task.unread) task.unread = false;
     save();
     render();
+    prepareSelectedConversation();
   }
 
   function toggleGroup(key) {
@@ -717,6 +777,7 @@
     task.ui.centerTab = tab;
     save();
     render();
+    if (tab === "chat") prepareSelectedConversation();
   }
 
   function contextItem(action, label, id, active, data) {
@@ -847,121 +908,66 @@
     toast(kind === "tentative" ? "仮タスクを追加しました" : "タスクを追加しました");
   }
 
+  async function prepareConversation(conversationId) {
+    try {
+      const response = await fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/prepare", {
+        method: "POST",
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      if (!Array.isArray(payload.configOptions)) return;
+      const task = selectedTask();
+      if (!task) return;
+      const conversation = task.conversations.find((item) => item.id === conversationId);
+      if (!conversation) return;
+      conversation.configOptions = payload.configOptions;
+      preparedConversations.add(conversationId);
+      renderCenter();
+    } catch {
+      // DSH未接続時はモデル選択を空のままにする。
+    }
+  }
+
   function sendChat() {
     const task = selectedTask();
     const input = document.getElementById("chat-input");
     if (!task || !input) return;
     const text = input.value.trim();
     if (!text) return;
-    if (stream) {
+    const conversation = currentConversation(task);
+    if (workingConversations.has(conversation.id)) {
       toast("応答中です。停止してから送信してください。");
       return;
     }
-    const conversation = currentConversation(task);
-    conversation.messages.push({
-      id: uid("msg"),
-      role: "user",
-      content: text,
-      status: "done",
-      createdAt: new Date().toISOString(),
-    });
-    const assistant = {
-      id: uid("msg"),
-      role: "assistant",
-      content: "",
-      status: "streaming",
-      createdAt: new Date().toISOString(),
-    };
-    conversation.messages.push(assistant);
-    task.updatedAt = new Date().toISOString();
-    bumpUsage();
-    save();
+    workingConversations.add(conversation.id);
+    input.value = "";
     pendingFocus = "chat-input";
-    render();
-    startStream(task.id, conversation.id, assistant.id, mockReply(text, task));
+    renderCenter();
+    void fetch("/api/conversations/" + encodeURIComponent(conversation.id) + "/prompt", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: text }),
+    })
+      .then(async (response) => {
+        if (response.ok) return;
+        const payload = await response.json().catch(() => ({}));
+        workingConversations.delete(conversation.id);
+        toast(payload.error ?? "送信に失敗しました");
+        renderCenter();
+      })
+      .catch((error) => {
+        workingConversations.delete(conversation.id);
+        toast(error instanceof Error ? error.message : String(error));
+        renderCenter();
+      });
   }
 
-  function mockReply(userText, task) {
-    const browser = activeBrowserTab(task);
-    const memo = task.memo ? "メモ（" + task.memo.length + "文字）" : "メモ（空）";
-    const browserLine = browser ? "ブラウザ（" + browser.url + "）" : "ブラウザ（未選択）";
-
-    if (/メモ/.test(userText)) {
-      return (
-        "メモを確認しました。\n\n" +
-        (task.memo || "（メモはまだ空です）") +
-        "\n\nこの内容をもとに、次の3点に整理できます。\n- 目的\n- 次の操作\n- 保留にしたこと"
-      );
-    }
-    if (/ブラウザ|ページ|開いて/.test(userText)) {
-      return (
-        "現在のブラウザの状態を確認しました。\n\n- URL: " +
-        (browser ? browser.url : "未選択") +
-        "\n- タイトル: " +
-        (browser ? browser.title : "未選択") +
-        "\n\nこのページを前提に作業を進めます。プロトタイプではページ本文の取得はモックです。"
-      );
-    }
-    if (/タスク/.test(userText)) {
-      return (
-        "タスクにできる形に整理しました。\n\n1. " +
-        userText.slice(0, 40) +
-        "\n2. 関連するブラウザのタブを確認する\n3. 完了条件を決める\n\n必要ならこの応答から「タスクにする」で起票できます。"
-      );
-    }
-    return (
-      "受け取りました。\n\n参照した文脈:\n- " +
-      memo +
-      "\n- " +
-      browserLine +
-      "\n\nプロトタイプのため応答は固定です。実装時はここにLLMの応答とツール実行ログが入ります。"
-    );
-  }
-
-  function startStream(taskId, conversationId, messageId, fullText) {
-    if (stream) stopStreaming(false);
-    const started = Date.now();
-    stream = { taskId: taskId, conversationId: conversationId, messageId: messageId, fullText: fullText, index: 0, started: started, timer: null };
-    const timer = setInterval(() => {
-      if (!stream || stream.messageId !== messageId) {
-        clearInterval(timer);
-        return;
-      }
-      const message = findMessage(taskId, conversationId, messageId);
-      if (!message) {
-        clearInterval(timer);
-        stream = null;
-        return;
-      }
-      stream.index = Math.min(fullText.length, stream.index + 3);
-      message.content = fullText.slice(0, stream.index);
-      const body = document.querySelector('[data-message-id="' + messageId + '"] .msg-body');
-      if (body) body.textContent = message.content;
-      const elapsed = document.querySelector("[data-working-elapsed]");
-      if (elapsed) {
-        elapsed.textContent = Math.max(1, Math.round((Date.now() - started) / 1000)) + "s";
-      }
-      const log = document.getElementById("chat-log");
-      if (log) log.scrollTop = log.scrollHeight;
-      if (stream.index >= fullText.length) {
-        message.status = "done";
-        clearInterval(timer);
-        stream = null;
-        save();
-        render();
-      }
-    }, 45);
-    if (stream) stream.timer = timer;
-  }
-
-  function stopStreaming(shouldRender) {
-    if (!stream) return;
-    clearInterval(stream.timer);
-    const message = findMessage(stream.taskId, stream.conversationId, stream.messageId);
-    if (message) message.status = "stopped";
-    stream = null;
-    save();
-    if (shouldRender !== false) render();
+  async function stopChat(conversationId) {
+    workingConversations.delete(conversationId);
+    renderCenter();
+    await fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/cancel", {
+      method: "POST",
+    }).catch(() => undefined);
   }
 
   function copyMessage(messageId) {
@@ -1080,11 +1086,6 @@
     }
   }
 
-  function bumpUsage() {
-    state.usage.session.used = Math.min(state.usage.session.limit, state.usage.session.used + 0.02);
-    state.usage.week.used = Math.min(state.usage.week.limit, state.usage.week.used + 0.05);
-  }
-
   function applyWidths() {
     const panes = $("#panes");
     panes.style.setProperty("--left", state.paneWidths.left + "px");
@@ -1125,6 +1126,332 @@
         document.addEventListener("pointerup", up);
       });
     }
+  }
+
+  function updateDshStatus() {
+    const chip = $("#dsh-status");
+    if (!chip) return;
+    const labels = {
+      starting: "DSH: 起動中",
+      ready: "DSH: 接続済み",
+      error: "DSH: エラー",
+      mock: "DSH: モック",
+      stopped: "DSH: 停止",
+    };
+    chip.textContent = labels[dshStatus.state] ?? "DSH: " + dshStatus.state;
+    chip.className = "dsh-status " + dshStatus.state;
+  }
+
+  function showSettingsError(message) {
+    const element = $("#settings-error");
+    if (!element) return;
+    element.textContent = message;
+  }
+
+  function openSettings() {
+    const byName = new Map(state.groups.map((group) => [group.name, group]));
+    const ordered = state.projectOrder
+      .map((name) => byName.get(name))
+      .filter((group) => group !== undefined)
+      .map((group) => ({ ...group }));
+    for (const group of state.groups) {
+      if (!ordered.some((item) => item.name === group.name)) ordered.push({ ...group });
+    }
+    settingsDraft = ordered;
+    const modal = $("#settings-modal");
+    if (modal) modal.hidden = false;
+    renderSettings();
+  }
+
+  function closeSettings() {
+    const modal = $("#settings-modal");
+    if (modal) modal.hidden = true;
+    settingsDraft = null;
+  }
+
+  function renderSettings() {
+    const body = $("#settings-body");
+    if (!body) return;
+    const groups = settingsDraft ?? state.groups;
+    const rows = groups
+      .map((group, index) => {
+        const fixed = group.name === "その他";
+        return (
+          "<tr>" +
+          '<td><input class="settings-group-name" data-index="' +
+          index +
+          '" value="' +
+          esc(group.name) +
+          '"' +
+          (fixed ? " readonly" : "") +
+          "></td>" +
+          '<td><input class="settings-group-workspace" data-index="' +
+          index +
+          '" value="' +
+          esc(group.workspace) +
+          '" placeholder="未設定"></td>' +
+          '<td><button type="button" class="button small ghost" data-action="delete-group-row" data-index="' +
+          index +
+          '"' +
+          (fixed ? " disabled" : "") +
+          ">削除</button></td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+    const labels = { starting: "起動中", ready: "接続済み", error: "エラー", mock: "モック", stopped: "停止" };
+    const dshLine =
+      "状態: " +
+      (labels[dshStatus.state] ?? dshStatus.state) +
+      " / プロファイル: " +
+      dshStatus.profile +
+      (dshStatus.error ? "\n" + dshStatus.error : "");
+    body.innerHTML =
+      '<section class="settings-section">' +
+      "<h3>グループ</h3>" +
+      '<table class="settings-groups"><thead><tr><th>名前</th><th>ワークスペース</th><th></th></tr></thead><tbody>' +
+      rows +
+      "</tbody></table>" +
+      '<div class="settings-actions" style="padding-top:8px;border-top:none;justify-content:flex-start">' +
+      '<button type="button" class="button small" data-action="add-group-row">グループを追加</button>' +
+      "</div>" +
+      '<p class="hint">workspaceは空でも保存できます。空の場合はアプリの起動フォルダで実行します。</p>' +
+      "</section>" +
+      '<section class="settings-section">' +
+      "<h3>DSH</h3>" +
+      '<p class="settings-dsh">' +
+      esc(dshLine) +
+      "</p>" +
+      '<button type="button" class="button small" data-action="retry-dsh">再接続</button>' +
+      "</section>" +
+      '<p class="settings-error" id="settings-error"></p>' +
+      '<div class="settings-actions">' +
+      '<button type="button" class="button small ghost" data-action="close-settings">キャンセル</button>' +
+      '<button type="button" class="button small primary" data-action="save-settings">保存</button>' +
+      "</div>";
+  }
+
+  function addGroupRow() {
+    if (settingsDraft === null) return;
+    settingsDraft.push({ name: "", workspace: "" });
+    renderSettings();
+  }
+
+  function deleteGroupRow(index) {
+    if (settingsDraft === null || !Number.isInteger(index)) return;
+    const group = settingsDraft[index];
+    if (!group || group.name === "その他") return;
+    settingsDraft.splice(index, 1);
+    renderSettings();
+  }
+
+  async function saveSettings() {
+    if (settingsDraft === null) return;
+    const nameInputs = Array.from(document.querySelectorAll(".settings-group-name"));
+    const workspaceInputs = Array.from(document.querySelectorAll(".settings-group-workspace"));
+    const names = new Set();
+    const nextGroups = [];
+    const renamed = new Map();
+    for (const input of nameInputs) {
+      const index = Number(input.dataset.index);
+      const name = input.value.trim();
+      const workspaceInput = workspaceInputs.find((item) => Number(item.dataset.index) === index);
+      const workspace = workspaceInput ? workspaceInput.value.trim() : "";
+      if (name === "") {
+        showSettingsError("グループ名を入力してください");
+        return;
+      }
+      if (names.has(name)) {
+        showSettingsError("グループ名が重複しています: " + name);
+        return;
+      }
+      names.add(name);
+      const old = settingsDraft[index];
+      if (old && old.name !== name) renamed.set(old.name, name);
+      nextGroups.push({ name: name, workspace: workspace });
+    }
+    if (!names.has("その他")) {
+      showSettingsError("その他グループは削除できません");
+      return;
+    }
+    const oldNames = new Set(state.groups.map((group) => group.name));
+    const deleted = Array.from(oldNames).filter((name) => !names.has(name));
+    const tasksToMove = state.tasks.filter((task) => deleted.includes(task.project));
+    if (tasksToMove.length > 0) {
+      const ok = window.confirm("削除するグループのタスクを「その他」へ移動します。よろしいですか？");
+      if (!ok) return;
+    }
+    for (const task of state.tasks) {
+      if (renamed.has(task.project)) task.project = renamed.get(task.project);
+      if (deleted.includes(task.project)) task.project = "その他";
+    }
+    state.groups = nextGroups;
+    state.projectOrder = nextGroups.map((group) => group.name);
+    for (const key of Object.keys(state.collapsed)) {
+      if (!key.startsWith("project:")) continue;
+      const oldName = key.slice("project:".length);
+      const nextName = renamed.get(oldName);
+      if (nextName !== undefined) {
+        state.collapsed["project:" + nextName] = state.collapsed[key];
+        delete state.collapsed[key];
+      }
+    }
+    const saved = await persistState();
+    if (!saved) return;
+    closeSettings();
+    render();
+    toast("設定を保存しました");
+  }
+
+  async function retryDsh() {
+    try {
+      const response = await fetch("/api/dsh/retry", { method: "POST" });
+      if (!response.ok) throw new Error("再接続に失敗しました");
+      dshStatus = await response.json();
+      updateDshStatus();
+      renderSettings();
+    } catch (error) {
+      showSettingsError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function showPermission(event) {
+    currentPermission = event;
+    const body = $("#permission-body");
+    if (!body) return;
+    body.innerHTML =
+      '<p class="permission-summary">' +
+      esc(event.title) +
+      "</p>" +
+      '<div class="permission-options">' +
+      event.options
+        .map(
+          (option) =>
+            '<button type="button" class="button small" data-action="permission-choice" data-option-id="' +
+            esc(option.id) +
+            '">' +
+            esc(option.name) +
+            "</button>",
+        )
+        .join("") +
+      "</div>" +
+      '<div class="settings-actions"><button type="button" class="button small ghost" data-action="permission-cancel">拒否</button></div>';
+    const modal = $("#permission-modal");
+    if (modal) modal.hidden = false;
+  }
+
+  async function respondPermission(optionId) {
+    if (currentPermission === null) return;
+    const requestId = currentPermission.requestId;
+    const modal = $("#permission-modal");
+    if (modal) modal.hidden = true;
+    currentPermission = null;
+    try {
+      await fetch("/api/permissions/" + encodeURIComponent(requestId), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(optionId === null ? { cancelled: true } : { optionId: optionId }),
+      });
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function findConversationById(conversationId) {
+    for (const task of state.tasks) {
+      const conversation = task.conversations.find((item) => item.id === conversationId);
+      if (conversation !== undefined) return { task, conversation };
+    }
+    return null;
+  }
+
+  function applyEvent(event) {
+    if (!event || typeof event.type !== "string") return;
+    if (event.type === "dsh") {
+      dshStatus = event.status;
+      updateDshStatus();
+      const modal = $("#settings-modal");
+      if (modal && !modal.hidden) renderSettings();
+      if (dshStatus.state === "ready" || dshStatus.state === "mock") prepareSelectedConversation();
+      return;
+    }
+    if (event.type === "permission") {
+      showPermission(event);
+      return;
+    }
+    if (event.type === "error") {
+      if (event.conversationId) {
+        workingConversations.delete(event.conversationId);
+        workingStartedAt.delete(event.conversationId);
+      }
+      toast(event.message);
+      renderCenter();
+      return;
+    }
+    const found = findConversationById(event.conversationId);
+    if (found === null) return;
+    const { task, conversation } = found;
+    if (event.type === "message") {
+      const index = conversation.messages.findIndex((message) => message.id === event.message.id);
+      if (index === -1) conversation.messages.push(event.message);
+      else conversation.messages[index] = event.message;
+      task.updatedAt = new Date().toISOString();
+    } else if (event.type === "chunk") {
+      let message = conversation.messages.find((item) => item.id === event.messageId);
+      if (!message) {
+        message = {
+          id: event.messageId,
+          role: "assistant",
+          content: event.content,
+          status: event.status,
+          createdAt: new Date().toISOString(),
+        };
+        conversation.messages.push(message);
+      } else {
+        message.content = event.content;
+        message.status = event.status;
+      }
+      const body = document.querySelector('[data-message-id="' + event.messageId + '"] .msg-body');
+      if (body) {
+        body.textContent = event.content;
+        scrollChatToBottom();
+        return;
+      }
+    } else if (event.type === "status") {
+      if (event.working) {
+        workingConversations.add(event.conversationId);
+        workingStartedAt.set(event.conversationId, Date.now());
+      } else {
+        workingConversations.delete(event.conversationId);
+        workingStartedAt.delete(event.conversationId);
+      }
+    } else if (event.type === "config") {
+      conversation.configOptions = event.configOptions;
+    }
+    if (state.selectedTaskId === task.id) {
+      renderCenter();
+      scrollChatToBottom();
+    }
+    if (event.type === "status" || event.type === "message") renderLeft();
+  }
+
+  function connectEvents() {
+    const source = new EventSource("/api/events");
+    source.onmessage = (event) => {
+      try {
+        applyEvent(JSON.parse(event.data));
+      } catch {
+        // ignore malformed events
+      }
+    };
+  }
+
+  function prepareSelectedConversation() {
+    const task = selectedTask();
+    if (!task || task.ui.centerTab !== "chat") return;
+    const conversation = currentConversation(task);
+    if (conversation.configOptions.length > 0 || preparedConversations.has(conversation.id)) return;
+    void prepareConversation(conversation.id);
   }
 
   let dragState = null;
@@ -1212,6 +1539,8 @@
     const insertIndex = targetIndex + (event.clientY > rect.top + rect.height / 2 ? 1 : 0);
     names.splice(insertIndex, 0, draggedName);
     state.projectOrder = names;
+    const byName = new Map(state.groups.map((group) => [group.name, group]));
+    state.groups = names.map((name) => byName.get(name)).filter((group) => group !== undefined);
     save();
     render();
   }
@@ -1345,7 +1674,7 @@
         toggleWorking(id);
         break;
       case "stop-chat":
-        stopStreaming();
+        void stopChat(target.dataset.conversationId);
         break;
       case "copy-message":
         copyMessage(target.dataset.messageId);
@@ -1365,10 +1694,75 @@
       case "add-tentative":
         addTask("tentative");
         break;
+      case "open-settings":
+        openSettings();
+        break;
+      case "close-settings":
+        closeSettings();
+        break;
+      case "add-group-row":
+        addGroupRow();
+        break;
+      case "delete-group-row":
+        deleteGroupRow(Number(target.dataset.index));
+        break;
+      case "save-settings":
+        void saveSettings();
+        break;
+      case "retry-dsh":
+        void retryDsh();
+        break;
+      case "permission-choice":
+        void respondPermission(target.dataset.optionId);
+        break;
+      case "permission-cancel":
+        void respondPermission(null);
+        break;
       default:
         break;
     }
     hideContextMenu();
+  });
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.classList.contains("config-select")) {
+      const conversationId = target.dataset.conversationId;
+      const configId = target.dataset.configId;
+      if (!conversationId || !configId) return;
+      void fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ configId: configId, value: target.value }),
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const payload = await response.json();
+            const found = findConversationById(conversationId);
+            if (found && Array.isArray(payload.configOptions)) {
+              found.conversation.configOptions = payload.configOptions;
+              renderCenter();
+            }
+            return;
+          }
+          const payload = await response.json().catch(() => ({}));
+          toast(payload.error ?? "モデル変更に失敗しました");
+        })
+        .catch((error) => toast(error instanceof Error ? error.message : String(error)));
+      return;
+    }
+    if (target.classList.contains("permission-select")) {
+      const conversationId = target.dataset.conversationId;
+      if (!conversationId) return;
+      const found = findConversationById(conversationId);
+      if (found) found.conversation.permissionMode = target.value;
+      void fetch("/api/conversations/" + encodeURIComponent(conversationId), {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ permissionMode: target.value }),
+      }).catch((error) => toast(error instanceof Error ? error.message : String(error)));
+    }
   });
 
   document.addEventListener("contextmenu", (event) => {
@@ -1420,6 +1814,15 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      if (currentPermission !== null) {
+        void respondPermission(null);
+        return;
+      }
+      const settingsModal = $("#settings-modal");
+      if (settingsModal && !settingsModal.hidden) {
+        closeSettings();
+        return;
+      }
       hideContextMenu();
       return;
     }
@@ -1430,9 +1833,30 @@
     }
   });
 
-  ensureState();
-  save();
-  applyWidths();
-  setupSplitters();
-  render();
+  function updateWorkingElapsed() {
+    const log = document.getElementById("chat-log");
+    const element = document.querySelector("[data-working-elapsed]");
+    if (!log || !element) return;
+    const started = workingStartedAt.get(log.dataset.conversationId);
+    if (started !== undefined) {
+      element.textContent = Math.max(1, Math.round((Date.now() - started) / 1000)) + "s";
+    }
+  }
+
+  async function bootstrap() {
+    try {
+      await loadState();
+      applyWidths();
+      setupSplitters();
+      render();
+      connectEvents();
+      prepareSelectedConversation();
+      setInterval(updateWorkingElapsed, 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      document.body.innerHTML = '<div class="pane-empty">' + esc(message) + "</div>";
+    }
+  }
+
+  void bootstrap();
 })();

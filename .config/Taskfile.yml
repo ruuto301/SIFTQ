@@ -27,6 +27,10 @@ includes:
     taskfile: taskfile/repository.yml
     dir: ..
     flatten: true
+  poc:
+    taskfile: taskfile/poc.yml
+    dir: ..
+    flatten: true
   codex:
     taskfile: taskfile/codex.yml
     dir: ..

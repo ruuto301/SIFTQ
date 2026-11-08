@@ -1,6 +1,6 @@
-window.SIFTQ_SEED = function seed() {
+export function createSeedState() {
   const now = Date.now();
-  const at = (minutesAgo) => new Date(now - minutesAgo * 60000).toISOString();
+  const at = (minutesAgo: number) => new Date(now - minutesAgo * 60000).toISOString();
 
   return {
     version: 1,
@@ -8,18 +8,19 @@ window.SIFTQ_SEED = function seed() {
     selectedTaskId: "task-github",
     paneWidths: { left: 300, right: 400 },
     projectOrder: ["Yoriwake", "YouTube", "生活", "その他"],
+    groups: [
+      { name: "Yoriwake", workspace: "" },
+      { name: "YouTube", workspace: "" },
+      { name: "生活", workspace: "" },
+      { name: "その他", workspace: "" },
+    ],
     collapsed: {},
-    usage: {
-      session: { used: 0.5, limit: 5 },
-      week: { used: 26.5, limit: 50 },
-    },
     tasks: [
       {
         id: "task-github",
         kind: "task",
         project: "Yoriwake",
         title: "GitHub #42 のレビュー依頼を確認する",
-        description: "",
         status: "do",
         working: false,
         pinned: false,
@@ -74,7 +75,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "task",
         project: "YouTube",
         title: "直近の動画の人気アイテムを5つ選ぶ",
-        description: "",
         status: "do",
         working: true,
         pinned: false,
@@ -128,7 +128,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "task",
         project: "Yoriwake",
         title: "週次レポートをまとめる",
-        description: "",
         status: "do",
         working: false,
         pinned: false,
@@ -153,7 +152,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "task",
         project: "生活",
         title: "カナリエの請求書フォーマットを確認する",
-        description: "",
         status: "done",
         working: false,
         pinned: false,
@@ -178,7 +176,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "task",
         project: "Yoriwake",
         title: "ログイン画面の文言を確認する",
-        description: "",
         status: "done",
         working: false,
         pinned: false,
@@ -197,7 +194,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "task",
         project: "Yoriwake",
         title: "古い Matrix 画面の削除",
-        description: "",
         status: "skip",
         working: false,
         pinned: false,
@@ -216,7 +212,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "tentative",
         project: "その他",
         title: "タスク入力の構文を考える",
-        description: "",
         status: "do",
         working: false,
         pinned: true,
@@ -235,7 +230,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "tentative",
         project: "その他",
         title: "メモとチャットの文脈分離を検討する",
-        description: "",
         status: "do",
         working: false,
         pinned: true,
@@ -254,7 +248,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "tentative",
         project: "その他",
         title: "ブラウザタブをタスクごとに分けるか",
-        description: "",
         status: "do",
         working: false,
         pinned: false,
@@ -273,7 +266,6 @@ window.SIFTQ_SEED = function seed() {
         kind: "tentative",
         project: "その他",
         title: "通知からタスクを作るときの粒度",
-        description: "",
         status: "do",
         working: false,
         pinned: false,
