@@ -1,9 +1,9 @@
 ---
 name: taqt-loop-runner
-description: Run SIFTQ taqt loop-engineering tasks from GitHub Issues through readiness, decomposition, worktree execution, PR, merge, cleanup, and self-improvement follow-up.
+description: Run SIFTQ taqt tasks through readiness, worktree execution with dsh, verification, PR, merge, cleanup, and self-improvement follow-up.
 ---
 
-# taqt Loop Runner
+# taqt Flow Runner
 
 Use this skill when running or supervising taqt tasks for SIFTQ issues.
 
@@ -19,7 +19,7 @@ Use this skill when running or supervising taqt tasks for SIFTQ issues.
 - Keep task slices close to five minutes of work when an issue contains multiple independent bullets.
 - Run each task in its own git worktree when parallel execution is possible.
 - Prefer the smallest meaningful validation first, then broader gates as needed.
-- Route unclear requirements, product decisions, repeated failures, and max-attempt exits to human triage.
+- Route unclear requirements, product decisions, repeated failures, and verification exhaustion to human triage.
 - Create a self-improvement request when a taqt event reveals a reusable operational lesson.
 
 ## Readiness
@@ -29,6 +29,18 @@ Use this skill when running or supervising taqt tasks for SIFTQ issues.
 - Bug issues require `## 概要`; missing `## 再現手順` is a warning first.
 - If readiness is missing, run no implementation. Keep the task in `pending`, set `phase: triage`, and report the exact missing section such as `missing issue section: AC`.
 - Human confirmation should ask for the missing sections or decision, not for generic permission.
+
+## Verification Gate
+
+dsh runs this repository's verification hook before a turn stops and before commit, push, or PR commands. A failed gate blocks the operation with the failure output.
+
+When hooks are unavailable, run the same gate manually:
+
+```bash
+uv run python scripts/flow/verify_gate.py
+```
+
+Never commit, push, or open a PR while verification fails.
 
 ## Standard Flow
 
@@ -55,6 +67,8 @@ task -t .config/Taskfile.yml taqt:worktree -- .taqt/tasks/ISSUE-<number>.yaml --
 ```bash
 task -t .config/Taskfile.yml taqt:run -- /absolute/path/to/.taqt/tasks/ISSUE-<number>.yaml --workspace tmp/worktrees/ISSUE-<number>
 ```
+
+`taqt:run` starts `dsh --profile headless`, loads this skill in the worktree, and verifies the workspace after the dsh session. A failed verification blocks the task.
 
 5. Sync status to GitHub when useful:
 
@@ -115,5 +129,5 @@ or `--no-release-decision` options when those post-PR steps must be skipped.
 
 - If taqt records `self_improvement` in the task, read the generated request file and then use `.agents/skills/self-improvement/SKILL.md`.
 - Log to `.learnings/` only when the event is recurring, non-obvious, or useful for future automation.
-- Useful self-improvement events include readiness false positives, repeated GitHub API failures, worktree cleanup failures, max iteration exits, and unclear human escalation reasons.
+- Useful self-improvement events include readiness false positives, repeated GitHub API failures, worktree cleanup failures, verification exhaustion, and unclear human escalation reasons.
 - Do not log routine product decisions or one-off missing AC/DoD unless the pattern recurs.

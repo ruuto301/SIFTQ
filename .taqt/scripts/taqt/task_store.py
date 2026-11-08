@@ -10,7 +10,7 @@ The implementation is split by responsibility:
 - ``task_recovery``: stale run recovery and parent completion
 """
 
-from loop.schema import load_document, validate_task, write_document
+from .task_document import load_document, validate_task, write_document
 
 from .task_decomposition import (
     build_slice_task,

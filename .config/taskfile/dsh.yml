@@ -1,0 +1,26 @@
+version: "3"
+
+tasks:
+  dsh:web:
+    desc: Run the DeepSeek Harness Web UI with the repository patches.
+    cmds:
+      - |
+        set -eu
+        patches="--patch .config/dsh/cordis.patch.yml"
+        dsh_home="${DSH_HOME:-$HOME/.dsh}"
+        if [ -f "$dsh_home/profiles/web/package.json" ] && grep -q '"@deepseek-ai/dsh-hooks-codex"' "$dsh_home/profiles/web/package.json"; then
+          patches="$patches --patch .config/dsh/hooks.patch.yml"
+        fi
+        exec dsh web $patches {{.CLI_ARGS}}
+
+  dsh:headless:
+    desc: Run one DeepSeek Harness headless task with the repository patches.
+    cmds:
+      - |
+        set -eu
+        patches="--patch .config/dsh/cordis.patch.yml"
+        dsh_home="${DSH_HOME:-$HOME/.dsh}"
+        if [ -f "$dsh_home/profiles/headless/package.json" ] && grep -q '"@deepseek-ai/dsh-hooks-codex"' "$dsh_home/profiles/headless/package.json"; then
+          patches="$patches --patch .config/dsh/hooks.patch.yml"
+        fi
+        exec dsh --profile headless $patches {{.CLI_ARGS}}

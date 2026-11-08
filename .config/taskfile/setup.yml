@@ -7,6 +7,8 @@ tasks:
       - task: setup:aqua
       - task: setup:aqua-links
       - task: setup:codex
+      - task: setup:dsh
+      - task: setup:dsh:plugins
       - task: setup:ouch
       - task: setup:bun
       - task: setup:vite-plus
@@ -88,6 +90,44 @@ tasks:
 
 
 
+
+  setup:dsh:
+    desc: Install DeepSeek Harness CLI with npm.
+    cmds:
+      - |
+        set -eu
+        version="0.2.2-rc.1"
+        if command -v dsh >/dev/null 2>&1 && dsh --version 2>/dev/null | grep -q "$version"; then
+          echo "dsh $version is already installed."
+          exit 0
+        fi
+        npm install --global "@deepseek-ai/dsh@${version}"
+
+  setup:dsh:plugins:
+    desc: Install the dsh hook bridge into the web and headless profiles.
+    deps:
+      - setup:dsh
+    cmds:
+      - |
+        set -eu
+        if ! command -v pnpm >/dev/null 2>&1; then
+          echo "pnpm is required for dsh plugin management; run 'task setup:aqua'." >&2
+          exit 1
+        fi
+        dsh_home="${DSH_HOME:-$HOME/.dsh}"
+        for profile in web headless; do
+          profile_file="$dsh_home/profiles/$profile/package.json"
+          if [ ! -f "$profile_file" ] || ! grep -q '"@deepseek-ai/dsh-hooks-codex"' "$profile_file"; then
+            if ! dsh plugin --profile "$profile" add "@deepseek-ai/dsh-hooks-codex@0.2.2-rc.1"; then
+              echo "warning: failed to install the dsh hooks bridge for $profile; verification still runs in the taqt runner." >&2
+            fi
+          else
+            echo "dsh hooks bridge is already installed for $profile."
+          fi
+          if [ ! -f "$profile_file" ] || ! grep -q '"@deepseek-ai/dsh-hook-protocol"' "$profile_file"; then
+            dsh plugin --profile "$profile" add "@deepseek-ai/dsh-hook-protocol@0.2.2-rc.1" || true
+          fi
+        done
 
   setup:bun:
     desc: Install Bun if missing.
