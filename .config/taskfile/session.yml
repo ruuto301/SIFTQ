@@ -2,7 +2,7 @@ version: "3"
 
 tasks:
   session:backup:
-    desc: Encrypt codex and opencode sessions into sessions/ with zstd and age.
+    desc: Encrypt codex and dsh sessions into sessions/ with zstd and age.
     cmds:
       - uv run python scripts/session_backup.py backup {{.CLI_ARGS}}
 

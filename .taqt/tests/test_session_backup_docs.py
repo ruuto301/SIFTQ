@@ -1,9 +1,9 @@
-"""Documentation coverage for encrypted session backup (Issue #571)."""
+"""Documentation coverage for encrypted session backup."""
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ADR = ROOT / "docs/adr/0069-encrypt-session-backup-with-age.md"
+ADR = ROOT / "docs/adr/0076-back-up-dsh-sessions-with-age.md"
 ADR_INDEX = ROOT / "docs/adr/README.md"
 DOC = ROOT / "docs/contributing/session-backup.md"
 
@@ -26,6 +26,6 @@ def test_session_backup_doc_covers_required_topics() -> None:
     assert "AGE_IDENTITY_FILE" in text
     assert "session:backup" in text
     assert "session:restore" in text
-    assert "200–230MB" in text
+    assert "sessions/dsh/" in text
     assert "git 履歴" in text
-    assert "`event`" in text
+    assert "--dsh-home" in text

@@ -1,3 +1,5 @@
+"""Repository verification gate shared by the dsh hooks and taqt runner."""
+
 import json
 import os
 import socket
@@ -157,18 +159,42 @@ def _failure_result(results: list[dict[str, Any]], *, cwd: Path) -> dict[str, An
     )
 
 
+def workspace_has_changes(cwd: Path) -> bool:
+    """Return whether the worktree has tracked or untracked changes."""
+    for args in (
+        ("git", "diff", "--name-only", "HEAD"),
+        ("git", "ls-files", "--others", "--exclude-standard"),
+    ):
+        completed = subprocess.run(
+            args,
+            cwd=cwd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if completed.returncode == 0 and completed.stdout.strip():
+            return True
+    return False
+
+
 def _changed_paths(cwd: Path) -> list[str]:
-    completed = subprocess.run(
-        ["git", "diff", "--name-only", "HEAD"],
-        cwd=cwd,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return []
-    return [line for line in completed.stdout.splitlines() if line]
+    paths: list[str] = []
+    for args in (
+        ("git", "diff", "--name-only", "HEAD"),
+        ("git", "ls-files", "--others", "--exclude-standard"),
+    ):
+        completed = subprocess.run(
+            args,
+            cwd=cwd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if completed.returncode == 0:
+            paths.extend(line for line in completed.stdout.splitlines() if line)
+    return sorted(set(paths))
 
 
 def _run_command(
