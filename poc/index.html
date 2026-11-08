@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>siftq</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">siftq</div>
+      </header>
+
+      <main class="panes" id="panes">
+        <aside class="pane pane-left" aria-label="タスク">
+          <form class="task-composer" id="task-form">
+            <input id="task-input" type="text" autocomplete="off" placeholder="タスクを追加" aria-label="タスクを追加" />
+            <div class="task-composer-row">
+              <select id="task-project" aria-label="グループ"></select>
+              <button type="submit" class="button primary">追加</button>
+              <button type="button" class="button ghost" data-action="add-tentative" title="仮タスクとして追加">仮</button>
+            </div>
+          </form>
+          <div class="status-tabs" id="status-tabs"></div>
+          <div class="task-list" id="task-list"></div>
+        </aside>
+
+        <div class="splitter" data-side="left" role="separator" aria-orientation="vertical"></div>
+
+        <section class="pane pane-center" id="pane-center" aria-label="チャットとメモ"></section>
+
+        <div class="splitter" data-side="right" role="separator" aria-orientation="vertical"></div>
+
+        <section class="pane pane-right" id="pane-right" aria-label="ブラウザ"></section>
+      </main>
+
+      <footer class="bottombar" id="bottombar"></footer>
+    </div>
+
+    <div class="context-menu" id="context-menu" hidden></div>
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="seed.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
