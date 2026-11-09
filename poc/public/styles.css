@@ -906,7 +906,8 @@ body.resizing .splitter::after {
   padding: 3px 6px;
 }
 
-.settings-groups input {
+.settings-groups input,
+.settings-groups select {
   width: 100%;
 }
 
@@ -920,13 +921,6 @@ body.resizing .splitter::after {
   gap: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--border);
-}
-
-.settings-dsh-home {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 9px;
-  word-break: break-all;
 }
 
 .settings-dsh-state {

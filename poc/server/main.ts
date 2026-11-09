@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { DshManager } from "./acp";
 import { Store, StoreError, normalizeState } from "./store";
+import { readSshHosts } from "./ssh";
 import type { ChatEvent } from "./types";
 
 const PORT = Number(process.env["POC_PORT"] ?? 8099);
@@ -23,6 +24,8 @@ const runtime = new DshManager(store, (event) => {
 const app = new Hono();
 
 app.get("/api/health", (c) => c.json(runtime.getStatuses()));
+
+app.get("/api/ssh-hosts", (c) => c.json(readSshHosts()));
 
 app.get("/api/state", (c) => c.json({ state: store.getPayload(), dsh: runtime.getStatuses() }));
 
@@ -111,8 +114,8 @@ app.post("/api/permissions/:id", async (c) => {
 
 app.post("/api/dsh/retry", async (c) => {
   const body = await c.req.json().catch(() => null);
-  const workspace = isRecord(body) && typeof body["workspace"] === "string" ? body["workspace"] : undefined;
-  return c.json(await runtime.retry(workspace));
+  const target = isRecord(body) && typeof body["target"] === "string" ? body["target"] : undefined;
+  return c.json(await runtime.retry(target));
 });
 
 app.get("/api/events", (c) => {
@@ -127,7 +130,7 @@ app.get("/api/events", (c) => {
       };
       subscribers.add(send);
       for (const entry of runtime.getStatuses()) {
-        send({ type: "dsh", workspace: entry.workspace, status: entry.status });
+        send({ type: "dsh", target: entry.target, status: entry.status });
       }
       const ping = setInterval(() => {
         try {

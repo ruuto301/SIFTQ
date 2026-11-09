@@ -5,7 +5,7 @@ export type PermissionMode = "ask" | "allow_all";
 
 export type Group = {
   name: string;
-  workspace: string;
+  target: string;
 };
 
 export type BrowserTab = {
@@ -40,7 +40,7 @@ export type Conversation = {
   id: string;
   title: string;
   dshSessionId: string | null;
-  dshWorkspace: string | null;
+  dshTarget: string | null;
   permissionMode: PermissionMode;
   configOptions: ConfigOption[];
   messages: ChatMessage[];
@@ -89,12 +89,12 @@ export type GroupsFile = {
 export type DshStatus = {
   state: "starting" | "ready" | "error" | "mock" | "stopped";
   profile: string;
-  dshHome?: string | null;
+  target: string;
   error?: string;
 };
 
 export type DshStatusEntry = {
-  workspace: string;
+  target: string;
   status: DshStatus;
 };
 
@@ -109,5 +109,5 @@ export type ChatEvent =
   | { type: "status"; conversationId: string; working: boolean }
   | { type: "config"; conversationId: string; configOptions: ConfigOption[] }
   | { type: "permission"; conversationId: string; requestId: string; title: string; options: { id: string; name: string }[] }
-  | { type: "dsh"; workspace: string; status: DshStatus }
+  | { type: "dsh"; target: string; status: DshStatus }
   | { type: "error"; conversationId?: string; message: string };

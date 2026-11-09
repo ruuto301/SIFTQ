@@ -9,10 +9,10 @@ export function createSeedState() {
     paneWidths: { left: 300, right: 400 },
     projectOrder: ["Yoriwake", "YouTube", "生活", "その他"],
     groups: [
-      { name: "Yoriwake", workspace: "" },
-      { name: "YouTube", workspace: "" },
-      { name: "生活", workspace: "" },
-      { name: "その他", workspace: "" },
+      { name: "Yoriwake", target: "" },
+      { name: "YouTube", target: "" },
+      { name: "生活", target: "" },
+      { name: "その他", target: "" },
     ],
     collapsed: {},
     tasks: [

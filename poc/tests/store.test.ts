@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Store, StoreError } from "../server/store";
+import { Store } from "../server/store";
 import type { Task } from "../server/types";
 
 const temporaryDirectories: string[] = [];
@@ -57,7 +57,7 @@ describe("Store", () => {
           id: "conv-test",
           title: "メイン",
           dshSessionId: null,
-          dshWorkspace: null,
+          dshTarget: null,
           permissionMode: "ask",
           configOptions: [],
           messages: [],
@@ -67,7 +67,7 @@ describe("Store", () => {
       ui: { centerTab: "chat", selectedConversationId: "conv-test" },
     };
     payload.tasks.push(task);
-    payload.groups.push({ name: "TestGroup", workspace: "" });
+    payload.groups.push({ name: "TestGroup", target: "" });
     payload.projectOrder.push("TestGroup");
     store.save(payload);
 
@@ -77,12 +77,13 @@ describe("Store", () => {
     expect(reloaded.tasks.find((item) => item.id === "task-test")?.memo).toBe("メモ");
   });
 
-  it("rejects a workspace path that does not exist", () => {
+  it("persists a target without local path validation", () => {
     const { store } = temporaryStore();
     const payload = store.getPayload();
-    payload.groups.push({ name: "Bad", workspace: "/definitely/not/a/directory" });
+    payload.groups.push({ name: "TestGroup", target: "ssh:test-host" });
 
-    expect(() => store.save(payload)).toThrow(StoreError);
+    const saved = store.save(payload);
+    expect(saved.groups.some((group) => group.target === "ssh:test-host")).toBe(true);
   });
 
   it("appends and updates chat messages", () => {

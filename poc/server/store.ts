@@ -3,10 +3,9 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { configOptionsFromAcp } from "./config";
 import { createSeedState } from "./seed";
 import type {
@@ -23,7 +22,9 @@ import type {
 } from "./types";
 
 const APP_ROOT = join(import.meta.dir, "..");
-export const DATA_DIR = join(APP_ROOT, "data");
+export const DATA_DIR = process.env["POC_DATA_DIR"]
+  ? resolve(process.env["POC_DATA_DIR"])
+  : join(APP_ROOT, "data");
 
 export class StoreError extends Error {
   readonly group: string | null;
@@ -146,8 +147,8 @@ function normalizeConversation(value: unknown, taskId: string, index: number): C
   const id = stringValue(source["id"], "conv-" + taskId + "-" + index);
   const dshSessionIdRaw = source["dshSessionId"];
   const dshSessionId = typeof dshSessionIdRaw === "string" && dshSessionIdRaw !== "" ? dshSessionIdRaw : null;
-  const dshWorkspaceRaw = source["dshWorkspace"];
-  const dshWorkspace = typeof dshWorkspaceRaw === "string" && dshWorkspaceRaw !== "" ? dshWorkspaceRaw : null;
+  const dshTargetRaw = source["dshTarget"] ?? source["dshWorkspace"];
+  const dshTarget = typeof dshTargetRaw === "string" && dshTargetRaw !== "" ? dshTargetRaw : null;
   const permissionMode = isPermissionMode(source["permissionMode"]) ? source["permissionMode"] : "ask";
   const messagesRaw = Array.isArray(source["messages"]) ? source["messages"] : [];
   const messages = messagesRaw.flatMap((item, messageIndex) => {
@@ -158,7 +159,7 @@ function normalizeConversation(value: unknown, taskId: string, index: number): C
     id,
     title: stringValue(source["title"], index === 0 ? "メイン" : "会話 " + (index + 1)),
     dshSessionId,
-    dshWorkspace,
+    dshTarget,
     permissionMode,
     configOptions: normalizeConfigOptions(source["configOptions"]),
     messages,
@@ -213,17 +214,19 @@ function normalizeGroups(
   const rawList = Array.isArray(rawGroups) ? rawGroups : [];
   const groups: Group[] = [];
   const seen = new Set<string>();
-  const add = (name: string, workspace: string): void => {
+  const add = (name: string, target: string): void => {
     if (name === "" || seen.has(name)) return;
     seen.add(name);
-    groups.push({ name, workspace });
+    groups.push({ name, target });
   };
   for (const item of rawList) {
     if (!isRecord(item)) continue;
-    add(stringValue(item["name"]), stringValue(item["workspace"]));
+    const legacyWorkspace = stringValue(item["workspace"]);
+    const target = stringValue(item["target"], legacyWorkspace.startsWith("ssh:") ? legacyWorkspace : "");
+    add(stringValue(item["name"]), target);
   }
   if (groups.length === 0) {
-    for (const group of fallbackGroups) add(group.name, group.workspace);
+    for (const group of fallbackGroups) add(group.name, group.target);
   }
   for (const task of tasks) add(task.project, "");
   add("その他", "");
@@ -353,18 +356,6 @@ export class Store {
   }
 
   save(payload: StatePayload): StatePayload {
-    for (const group of payload.groups) {
-      const workspace = group.workspace.trim();
-      if (workspace === "") continue;
-      try {
-        if (!statSync(workspace).isDirectory()) {
-          throw new StoreError("workspace is not a directory", group.name);
-        }
-      } catch (error) {
-        if (error instanceof StoreError) throw error;
-        throw new StoreError("workspace does not exist", group.name);
-      }
-    }
     const normalized = normalizeState(payload);
     const groups = normalizeGroups(payload.groups, normalized.groups, normalized.tasks);
     normalized.groups = groups.groups;
@@ -378,7 +369,7 @@ export class Store {
         const old = previous.get(conversation.id);
         if (old !== undefined) {
           conversation.dshSessionId = old.dshSessionId;
-          conversation.dshWorkspace = old.dshWorkspace;
+          conversation.dshTarget = old.dshTarget;
           conversation.configOptions = old.configOptions;
         }
         conversation.messages = this.readMessages(conversation.id);
@@ -397,26 +388,21 @@ export class Store {
     return null;
   }
 
-  getGroupWorkspace(project: string): string {
+  getGroupTarget(project: string): string {
     const group = this.state.groups.find((item) => item.name === project);
-    return group?.workspace.trim() ?? "";
+    return group?.target.trim() ?? "";
   }
 
-  getWorkspace(project: string): string {
-    const workspace = this.getGroupWorkspace(project);
-    return workspace !== "" ? workspace : process.cwd();
-  }
-
-  getConversationWorkspace(conversationId: string): string {
+  getConversationTarget(conversationId: string): string {
     const found = this.getConversation(conversationId);
     if (found === null) return "";
-    return found.conversation.dshWorkspace ?? this.getGroupWorkspace(found.task.project);
+    return found.conversation.dshTarget ?? this.getGroupTarget(found.task.project);
   }
 
-  setDshWorkspace(conversationId: string, workspace: string): void {
+  setDshTarget(conversationId: string, target: string): void {
     const found = this.getConversation(conversationId);
     if (found === null) return;
-    found.conversation.dshWorkspace = workspace;
+    found.conversation.dshTarget = target;
     this.persistCurrent();
   }
 

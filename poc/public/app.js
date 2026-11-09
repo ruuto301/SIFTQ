@@ -12,6 +12,7 @@
 
   let state = null;
   let dshStatuses = new Map();
+  let sshHosts = [];
   let pendingFocus = null;
   let toastTimer = null;
   let saveTimer = null;
@@ -40,7 +41,7 @@
     const payload = await response.json();
     state = payload.state;
     dshStatuses = new Map(
-      (Array.isArray(payload.dsh) ? payload.dsh : []).map((entry) => [entry.workspace, entry.status]),
+      (Array.isArray(payload.dsh) ? payload.dsh : []).map((entry) => [entry.target, entry.status]),
     );
     ensureState();
     updateDshStatus();
@@ -146,7 +147,7 @@
     if (!Array.isArray(state.projectOrder)) state.projectOrder = [];
     if (!state.groups.some((group) => group.name === name)) {
       const otherGroupIndex = state.groups.findIndex((group) => group.name === "その他");
-      const group = { name: name, workspace: "" };
+      const group = { name: name, target: "" };
       if (otherGroupIndex === -1) state.groups.push(group);
       else state.groups.splice(otherGroupIndex, 0, group);
     }
@@ -925,7 +926,7 @@
       const conversation = task.conversations.find((item) => item.id === conversationId);
       if (!conversation) return;
       conversation.configOptions = payload.configOptions;
-      preparedConversations.add(conversationId + ":" + selectedWorkspace());
+      preparedConversations.add(conversationId + ":" + selectedTarget());
       renderCenter();
     } catch {
       // DSH未接続時はモデル選択を空のままにする。
@@ -1133,15 +1134,36 @@
     }
   }
 
-  function selectedWorkspace() {
+  function selectedTarget() {
     const task = selectedTask();
     if (!task) return "";
     const group = state.groups.find((item) => item.name === task.project);
-    return group ? group.workspace.trim() : "";
+    return group ? group.target.trim() : "";
   }
 
-  function dshStatusFor(workspace) {
-    return dshStatuses.get(workspace) ?? { state: "stopped", profile: "acp" };
+  function dshStatusFor(target) {
+    return dshStatuses.get(target) ?? { state: "stopped", profile: "acp", target: target };
+  }
+
+  function targetOptionsHtml(current) {
+    const options = [{ value: "", label: "ローカル" }];
+    for (const host of sshHosts) options.push({ value: "ssh:" + host, label: "ssh:" + host });
+    if (current !== "" && !options.some((option) => option.value === current)) {
+      options.push({ value: current, label: current });
+    }
+    options.push({ value: "__custom__", label: "カスタム SSH..." });
+    return options
+      .map(
+        (option) =>
+          '<option value="' +
+          esc(option.value) +
+          '"' +
+          (option.value === current ? " selected" : "") +
+          ">" +
+          esc(option.label) +
+          "</option>",
+      )
+      .join("");
   }
 
   function dshStatusLabel(status) {
@@ -1158,7 +1180,7 @@
   function updateDshStatus() {
     const chip = $("#dsh-status");
     if (!chip) return;
-    const status = dshStatusFor(selectedWorkspace());
+    const status = dshStatusFor(selectedTarget());
     chip.textContent = "DSH: " + dshStatusLabel(status);
     chip.className = "dsh-status " + status.state;
   }
@@ -1182,6 +1204,21 @@
     const modal = $("#settings-modal");
     if (modal) modal.hidden = false;
     renderSettings();
+    void loadSshHosts();
+  }
+
+  async function loadSshHosts() {
+    try {
+      const response = await fetch("/api/ssh-hosts");
+      if (!response.ok) return;
+      const hosts = await response.json();
+      if (!Array.isArray(hosts)) return;
+      sshHosts = hosts.filter((host) => typeof host === "string");
+      const modal = $("#settings-modal");
+      if (modal && !modal.hidden) renderSettings();
+    } catch {
+      // SSH設定が読めない場合はカスタム入力だけを使う。
+    }
   }
 
   function closeSettings() {
@@ -1197,10 +1234,7 @@
     const rows = groups
       .map((group, index) => {
         const fixed = group.name === "その他";
-        const status = dshStatusFor(group.workspace.trim());
-        const home = status.dshHome
-          ? '<div class="settings-dsh-home">' + esc(status.dshHome) + "</div>"
-          : "";
+        const status = dshStatusFor(group.target.trim());
         return (
           "<tr>" +
           '<td><input class="settings-group-name" data-index="' +
@@ -1210,20 +1244,18 @@
           '"' +
           (fixed ? " readonly" : "") +
           "></td>" +
-          '<td><input class="settings-group-workspace" data-index="' +
+          '<td><select class="settings-group-target" data-index="' +
           index +
-          '" value="' +
-          esc(group.workspace) +
-          '" placeholder="未設定">' +
-          home +
-          "</td>" +
+          '">' +
+          targetOptionsHtml(group.target.trim()) +
+          "</select></td>" +
           '<td class="settings-dsh-state" title="' +
           esc(status.error ?? "") +
           '">' +
           esc(dshStatusLabel(status)) +
-          (group.workspace.trim() !== "" && status.state !== "ready" && status.state !== "mock"
-            ? ' <button type="button" class="mini" data-action="retry-dsh" data-workspace="' +
-              esc(group.workspace.trim()) +
+          (group.target.trim() !== "" && status.state !== "ready" && status.state !== "mock"
+            ? ' <button type="button" class="mini" data-action="retry-dsh" data-target="' +
+              esc(group.target.trim()) +
               '">接続</button>'
             : "") +
           "</td>" +
@@ -1246,13 +1278,13 @@
     body.innerHTML =
       '<section class="settings-section">' +
       "<h3>グループ</h3>" +
-      '<table class="settings-groups"><thead><tr><th>名前</th><th>ワークスペース</th><th>DSH</th><th></th></tr></thead><tbody>' +
+      '<table class="settings-groups"><thead><tr><th>名前</th><th>接続先</th><th>DSH</th><th></th></tr></thead><tbody>' +
       rows +
       "</tbody></table>" +
       '<div class="settings-actions" style="padding-top:8px;border-top:none;justify-content:flex-start">' +
       '<button type="button" class="button small" data-action="add-group-row">グループを追加</button>' +
       "</div>" +
-      '<p class="hint">workspaceは空でも保存できます。workspace内の .dsh / dsh / .credentials.yaml / .env をDSHの設定として使います。</p>' +
+      '<p class="hint">接続先はローカルまたは ssh:ホストです。ssh:ホストは ~/.ssh/config の Host を使います。カスタム SSH で直接指定できます。</p>' +
       "</section>" +
       '<section class="settings-section">' +
       "<h3>DSH</h3>" +
@@ -1270,7 +1302,7 @@
 
   function addGroupRow() {
     if (settingsDraft === null) return;
-    settingsDraft.push({ name: "", workspace: "" });
+    settingsDraft.push({ name: "", target: "" });
     renderSettings();
   }
 
@@ -1285,15 +1317,20 @@
   async function saveSettings() {
     if (settingsDraft === null) return;
     const nameInputs = Array.from(document.querySelectorAll(".settings-group-name"));
-    const workspaceInputs = Array.from(document.querySelectorAll(".settings-group-workspace"));
+    const targetInputs = Array.from(document.querySelectorAll(".settings-group-target"));
     const names = new Set();
     const nextGroups = [];
     const renamed = new Map();
     for (const input of nameInputs) {
       const index = Number(input.dataset.index);
       const name = input.value.trim();
-      const workspaceInput = workspaceInputs.find((item) => Number(item.dataset.index) === index);
-      const workspace = workspaceInput ? workspaceInput.value.trim() : "";
+      const targetInput = targetInputs.find((item) => Number(item.dataset.index) === index);
+      let target = targetInput ? targetInput.value.trim() : "";
+      if (target === "__custom__") {
+        const custom = window.prompt("接続先 (例: ssh:yoriwake.sbx)");
+        target = custom?.trim() ?? "";
+        if (target !== "" && !target.startsWith("ssh:")) target = "ssh:" + target;
+      }
       if (name === "") {
         showSettingsError("グループ名を入力してください");
         return;
@@ -1305,7 +1342,7 @@
       names.add(name);
       const old = settingsDraft[index];
       if (old && old.name !== name) renamed.set(old.name, name);
-      nextGroups.push({ name: name, workspace: workspace });
+      nextGroups.push({ name: name, target: target });
     }
     if (!names.has("その他")) {
       showSettingsError("その他グループは削除できません");
@@ -1341,17 +1378,17 @@
     toast("設定を保存しました");
   }
 
-  async function retryDsh(workspace) {
+  async function retryDsh(target) {
     try {
       const response = await fetch("/api/dsh/retry", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(workspace ? { workspace: workspace } : {}),
+        body: JSON.stringify(target ? { target: target } : {}),
       });
       if (!response.ok) throw new Error("再接続に失敗しました");
       const entries = await response.json();
       if (Array.isArray(entries)) {
-        dshStatuses = new Map(entries.map((entry) => [entry.workspace, entry.status]));
+        dshStatuses = new Map(entries.map((entry) => [entry.target, entry.status]));
       }
       updateDshStatus();
       renderSettings();
@@ -1413,13 +1450,13 @@
   function applyEvent(event) {
     if (!event || typeof event.type !== "string") return;
     if (event.type === "dsh") {
-      dshStatuses.set(event.workspace, event.status);
+      dshStatuses.set(event.target, event.status);
       updateDshStatus();
       const modal = $("#settings-modal");
       if (modal && !modal.hidden) renderSettings();
       if (
         (event.status.state === "ready" || event.status.state === "mock") &&
-        event.workspace === selectedWorkspace()
+        event.target === selectedTarget()
       ) {
         prepareSelectedConversation();
       }
@@ -1500,10 +1537,10 @@
     const task = selectedTask();
     if (!task || task.ui.centerTab !== "chat") return;
     const conversation = currentConversation(task);
-    const workspace = selectedWorkspace();
-    const currentWorkspace = conversation.dshWorkspace ?? "";
-    if (conversation.configOptions.length > 0 && currentWorkspace === workspace) return;
-    if (preparedConversations.has(conversation.id + ":" + workspace)) return;
+    const target = selectedTarget();
+    const currentTarget = conversation.dshTarget ?? "";
+    if (conversation.configOptions.length > 0 && currentTarget === target) return;
+    if (preparedConversations.has(conversation.id + ":" + target)) return;
     void prepareConversation(conversation.id);
   }
 
@@ -1763,7 +1800,7 @@
         void saveSettings();
         break;
       case "retry-dsh":
-        void retryDsh(target.dataset.workspace ?? undefined);
+        void retryDsh(target.dataset.target ?? undefined);
         break;
       case "permission-choice":
         void respondPermission(target.dataset.optionId);
@@ -1815,6 +1852,24 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ permissionMode: target.value }),
       }).catch((error) => toast(error instanceof Error ? error.message : String(error)));
+      return;
+    }
+    if (target.classList.contains("settings-group-target")) {
+      const index = Number(target.dataset.index);
+      if (target.value === "__custom__") {
+        const value = window.prompt("接続先 (例: ssh:yoriwake.sbx)");
+        const normalized = value?.trim() ?? "";
+        const targetValue = normalized === "" ? "" : normalized.startsWith("ssh:") ? normalized : "ssh:" + normalized;
+        if (settingsDraft !== null && settingsDraft[index] !== undefined) {
+          settingsDraft[index].target = targetValue;
+          renderSettings();
+        }
+        return;
+      }
+      if (settingsDraft !== null && settingsDraft[index] !== undefined) {
+        settingsDraft[index].target = target.value;
+      }
+      return;
     }
   });
 
