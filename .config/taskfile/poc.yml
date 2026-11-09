@@ -1,0 +1,28 @@
+version: "3"
+
+tasks:
+  poc:setup:
+    desc: Install poc dependencies.
+    cmds:
+      - cd poc && bun install
+
+  poc:dev:
+    desc: Start the poc local web app.
+    cmds:
+      - cd poc && bun run dev
+
+  poc:test:
+    desc: Run poc tests.
+    cmds:
+      - cd poc && bun test
+
+  poc:typecheck:
+    desc: Typecheck the poc app.
+    cmds:
+      - cd poc && bun run typecheck
+
+  poc:check:
+    desc: Run poc typecheck and tests.
+    deps:
+      - poc:typecheck
+      - poc:test
