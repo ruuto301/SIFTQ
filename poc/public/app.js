@@ -13,6 +13,7 @@
   let state = null;
   let dshStatuses = new Map();
   let sshHosts = [];
+  let sandboxError = null;
   let pendingFocus = null;
   let toastTimer = null;
   let saveTimer = null;
@@ -55,7 +56,7 @@
     }, 120);
   }
 
-  async function persistState() {
+  async function persistState(applyServerState = false) {
     if (state === null) return false;
     try {
       const response = await fetch("/api/state", {
@@ -66,6 +67,14 @@
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error ?? "保存に失敗しました");
+      }
+      const payload = await response.json().catch(() => null);
+      if (payload && Array.isArray(payload.dsh)) {
+        dshStatuses = new Map(payload.dsh.map((entry) => [entry.target, entry.status]));
+      }
+      if (applyServerState && payload && payload.state) {
+        state = payload.state;
+        ensureState();
       }
       showSettingsError("");
       return true;
@@ -464,7 +473,17 @@
 
   function configSelectsHtml(conversation) {
     if (!Array.isArray(conversation.configOptions) || conversation.configOptions.length === 0) {
-      return '<span class="config-empty">モデル: 未接続</span>';
+      const target = conversation.dshTarget || selectedTarget();
+      const status = dshStatusFor(target);
+      if (status.state === "starting") {
+        return '<span class="config-empty">モデル: 接続中…</span>';
+      }
+      const detail =
+        conversation.prepareError ||
+        (status.state === "error" && typeof status.error === "string" ? status.error : "");
+      const firstLine = String(detail).split("\n")[0].trim();
+      const suffix = firstLine === "" ? "" : "（" + firstLine.slice(0, 120) + "）";
+      return '<span class="config-empty">モデル: 未接続' + esc(suffix) + "</span>";
     }
     return conversation.configOptions
       .map(
@@ -918,7 +937,17 @@
       const response = await fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/prepare", {
         method: "POST",
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const message = payload.error ?? "DSH に接続できません";
+        toast(message);
+        const found = findConversationById(conversationId);
+        if (found) {
+          found.conversation.prepareError = message;
+          renderCenter();
+        }
+        return;
+      }
       const payload = await response.json();
       if (!Array.isArray(payload.configOptions)) return;
       const task = selectedTask();
@@ -926,10 +955,18 @@
       const conversation = task.conversations.find((item) => item.id === conversationId);
       if (!conversation) return;
       conversation.configOptions = payload.configOptions;
+      conversation.dshTarget = selectedTarget();
+      delete conversation.prepareError;
       preparedConversations.add(conversationId + ":" + selectedTarget());
       renderCenter();
-    } catch {
-      // DSH未接続時はモデル選択を空のままにする。
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast(message);
+      const found = findConversationById(conversationId);
+      if (found) {
+        found.conversation.prepareError = message;
+        renderCenter();
+      }
     }
   }
 
@@ -1146,7 +1183,9 @@
   }
 
   function targetOptionsHtml(current) {
-    const options = [{ value: "", label: "ローカル" }];
+    const localStatus = dshStatusFor("");
+    const localLabel = localStatus.state === "error" ? "ローカル（dsh 未導入）" : "ローカル";
+    const options = [{ value: "", label: localLabel }];
     for (const host of sshHosts) options.push({ value: host, label: host });
     if (current !== "" && !options.some((option) => option.value === current)) {
       options.push({ value: current, label: current });
@@ -1208,17 +1247,39 @@
   }
 
   async function loadSshHosts() {
+    const hosts = new Set();
+    let error = null;
+    try {
+      const response = await fetch("/api/sandboxes");
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.hosts)) {
+          for (const host of data.hosts) {
+            if (typeof host === "string" && host !== "") hosts.add(host);
+          }
+        }
+        if (data && typeof data.error === "string" && data.error !== "") error = data.error;
+      }
+    } catch {
+      // Sandbox一覧が読めない場合はSSH設定へフォールバックする。
+    }
     try {
       const response = await fetch("/api/ssh-hosts");
-      if (!response.ok) return;
-      const hosts = await response.json();
-      if (!Array.isArray(hosts)) return;
-      sshHosts = hosts.filter((host) => typeof host === "string");
-      const modal = $("#settings-modal");
-      if (modal && !modal.hidden) renderSettings();
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          for (const host of data) {
+            if (typeof host === "string" && host !== "") hosts.add(host);
+          }
+        }
+      }
     } catch {
       // SSH設定が読めない場合はカスタム入力だけを使う。
     }
+    sshHosts = Array.from(hosts).sort((left, right) => left.localeCompare(right));
+    sandboxError = error;
+    const modal = $("#settings-modal");
+    if (modal && !modal.hidden) renderSettings();
   }
 
   function closeSettings() {
@@ -1284,7 +1345,8 @@
       '<div class="settings-actions" style="padding-top:8px;border-top:none;justify-content:flex-start">' +
       '<button type="button" class="button small" data-action="add-group-row">グループを追加</button>' +
       "</div>" +
-      '<p class="hint">接続先はローカルまたはSSHホスト名です。ホストは ~/.ssh/config の Host から選べます。カスタムでホスト名を入力できます。</p>' +
+      '<p class="hint">接続先はローカルまたはSSHホスト名です。ローカルにはホストの dsh、SSH 先には sandbox 内の dsh が必要です。Docker Sandboxes の sandbox と ~/.ssh/config の Host から選べます。カスタムでホスト名を入力できます。</p>' +
+      (sandboxError ? '<p class="hint">sbx: ' + esc(sandboxError) + "</p>" : "") +
       '<p class="hint">データは poc/data に保存されます。ブラウザをリロードしても残ります。</p>' +
       "</section>" +
       '<section class="settings-section">' +
@@ -1370,10 +1432,11 @@
         delete state.collapsed[key];
       }
     }
-    const saved = await persistState();
+    const saved = await persistState(true);
     if (!saved) return;
     closeSettings();
     render();
+    preparedConversations.clear();
     prepareSelectedConversation();
     toast("設定を保存しました");
   }

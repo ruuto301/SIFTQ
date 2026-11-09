@@ -10,6 +10,7 @@ import {
   type SessionNotification,
 } from "@agentclientprotocol/sdk";
 import { configOptionsFromAcp } from "./config";
+import { sandboxWorkspaceForHost } from "./sandboxes";
 import type { Store } from "./store";
 import type { ChatEvent, ChatMessage, ConfigOption, DshStatus, DshStatusEntry, Task } from "./types";
 
@@ -79,6 +80,7 @@ export class DshRuntime {
   private readonly bin: string;
   private readonly profile: string;
   private readonly target: string;
+  private readonly cwd: string;
   private sessionCwd: string;
   private child: ChildProcessWithoutNullStreams | null = null;
   private connection: ClientConnection | null = null;
@@ -97,12 +99,13 @@ export class DshRuntime {
   constructor(
     private readonly store: Store,
     private readonly emit: (event: ChatEvent) => void,
-    options: { mode?: RuntimeMode; bin?: string; profile?: string; target?: string } = {},
+    options: { mode?: RuntimeMode; bin?: string; profile?: string; target?: string; cwd?: string } = {},
   ) {
     this.mode = options.mode ?? "real";
     this.bin = options.bin ?? process.env["POC_DSH_BIN"] ?? "dsh";
     this.profile = options.profile ?? process.env["POC_DSH_PROFILE"] ?? "acp";
     this.target = options.target ?? "";
+    this.cwd = options.cwd ?? "";
     this.sessionCwd = process.cwd();
     this.status = {
       state: this.mode === "mock" ? "mock" : "starting",
@@ -136,12 +139,18 @@ export class DshRuntime {
     this.setStatus({ state: "starting", profile: this.profile, target: this.target });
     try {
       const sshHost = this.sshHost();
+      const sshBin = process.env["POC_SSH_BIN"] ?? "ssh";
       if (sshHost !== null) {
-        const probe = spawnSync("ssh", [sshHost, "pwd"], { encoding: "utf8" });
-        if (probe.status !== 0 || probe.stdout.trim() === "") {
-          throw new Error(probe.stderr.trim() || "ssh " + sshHost + " failed");
+        if (this.cwd !== "") {
+          this.sessionCwd = this.cwd;
+        } else {
+          const probe = spawnSync(sshBin, [sshHost, "pwd"], { encoding: "utf8", windowsHide: true });
+          if (probe.error) throw probe.error;
+          if (probe.status !== 0 || probe.stdout.trim() === "") {
+            throw new Error(probe.stderr.trim() || "ssh " + sshHost + " failed");
+          }
+          this.sessionCwd = probe.stdout.trim();
         }
-        this.sessionCwd = probe.stdout.trim();
       } else {
         this.sessionCwd = process.cwd();
       }
@@ -213,20 +222,48 @@ export class DshRuntime {
 
   private async spawnAndInitialize(): Promise<void> {
     const sshHost = this.sshHost();
+    const sshBin = process.env["POC_SSH_BIN"] ?? "ssh";
+    const remoteBin = process.env["POC_DSH_REMOTE_BIN"] ?? "dsh";
     const child =
       sshHost === null
         ? spawn(this.bin, ["--profile", this.profile], {
             cwd: process.cwd(),
             env: process.env,
             stdio: ["pipe", "pipe", "pipe"],
+            windowsHide: true,
           })
-        : spawn("ssh", [sshHost, "dsh", "--profile", this.profile], {
+        : spawn(sshBin, [sshHost, remoteBin, "--profile", this.profile], {
             cwd: process.cwd(),
             env: process.env,
             stdio: ["pipe", "pipe", "pipe"],
+            windowsHide: true,
           });
     this.child = child;
     this.stderr = "";
+    const spawned = new Promise<void>((resolve, reject) => {
+      child.once("spawn", () => resolve());
+      child.once("error", (error) => reject(error));
+    });
+    const exited = new Promise<never>((_, reject) => {
+      child.once("exit", (code, signal) => {
+        const detail = this.stderr.trim();
+        const suffix = code === null ? (signal ?? "unknown") : String(code);
+        reject(new Error(detail !== "" ? detail : "DSH exited (" + suffix + ")"));
+      });
+    });
+    exited.catch(() => undefined);
+    child.on("error", (error) => {
+      if (this.child !== child) return;
+      this.child = null;
+      this.connection = null;
+      this.activeSessions.clear();
+      this.setStatus({
+        state: "error",
+        profile: this.profile,
+        target: this.target,
+        error: this.errorText(error),
+      });
+    });
     child.stderr.on("data", (chunk: Buffer) => {
       this.stderr += chunk.toString();
       if (this.stderr.length > 16000) this.stderr = this.stderr.slice(-16000);
@@ -236,9 +273,13 @@ export class DshRuntime {
         this.child = null;
         this.connection = null;
         this.activeSessions.clear();
-        if (this.mode !== "mock") this.setStatus({ state: "stopped", profile: this.profile, target: this.target });
+        if (this.mode !== "mock" && this.status.state !== "starting") {
+          this.setStatus({ state: "stopped", profile: this.profile, target: this.target });
+        }
       }
     });
+
+    await spawned;
 
     const stream = ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout));
     const app = client({ name: "siftq-poc" })
@@ -248,14 +289,30 @@ export class DshRuntime {
       .onRequest("session/request_permission", (context) => this.handlePermission(context.params, context.signal));
     const connection = app.connect(stream);
     this.connection = connection;
-    await connection.agent.request("initialize", {
-      protocolVersion: PROTOCOL_VERSION,
-      clientCapabilities: {
-        fs: { readTextFile: false, writeTextFile: false },
-        terminal: false,
-      },
-      clientInfo: { name: "siftq-poc", version: "0.1.0" },
+
+    const timeoutRaw = Number(process.env["POC_DSH_START_TIMEOUT_MS"] ?? "20000");
+    const timeoutMs = Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : 20000;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("DSH の初期化がタイムアウトしました")), timeoutMs);
     });
+    timedOut.catch(() => undefined);
+    try {
+      await Promise.race([
+        connection.agent.request("initialize", {
+          protocolVersion: PROTOCOL_VERSION,
+          clientCapabilities: {
+            fs: { readTextFile: false, writeTextFile: false },
+            terminal: false,
+          },
+          clientInfo: { name: "siftq-poc", version: "0.1.0" },
+        }),
+        exited,
+        timedOut,
+      ]);
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+    }
   }
 
   private requireConnection(): ClientConnection {
@@ -664,9 +721,14 @@ export class DshManager {
   private runtimeFor(target: string): DshRuntime {
     const existing = this.runtimes.get(target);
     if (existing !== undefined) return existing;
+    const cwd =
+      target === ""
+        ? ""
+        : (sandboxWorkspaceForHost(target) ?? process.env["POC_SSH_CWD"] ?? "");
     const runtime = new DshRuntime(this.store, this.emit, {
       ...this.options,
       target: target,
+      cwd: cwd,
     });
     this.runtimes.set(target, runtime);
     void runtime.start().catch(() => undefined);
@@ -676,7 +738,12 @@ export class DshManager {
   private targetFor(conversationId: string): string {
     const found = this.store.getConversation(conversationId);
     if (found === null) throw new Error("conversation not found");
-    return found.conversation.dshTarget ?? this.store.getGroupTarget(found.task.project);
+    const groupTarget = this.store.getGroupTarget(found.task.project);
+    const stored = found.conversation.dshTarget;
+    if (stored !== null && stored !== "" && stored !== groupTarget) {
+      this.store.resetConversationDsh(conversationId);
+    }
+    return groupTarget;
   }
 
   async start(): Promise<void> {

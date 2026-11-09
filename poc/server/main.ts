@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { DshManager } from "./acp";
 import { Store, StoreError, normalizeState } from "./store";
+import { readSandboxes } from "./sandboxes";
 import { readSshHosts } from "./ssh";
 import type { ChatEvent } from "./types";
 
@@ -24,6 +25,8 @@ const runtime = new DshManager(store, (event) => {
 const app = new Hono();
 
 app.get("/api/health", (c) => c.json(runtime.getStatuses()));
+
+app.get("/api/sandboxes", (c) => c.json(readSandboxes()));
 
 app.get("/api/ssh-hosts", (c) => c.json(readSshHosts()));
 
@@ -180,7 +183,7 @@ app.get("/styles.css", (c) =>
   }),
 );
 
-void runtime.start();
+void runtime.start().catch(() => undefined);
 
 const server = Bun.serve({
   hostname: "127.0.0.1",

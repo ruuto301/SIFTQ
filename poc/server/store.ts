@@ -374,17 +374,28 @@ export class Store {
     const groups = normalizeGroups(payload.groups, normalized.groups, normalized.tasks);
     normalized.groups = groups.groups;
     normalized.projectOrder = groups.projectOrder;
+    const targetByGroup = new Map<string, string>(
+      groups.groups.map((group) => [group.name, group.target.trim()]),
+    );
     const previous = new Map<string, Conversation>();
     for (const task of this.state.tasks) {
       for (const conversation of task.conversations) previous.set(conversation.id, conversation);
     }
     for (const task of normalized.tasks) {
+      const groupTarget = targetByGroup.get(task.project) ?? "";
       for (const conversation of task.conversations) {
         const old = previous.get(conversation.id);
         if (old !== undefined) {
-          conversation.dshSessionId = old.dshSessionId;
-          conversation.dshTarget = old.dshTarget;
-          conversation.configOptions = old.configOptions;
+          const oldTarget = old.dshTarget === "" ? null : old.dshTarget;
+          if (oldTarget !== null && oldTarget !== groupTarget) {
+            conversation.dshTarget = null;
+            conversation.dshSessionId = null;
+            conversation.configOptions = [];
+          } else {
+            conversation.dshSessionId = old.dshSessionId;
+            conversation.dshTarget = oldTarget;
+            conversation.configOptions = old.configOptions;
+          }
         }
         conversation.messages = this.readMessages(conversation.id);
       }
@@ -410,7 +421,25 @@ export class Store {
   getConversationTarget(conversationId: string): string {
     const found = this.getConversation(conversationId);
     if (found === null) return "";
-    return found.conversation.dshTarget ?? this.getGroupTarget(found.task.project);
+    const stored = found.conversation.dshTarget;
+    return stored !== null && stored !== "" ? stored : this.getGroupTarget(found.task.project);
+  }
+
+  resetConversationDsh(conversationId: string): void {
+    const found = this.getConversation(conversationId);
+    if (found === null) return;
+    const conversation = found.conversation;
+    if (
+      conversation.dshTarget === null &&
+      conversation.dshSessionId === null &&
+      conversation.configOptions.length === 0
+    ) {
+      return;
+    }
+    conversation.dshTarget = null;
+    conversation.dshSessionId = null;
+    conversation.configOptions = [];
+    this.persistCurrent();
   }
 
   setDshTarget(conversationId: string, target: string): void {
