@@ -80,10 +80,10 @@ describe("Store", () => {
   it("persists a target without local path validation", () => {
     const { store } = temporaryStore();
     const payload = store.getPayload();
-    payload.groups.push({ name: "TestGroup", target: "ssh:test-host" });
+    payload.groups.push({ name: "TestGroup", target: "test-host" });
 
     const saved = store.save(payload);
-    expect(saved.groups.some((group) => group.target === "ssh:test-host")).toBe(true);
+    expect(saved.groups.some((group) => group.target === "test-host")).toBe(true);
   });
 
   it("appends and updates chat messages", () => {

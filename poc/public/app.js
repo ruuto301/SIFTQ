@@ -1147,7 +1147,7 @@
 
   function targetOptionsHtml(current) {
     const options = [{ value: "", label: "ローカル" }];
-    for (const host of sshHosts) options.push({ value: "ssh:" + host, label: "ssh:" + host });
+    for (const host of sshHosts) options.push({ value: host, label: host });
     if (current !== "" && !options.some((option) => option.value === current)) {
       options.push({ value: current, label: current });
     }
@@ -1284,7 +1284,8 @@
       '<div class="settings-actions" style="padding-top:8px;border-top:none;justify-content:flex-start">' +
       '<button type="button" class="button small" data-action="add-group-row">グループを追加</button>' +
       "</div>" +
-      '<p class="hint">接続先はローカルまたは ssh:ホストです。ssh:ホストは ~/.ssh/config の Host を使います。カスタム SSH で直接指定できます。</p>' +
+      '<p class="hint">接続先はローカルまたはSSHホスト名です。ホストは ~/.ssh/config の Host から選べます。カスタムでホスト名を入力できます。</p>' +
+      '<p class="hint">データは poc/data に保存されます。ブラウザをリロードしても残ります。</p>' +
       "</section>" +
       '<section class="settings-section">' +
       "<h3>DSH</h3>" +
@@ -1327,9 +1328,8 @@
       const targetInput = targetInputs.find((item) => Number(item.dataset.index) === index);
       let target = targetInput ? targetInput.value.trim() : "";
       if (target === "__custom__") {
-        const custom = window.prompt("接続先 (例: ssh:yoriwake.sbx)");
-        target = custom?.trim() ?? "";
-        if (target !== "" && !target.startsWith("ssh:")) target = "ssh:" + target;
+        const custom = window.prompt("接続先 (例: yoriwake.sbx)");
+        target = (custom?.trim() ?? "").replace(/^ssh:/, "");
       }
       if (name === "") {
         showSettingsError("グループ名を入力してください");
@@ -1857,9 +1857,8 @@
     if (target.classList.contains("settings-group-target")) {
       const index = Number(target.dataset.index);
       if (target.value === "__custom__") {
-        const value = window.prompt("接続先 (例: ssh:yoriwake.sbx)");
-        const normalized = value?.trim() ?? "";
-        const targetValue = normalized === "" ? "" : normalized.startsWith("ssh:") ? normalized : "ssh:" + normalized;
+        const value = window.prompt("接続先 (例: yoriwake.sbx)");
+        const targetValue = (value?.trim() ?? "").replace(/^ssh:/, "");
         if (settingsDraft !== null && settingsDraft[index] !== undefined) {
           settingsDraft[index].target = targetValue;
           renderSettings();

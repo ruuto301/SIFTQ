@@ -64,6 +64,22 @@ function isPermissionMode(value: unknown): value is "ask" | "allow_all" {
   return value === "ask" || value === "allow_all";
 }
 
+function normalizeTarget(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === "") return "";
+  if (trimmed.startsWith("ssh:")) return trimmed.slice(4).trim();
+  if (trimmed.startsWith("/") || /^[A-Za-z]:[\\/]/.test(trimmed)) return "";
+  return trimmed;
+}
+
+function normalizeConversationTarget(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const trimmed = value.trim();
+  if (trimmed.startsWith("ssh:")) return trimmed.slice(4).trim();
+  if (trimmed.startsWith("/") || /^[A-Za-z]:[\\/]/.test(trimmed)) return null;
+  return trimmed;
+}
+
 function readJson(path: string): unknown {
   try {
     if (!existsSync(path)) return null;
@@ -147,8 +163,7 @@ function normalizeConversation(value: unknown, taskId: string, index: number): C
   const id = stringValue(source["id"], "conv-" + taskId + "-" + index);
   const dshSessionIdRaw = source["dshSessionId"];
   const dshSessionId = typeof dshSessionIdRaw === "string" && dshSessionIdRaw !== "" ? dshSessionIdRaw : null;
-  const dshTargetRaw = source["dshTarget"] ?? source["dshWorkspace"];
-  const dshTarget = typeof dshTargetRaw === "string" && dshTargetRaw !== "" ? dshTargetRaw : null;
+  const dshTarget = normalizeConversationTarget(source["dshTarget"] ?? source["dshWorkspace"]);
   const permissionMode = isPermissionMode(source["permissionMode"]) ? source["permissionMode"] : "ask";
   const messagesRaw = Array.isArray(source["messages"]) ? source["messages"] : [];
   const messages = messagesRaw.flatMap((item, messageIndex) => {
@@ -222,8 +237,7 @@ function normalizeGroups(
   for (const item of rawList) {
     if (!isRecord(item)) continue;
     const legacyWorkspace = stringValue(item["workspace"]);
-    const target = stringValue(item["target"], legacyWorkspace.startsWith("ssh:") ? legacyWorkspace : "");
-    add(stringValue(item["name"]), target);
+    add(stringValue(item["name"]), normalizeTarget(stringValue(item["target"], legacyWorkspace)));
   }
   if (groups.length === 0) {
     for (const group of fallbackGroups) add(group.name, group.target);

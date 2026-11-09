@@ -207,8 +207,7 @@ export class DshRuntime {
   }
 
   private sshHost(): string | null {
-    if (!this.target.startsWith("ssh:")) return null;
-    const host = this.target.slice(4).trim();
+    const host = this.target.trim();
     return host === "" ? null : host;
   }
 
