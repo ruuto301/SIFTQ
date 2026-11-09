@@ -11,7 +11,7 @@
   };
 
   let state = null;
-  let dshStatus = { state: "starting", profile: "acp" };
+  let dshStatuses = new Map();
   let pendingFocus = null;
   let toastTimer = null;
   let saveTimer = null;
@@ -39,7 +39,9 @@
     if (!response.ok) throw new Error("状態の読み込みに失敗しました");
     const payload = await response.json();
     state = payload.state;
-    dshStatus = payload.dsh;
+    dshStatuses = new Map(
+      (Array.isArray(payload.dsh) ? payload.dsh : []).map((entry) => [entry.workspace, entry.status]),
+    );
     ensureState();
     updateDshStatus();
   }
@@ -712,6 +714,7 @@
     if (task.unread) task.unread = false;
     save();
     render();
+    updateDshStatus();
     prepareSelectedConversation();
   }
 
@@ -905,6 +908,7 @@
     render();
     const select = document.getElementById("task-project");
     if (select) select.value = project;
+    prepareSelectedConversation();
     toast(kind === "tentative" ? "仮タスクを追加しました" : "タスクを追加しました");
   }
 
@@ -921,7 +925,7 @@
       const conversation = task.conversations.find((item) => item.id === conversationId);
       if (!conversation) return;
       conversation.configOptions = payload.configOptions;
-      preparedConversations.add(conversationId);
+      preparedConversations.add(conversationId + ":" + selectedWorkspace());
       renderCenter();
     } catch {
       // DSH未接続時はモデル選択を空のままにする。
@@ -1017,6 +1021,7 @@
     state.statusFilter = "do";
     save();
     render();
+    prepareSelectedConversation();
     toast("タスクを作成しました");
   }
 
@@ -1128,18 +1133,34 @@
     }
   }
 
+  function selectedWorkspace() {
+    const task = selectedTask();
+    if (!task) return "";
+    const group = state.groups.find((item) => item.name === task.project);
+    return group ? group.workspace.trim() : "";
+  }
+
+  function dshStatusFor(workspace) {
+    return dshStatuses.get(workspace) ?? { state: "stopped", profile: "acp" };
+  }
+
+  function dshStatusLabel(status) {
+    const labels = {
+      starting: "起動中",
+      ready: "接続済み",
+      error: "エラー",
+      mock: "モック",
+      stopped: "未接続",
+    };
+    return labels[status.state] ?? status.state;
+  }
+
   function updateDshStatus() {
     const chip = $("#dsh-status");
     if (!chip) return;
-    const labels = {
-      starting: "DSH: 起動中",
-      ready: "DSH: 接続済み",
-      error: "DSH: エラー",
-      mock: "DSH: モック",
-      stopped: "DSH: 停止",
-    };
-    chip.textContent = labels[dshStatus.state] ?? "DSH: " + dshStatus.state;
-    chip.className = "dsh-status " + dshStatus.state;
+    const status = dshStatusFor(selectedWorkspace());
+    chip.textContent = "DSH: " + dshStatusLabel(status);
+    chip.className = "dsh-status " + status.state;
   }
 
   function showSettingsError(message) {
@@ -1176,6 +1197,10 @@
     const rows = groups
       .map((group, index) => {
         const fixed = group.name === "その他";
+        const status = dshStatusFor(group.workspace.trim());
+        const home = status.dshHome
+          ? '<div class="settings-dsh-home">' + esc(status.dshHome) + "</div>"
+          : "";
         return (
           "<tr>" +
           '<td><input class="settings-group-name" data-index="' +
@@ -1189,7 +1214,19 @@
           index +
           '" value="' +
           esc(group.workspace) +
-          '" placeholder="未設定"></td>' +
+          '" placeholder="未設定">' +
+          home +
+          "</td>" +
+          '<td class="settings-dsh-state" title="' +
+          esc(status.error ?? "") +
+          '">' +
+          esc(dshStatusLabel(status)) +
+          (group.workspace.trim() !== "" && status.state !== "ready" && status.state !== "mock"
+            ? ' <button type="button" class="mini" data-action="retry-dsh" data-workspace="' +
+              esc(group.workspace.trim()) +
+              '">接続</button>'
+            : "") +
+          "</td>" +
           '<td><button type="button" class="button small ghost" data-action="delete-group-row" data-index="' +
           index +
           '"' +
@@ -1199,23 +1236,23 @@
         );
       })
       .join("");
-    const labels = { starting: "起動中", ready: "接続済み", error: "エラー", mock: "モック", stopped: "停止" };
+    const defaultStatus = dshStatusFor("");
     const dshLine =
-      "状態: " +
-      (labels[dshStatus.state] ?? dshStatus.state) +
+      "既定: " +
+      dshStatusLabel(defaultStatus) +
       " / プロファイル: " +
-      dshStatus.profile +
-      (dshStatus.error ? "\n" + dshStatus.error : "");
+      defaultStatus.profile +
+      (defaultStatus.error ? "\n" + defaultStatus.error : "");
     body.innerHTML =
       '<section class="settings-section">' +
       "<h3>グループ</h3>" +
-      '<table class="settings-groups"><thead><tr><th>名前</th><th>ワークスペース</th><th></th></tr></thead><tbody>' +
+      '<table class="settings-groups"><thead><tr><th>名前</th><th>ワークスペース</th><th>DSH</th><th></th></tr></thead><tbody>' +
       rows +
       "</tbody></table>" +
       '<div class="settings-actions" style="padding-top:8px;border-top:none;justify-content:flex-start">' +
       '<button type="button" class="button small" data-action="add-group-row">グループを追加</button>' +
       "</div>" +
-      '<p class="hint">workspaceは空でも保存できます。空の場合はアプリの起動フォルダで実行します。</p>' +
+      '<p class="hint">workspaceは空でも保存できます。workspace内の .dsh / dsh / .credentials.yaml / .env をDSHの設定として使います。</p>' +
       "</section>" +
       '<section class="settings-section">' +
       "<h3>DSH</h3>" +
@@ -1300,14 +1337,22 @@
     if (!saved) return;
     closeSettings();
     render();
+    prepareSelectedConversation();
     toast("設定を保存しました");
   }
 
-  async function retryDsh() {
+  async function retryDsh(workspace) {
     try {
-      const response = await fetch("/api/dsh/retry", { method: "POST" });
+      const response = await fetch("/api/dsh/retry", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(workspace ? { workspace: workspace } : {}),
+      });
       if (!response.ok) throw new Error("再接続に失敗しました");
-      dshStatus = await response.json();
+      const entries = await response.json();
+      if (Array.isArray(entries)) {
+        dshStatuses = new Map(entries.map((entry) => [entry.workspace, entry.status]));
+      }
       updateDshStatus();
       renderSettings();
     } catch (error) {
@@ -1368,11 +1413,16 @@
   function applyEvent(event) {
     if (!event || typeof event.type !== "string") return;
     if (event.type === "dsh") {
-      dshStatus = event.status;
+      dshStatuses.set(event.workspace, event.status);
       updateDshStatus();
       const modal = $("#settings-modal");
       if (modal && !modal.hidden) renderSettings();
-      if (dshStatus.state === "ready" || dshStatus.state === "mock") prepareSelectedConversation();
+      if (
+        (event.status.state === "ready" || event.status.state === "mock") &&
+        event.workspace === selectedWorkspace()
+      ) {
+        prepareSelectedConversation();
+      }
       return;
     }
     if (event.type === "permission") {
@@ -1450,7 +1500,10 @@
     const task = selectedTask();
     if (!task || task.ui.centerTab !== "chat") return;
     const conversation = currentConversation(task);
-    if (conversation.configOptions.length > 0 || preparedConversations.has(conversation.id)) return;
+    const workspace = selectedWorkspace();
+    const currentWorkspace = conversation.dshWorkspace ?? "";
+    if (conversation.configOptions.length > 0 && currentWorkspace === workspace) return;
+    if (preparedConversations.has(conversation.id + ":" + workspace)) return;
     void prepareConversation(conversation.id);
   }
 
@@ -1710,7 +1763,7 @@
         void saveSettings();
         break;
       case "retry-dsh":
-        void retryDsh();
+        void retryDsh(target.dataset.workspace ?? undefined);
         break;
       case "permission-choice":
         void respondPermission(target.dataset.optionId);

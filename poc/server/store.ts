@@ -146,6 +146,8 @@ function normalizeConversation(value: unknown, taskId: string, index: number): C
   const id = stringValue(source["id"], "conv-" + taskId + "-" + index);
   const dshSessionIdRaw = source["dshSessionId"];
   const dshSessionId = typeof dshSessionIdRaw === "string" && dshSessionIdRaw !== "" ? dshSessionIdRaw : null;
+  const dshWorkspaceRaw = source["dshWorkspace"];
+  const dshWorkspace = typeof dshWorkspaceRaw === "string" && dshWorkspaceRaw !== "" ? dshWorkspaceRaw : null;
   const permissionMode = isPermissionMode(source["permissionMode"]) ? source["permissionMode"] : "ask";
   const messagesRaw = Array.isArray(source["messages"]) ? source["messages"] : [];
   const messages = messagesRaw.flatMap((item, messageIndex) => {
@@ -156,6 +158,7 @@ function normalizeConversation(value: unknown, taskId: string, index: number): C
     id,
     title: stringValue(source["title"], index === 0 ? "メイン" : "会話 " + (index + 1)),
     dshSessionId,
+    dshWorkspace,
     permissionMode,
     configOptions: normalizeConfigOptions(source["configOptions"]),
     messages,
@@ -366,8 +369,18 @@ export class Store {
     const groups = normalizeGroups(payload.groups, normalized.groups, normalized.tasks);
     normalized.groups = groups.groups;
     normalized.projectOrder = groups.projectOrder;
+    const previous = new Map<string, Conversation>();
+    for (const task of this.state.tasks) {
+      for (const conversation of task.conversations) previous.set(conversation.id, conversation);
+    }
     for (const task of normalized.tasks) {
       for (const conversation of task.conversations) {
+        const old = previous.get(conversation.id);
+        if (old !== undefined) {
+          conversation.dshSessionId = old.dshSessionId;
+          conversation.dshWorkspace = old.dshWorkspace;
+          conversation.configOptions = old.configOptions;
+        }
         conversation.messages = this.readMessages(conversation.id);
       }
     }
@@ -384,10 +397,27 @@ export class Store {
     return null;
   }
 
-  getWorkspace(project: string): string {
+  getGroupWorkspace(project: string): string {
     const group = this.state.groups.find((item) => item.name === project);
-    if (group !== undefined && group.workspace.trim() !== "") return group.workspace.trim();
-    return process.cwd();
+    return group?.workspace.trim() ?? "";
+  }
+
+  getWorkspace(project: string): string {
+    const workspace = this.getGroupWorkspace(project);
+    return workspace !== "" ? workspace : process.cwd();
+  }
+
+  getConversationWorkspace(conversationId: string): string {
+    const found = this.getConversation(conversationId);
+    if (found === null) return "";
+    return found.conversation.dshWorkspace ?? this.getGroupWorkspace(found.task.project);
+  }
+
+  setDshWorkspace(conversationId: string, workspace: string): void {
+    const found = this.getConversation(conversationId);
+    if (found === null) return;
+    found.conversation.dshWorkspace = workspace;
+    this.persistCurrent();
   }
 
   readMessages(conversationId: string): ChatMessage[] {

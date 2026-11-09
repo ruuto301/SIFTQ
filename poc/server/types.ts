@@ -40,6 +40,7 @@ export type Conversation = {
   id: string;
   title: string;
   dshSessionId: string | null;
+  dshWorkspace: string | null;
   permissionMode: PermissionMode;
   configOptions: ConfigOption[];
   messages: ChatMessage[];
@@ -88,12 +89,18 @@ export type GroupsFile = {
 export type DshStatus = {
   state: "starting" | "ready" | "error" | "mock" | "stopped";
   profile: string;
+  dshHome?: string | null;
   error?: string;
+};
+
+export type DshStatusEntry = {
+  workspace: string;
+  status: DshStatus;
 };
 
 export type ServerStatePayload = {
   state: StatePayload;
-  dsh: DshStatus;
+  dsh: DshStatusEntry[];
 };
 
 export type ChatEvent =
@@ -102,5 +109,5 @@ export type ChatEvent =
   | { type: "status"; conversationId: string; working: boolean }
   | { type: "config"; conversationId: string; configOptions: ConfigOption[] }
   | { type: "permission"; conversationId: string; requestId: string; title: string; options: { id: string; name: string }[] }
-  | { type: "dsh"; status: DshStatus }
+  | { type: "dsh"; workspace: string; status: DshStatus }
   | { type: "error"; conversationId?: string; message: string };

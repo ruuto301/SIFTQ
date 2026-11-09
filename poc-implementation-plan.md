@@ -12,7 +12,7 @@
 | 場所 | 同一リポジトリの `poc/` |
 | 名前 | フォルダ/アプリは `poc`、画面は `siftq` |
 | 実行 | ローカルWebアプリ。`127.0.0.1` のみ |
-| エージェント | DSH を `dsh --profile acp` で起動し、ACPで接続 |
+| エージェント | グループのworkspaceごとに DSH を `dsh --profile acp` で起動し、ACPで接続 |
 | UI | 現在の `poc/` を維持 |
 | モデル選択 | ACPのconfig optionsからselectを生成 |
 | 権限 | モデルselectと同じ行に「確認する / すべて許可」select。会話ごとに保持 |
@@ -87,8 +87,10 @@ DBは使わず、すべてJSONにします。書き込みは一時ファイル�
 
 ## DSH接続
 
-- アプリ起動時に `dsh --profile acp` を起動して `initialize` を試す。
-- 失敗してもアプリは開く。設定画面にエラーと再試行を出す。
+- グループのworkspaceごとに `dsh --profile acp` を起動して `initialize` を試す。
+- workspace内の `.dsh` / `dsh` / `.credentials.yaml` / `.env` をDSHの設定として使う。
+- workspaceが空の場合は既定のDSH（`~/.dsh`）を使う。アプリ側でAPIキーを要求しない。
+- 失敗してもアプリは開く。設定画面にグループごとの状態と再試行を出す。
 - 会話ごとに `session/new`。タスクのグループの workspace を `cwd` に使う。
 - アプリ再起動後は `session/resume` で会話を復元する。
 - モデル変更は `session/set_config_option`。

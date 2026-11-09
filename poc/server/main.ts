@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
-import { DshRuntime } from "./acp";
+import { DshManager } from "./acp";
 import { Store, StoreError, normalizeState } from "./store";
 import type { ChatEvent } from "./types";
 
@@ -16,22 +16,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const store = new Store();
 const subscribers = new Set<(event: ChatEvent) => void>();
-const runtime = new DshRuntime(store, (event) => {
+const runtime = new DshManager(store, (event) => {
   for (const send of subscribers) send(event);
 }, { mode: MODE });
 
 const app = new Hono();
 
-app.get("/api/health", (c) => c.json(runtime.getStatus()));
+app.get("/api/health", (c) => c.json(runtime.getStatuses()));
 
-app.get("/api/state", (c) => c.json({ state: store.getPayload(), dsh: runtime.getStatus() }));
+app.get("/api/state", (c) => c.json({ state: store.getPayload(), dsh: runtime.getStatuses() }));
 
 app.put("/api/state", async (c) => {
   const body = await c.req.json().catch(() => null);
   if (body === null) return c.json({ error: "invalid state" }, 400);
   try {
     const state = store.save(normalizeState(body));
-    return c.json({ state, dsh: runtime.getStatus() });
+    return c.json({ state, dsh: runtime.getStatuses() });
   } catch (error) {
     if (error instanceof StoreError) {
       return c.json({ error: error.message, group: error.group }, 400);
@@ -110,8 +110,9 @@ app.post("/api/permissions/:id", async (c) => {
 });
 
 app.post("/api/dsh/retry", async (c) => {
-  await runtime.retry();
-  return c.json(runtime.getStatus());
+  const body = await c.req.json().catch(() => null);
+  const workspace = isRecord(body) && typeof body["workspace"] === "string" ? body["workspace"] : undefined;
+  return c.json(await runtime.retry(workspace));
 });
 
 app.get("/api/events", (c) => {
@@ -125,7 +126,9 @@ app.get("/api/events", (c) => {
         }
       };
       subscribers.add(send);
-      send({ type: "dsh", status: runtime.getStatus() });
+      for (const entry of runtime.getStatuses()) {
+        send({ type: "dsh", workspace: entry.workspace, status: entry.status });
+      }
       const ping = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": ping\n\n"));
@@ -158,15 +161,19 @@ app.get("/api/events", (c) => {
   });
 });
 
-app.get("/", (c) => c.html(readFileSync(join(PUBLIC_DIR, "index.html"), "utf8")));
+const NO_STORE = { "cache-control": "no-store" } as const;
+
+app.get("/", (c) => c.html(readFileSync(join(PUBLIC_DIR, "index.html"), "utf8"), 200, NO_STORE));
 app.get("/app.js", (c) =>
   c.body(readFileSync(join(PUBLIC_DIR, "app.js"), "utf8"), 200, {
     "content-type": "application/javascript; charset=utf-8",
+    ...NO_STORE,
   }),
 );
 app.get("/styles.css", (c) =>
   c.body(readFileSync(join(PUBLIC_DIR, "styles.css"), "utf8"), 200, {
     "content-type": "text/css; charset=utf-8",
+    ...NO_STORE,
   }),
 );
 

@@ -922,6 +922,19 @@ body.resizing .splitter::after {
   border-top: 1px solid var(--border);
 }
 
+.settings-dsh-home {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+  word-break: break-all;
+}
+
+.settings-dsh-state {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .settings-error {
   margin-bottom: 8px;
   color: #8a2c2c;

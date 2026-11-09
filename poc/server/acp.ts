@@ -1,4 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Readable, Writable } from "node:stream";
 import {
   PROTOCOL_VERSION,
@@ -11,7 +13,7 @@ import {
 } from "@agentclientprotocol/sdk";
 import { configOptionsFromAcp } from "./config";
 import type { Store } from "./store";
-import type { ChatEvent, ChatMessage, ConfigOption, DshStatus, Task } from "./types";
+import type { ChatEvent, ChatMessage, ConfigOption, DshStatus, DshStatusEntry, Task } from "./types";
 
 type RuntimeMode = "real" | "mock";
 
@@ -78,6 +80,8 @@ export class DshRuntime {
   private readonly mode: RuntimeMode;
   private readonly bin: string;
   private readonly profile: string;
+  private readonly workspace: string | null;
+  private readonly dshHome: string | null;
   private child: ChildProcessWithoutNullStreams | null = null;
   private connection: ClientConnection | null = null;
   private status: DshStatus;
@@ -90,16 +94,23 @@ export class DshRuntime {
   private readonly toolMessages = new Map<string, Map<string, string>>();
   private readonly pendingPermissions = new Map<string, PendingPermission>();
   private readonly mockTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private startPromise: Promise<void> | null = null;
 
   constructor(
     private readonly store: Store,
     private readonly emit: (event: ChatEvent) => void,
-    options: { mode?: RuntimeMode; bin?: string; profile?: string } = {},
+    options: { mode?: RuntimeMode; bin?: string; profile?: string; workspace?: string | null; dshHome?: string | null } = {},
   ) {
     this.mode = options.mode ?? "real";
     this.bin = options.bin ?? process.env["POC_DSH_BIN"] ?? "dsh";
     this.profile = options.profile ?? process.env["POC_DSH_PROFILE"] ?? "acp";
-    this.status = { state: this.mode === "mock" ? "mock" : "starting", profile: this.profile };
+    this.workspace = options.workspace ?? null;
+    this.dshHome = options.dshHome ?? null;
+    this.status = {
+      state: this.mode === "mock" ? "mock" : "starting",
+      profile: this.profile,
+      dshHome: this.dshHome,
+    };
   }
 
   getStatus(): DshStatus {
@@ -110,27 +121,38 @@ export class DshRuntime {
     return this.activePrompts.has(conversationId);
   }
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
+    if (this.startPromise !== null) return this.startPromise;
+    this.startPromise = this.startInternal();
+    return this.startPromise;
+  }
+
+  private async startInternal(): Promise<void> {
     if (this.mode === "mock") {
       for (const task of this.store.getPayload().tasks) {
         for (const conversation of task.conversations) this.ensureMockConfig(conversation.id);
       }
-      this.setStatus({ state: "mock", profile: "mock" });
+      this.setStatus({ state: "mock", profile: "mock", dshHome: this.dshHome });
       return;
     }
-    this.setStatus({ state: "starting", profile: this.profile });
+    this.setStatus({ state: "starting", profile: this.profile, dshHome: this.dshHome });
     try {
       await this.spawnAndInitialize();
-      this.setStatus({ state: "ready", profile: this.profile });
+      this.setStatus({ state: "ready", profile: this.profile, dshHome: this.dshHome });
     } catch (error) {
       this.closeChild();
-      this.setStatus({ state: "error", profile: this.profile, error: this.errorText(error) });
+      this.setStatus({ state: "error", profile: this.profile, dshHome: this.dshHome, error: this.errorText(error) });
+      throw error;
     }
   }
 
   async retry(): Promise<void> {
     await this.stop();
-    await this.start();
+    try {
+      await this.start();
+    } catch {
+      // status is already set to error
+    }
   }
 
   async stop(): Promise<void> {
@@ -147,7 +169,13 @@ export class DshRuntime {
     this.currentAssistant.clear();
     this.toolMessages.clear();
     this.closeChild();
-    if (this.mode !== "mock") this.setStatus({ state: "stopped", profile: this.profile });
+    this.startPromise = null;
+    if (this.mode !== "mock") this.setStatus({ state: "stopped", profile: this.profile, dshHome: this.dshHome });
+  }
+
+  private async waitReady(): Promise<void> {
+    if (this.startPromise !== null) await this.startPromise;
+    if (this.connection === null) throw new Error("DSH is not connected");
   }
 
   private closeChild(): void {
@@ -167,13 +195,16 @@ export class DshRuntime {
 
   private setStatus(status: DshStatus): void {
     this.status = status;
-    this.emit({ type: "dsh", status });
+    this.emit({ type: "dsh", workspace: this.workspace ?? "", status });
   }
 
   private async spawnAndInitialize(): Promise<void> {
+    const cwd = this.workspace ?? process.cwd();
+    const env = { ...process.env };
+    if (this.dshHome !== null) env["DSH_HOME"] = this.dshHome;
     const child = spawn(this.bin, ["--profile", this.profile], {
-      cwd: process.cwd(),
-      env: process.env,
+      cwd,
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.child = child;
@@ -187,7 +218,7 @@ export class DshRuntime {
         this.child = null;
         this.connection = null;
         this.activeSessions.clear();
-        if (this.mode !== "mock") this.setStatus({ state: "stopped", profile: this.profile });
+        if (this.mode !== "mock") this.setStatus({ state: "stopped", profile: this.profile, dshHome: this.dshHome });
       }
     });
 
@@ -235,6 +266,9 @@ export class DshRuntime {
           this.store.setConfigOptions(conversationId, configOptions);
           this.emit({ type: "config", conversationId, configOptions });
         }
+        if (this.workspace !== null && this.workspace !== "") {
+          this.store.setDshWorkspace(conversationId, this.workspace);
+        }
         this.activeSessions.add(existing);
         this.sessionToConversation.set(existing, conversationId);
         this.conversationToSession.set(conversationId, existing);
@@ -251,6 +285,9 @@ export class DshRuntime {
     const configOptions = configOptionsFromAcp(response.configOptions);
     this.store.setSessionId(conversationId, sessionId);
     this.store.setConfigOptions(conversationId, configOptions);
+    if (this.workspace !== null && this.workspace !== "") {
+      this.store.setDshWorkspace(conversationId, this.workspace);
+    }
     this.activeSessions.add(sessionId);
     this.sessionToConversation.set(sessionId, conversationId);
     this.conversationToSession.set(conversationId, sessionId);
@@ -265,7 +302,8 @@ export class DshRuntime {
       this.ensureMockConfig(conversationId);
       return found.conversation.configOptions;
     }
-    const cwd = this.store.getWorkspace(found.task.project);
+    await this.waitReady();
+    const cwd = this.workspace ?? this.store.getWorkspace(found.task.project);
     await this.ensureSession(conversationId, cwd);
     const updated = this.store.getConversation(conversationId);
     return updated?.conversation.configOptions ?? [];
@@ -288,9 +326,10 @@ export class DshRuntime {
     this.toolMessages.set(conversationId, new Map());
     this.emit({ type: "status", conversationId, working: true });
     try {
+      await this.waitReady();
       const found = this.store.getConversation(conversationId);
       if (found === null) throw new Error("conversation not found");
-      const cwd = this.store.getWorkspace(found.task.project);
+      const cwd = this.workspace ?? this.store.getWorkspace(found.task.project);
       const sessionId = await this.ensureSession(conversationId, cwd);
       const userMessage: ChatMessage = {
         id: newId("msg"),
@@ -348,7 +387,8 @@ export class DshRuntime {
       this.emit({ type: "config", conversationId, configOptions: updated });
       return updated;
     }
-    const sessionId = await this.ensureSession(conversationId, this.store.getWorkspace(found.task.project));
+    await this.waitReady();
+    const sessionId = await this.ensureSession(conversationId, this.workspace ?? this.store.getWorkspace(found.task.project));
     const response = await this.requireConnection().agent.request("session/set_config_option", {
       sessionId,
       configId,
@@ -588,4 +628,131 @@ export class DshRuntime {
 
 export function isChatMessage(value: unknown): value is ChatMessage {
   return isRecord(value) && typeof value["id"] === "string" && typeof value["content"] === "string";
+}
+
+export type DshManagerOptions = {
+  mode?: RuntimeMode;
+  bin?: string;
+  profile?: string;
+};
+
+export function resolveDshHome(workspace: string): string | null {
+  const path = workspace.trim();
+  if (path === "") return null;
+  const dshDir = join(path, ".dsh");
+  if (existsSync(dshDir)) return dshDir;
+  const dshNamedDir = join(path, "dsh");
+  if (existsSync(dshNamedDir)) return dshNamedDir;
+  if (existsSync(join(path, ".credentials.yaml")) || existsSync(join(path, ".env"))) return path;
+  return null;
+}
+
+export class DshManager {
+  private readonly runtimes = new Map<string, DshRuntime>();
+  private readonly options: DshManagerOptions;
+
+  constructor(
+    private readonly store: Store,
+    private readonly emit: (event: ChatEvent) => void,
+    options: DshManagerOptions = {},
+  ) {
+    this.options = options;
+  }
+
+  private runtimeFor(workspace: string): DshRuntime {
+    const existing = this.runtimes.get(workspace);
+    if (existing !== undefined) return existing;
+    const runtime = new DshRuntime(this.store, this.emit, {
+      ...this.options,
+      workspace: workspace === "" ? null : workspace,
+      dshHome: resolveDshHome(workspace),
+    });
+    this.runtimes.set(workspace, runtime);
+    void runtime.start().catch(() => undefined);
+    return runtime;
+  }
+
+  private workspaceFor(conversationId: string): string {
+    const found = this.store.getConversation(conversationId);
+    if (found === null) throw new Error("conversation not found");
+    return found.conversation.dshWorkspace ?? this.store.getGroupWorkspace(found.task.project);
+  }
+
+  async start(): Promise<void> {
+    this.runtimeFor("");
+  }
+
+  async stop(): Promise<void> {
+    await Promise.all(Array.from(this.runtimes.values()).map((runtime) => runtime.stop()));
+    this.runtimes.clear();
+  }
+
+  async retry(workspace?: string): Promise<DshStatusEntry[]> {
+    if (workspace === undefined) {
+      await Promise.all(Array.from(this.runtimes.values()).map((runtime) => runtime.retry()));
+      return this.getStatuses();
+    }
+    const runtime = this.runtimes.get(workspace);
+    if (runtime === undefined) {
+      this.runtimeFor(workspace);
+      return this.getStatuses();
+    }
+    await runtime.retry();
+    return this.getStatuses();
+  }
+
+  getStatuses(): DshStatusEntry[] {
+    return Array.from(this.runtimes.entries()).map(([workspace, runtime]) => ({
+      workspace,
+      status: runtime.getStatus(),
+    }));
+  }
+
+  isBusy(conversationId: string): boolean {
+    try {
+      return this.runtimeFor(this.workspaceFor(conversationId)).isBusy(conversationId);
+    } catch {
+      return false;
+    }
+  }
+
+  async prepare(conversationId: string): Promise<ConfigOption[]> {
+    const workspace = this.workspaceFor(conversationId);
+    if (workspace !== "") this.store.setDshWorkspace(conversationId, workspace);
+    return this.runtimeFor(workspace).prepare(conversationId);
+  }
+
+  prompt(conversationId: string, text: string): void {
+    const workspace = this.workspaceFor(conversationId);
+    if (workspace !== "") this.store.setDshWorkspace(conversationId, workspace);
+    this.runtimeFor(workspace).prompt(conversationId, text);
+  }
+
+  cancel(conversationId: string): void {
+    try {
+      this.runtimeFor(this.workspaceFor(conversationId)).cancel(conversationId);
+    } catch {
+      // unknown conversation
+    }
+  }
+
+  async setConfig(conversationId: string, configId: string, value: string): Promise<ConfigOption[]> {
+    const workspace = this.workspaceFor(conversationId);
+    if (workspace !== "") this.store.setDshWorkspace(conversationId, workspace);
+    return this.runtimeFor(workspace).setConfig(conversationId, configId, value);
+  }
+
+  resolvePermission(requestId: string, optionId: string): boolean {
+    for (const runtime of this.runtimes.values()) {
+      if (runtime.resolvePermission(requestId, optionId)) return true;
+    }
+    return false;
+  }
+
+  cancelPermission(requestId: string): boolean {
+    for (const runtime of this.runtimes.values()) {
+      if (runtime.cancelPermission(requestId)) return true;
+    }
+    return false;
+  }
 }

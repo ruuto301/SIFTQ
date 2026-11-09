@@ -57,6 +57,7 @@ describe("Store", () => {
           id: "conv-test",
           title: "メイン",
           dshSessionId: null,
+          dshWorkspace: null,
           permissionMode: "ask",
           configOptions: [],
           messages: [],
