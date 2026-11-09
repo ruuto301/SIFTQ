@@ -3,7 +3,7 @@
 aqua only discovers `aqua.yaml` / `.aqua/aqua.yaml` / `aqua/aqua.yaml` from the
 current directory upward. The repository keeps its config in `.config/`, so
 `.aqua/aqua.yaml` and the local registry must be symlinks into `.config/` for
-proxied commands such as `opencode` to resolve without `AQUA_CONFIG`.
+proxied commands such as `rg` to resolve without `AQUA_CONFIG`.
 """
 
 import sys

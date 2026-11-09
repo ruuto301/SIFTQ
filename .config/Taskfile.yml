@@ -35,6 +35,10 @@ includes:
     taskfile: taskfile/codex.yml
     dir: ..
     flatten: true
+  dsh:
+    taskfile: taskfile/dsh.yml
+    dir: ..
+    flatten: true
   release:
     taskfile: taskfile/release.yml
     dir: ..

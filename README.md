@@ -10,7 +10,7 @@ Tool configuration lives under `.config/`. The Taskfile is at
 `.config/Taskfile.yml`, so every task runs as
 `task -t .config/Taskfile.yml <name>`. aqua discovers its configuration through
 the committed `.aqua/` symlinks (`aqua.yaml`, `aqua-code-mode-host-registry.yaml`)
-that point at `.config/`, so aqua-managed commands such as `opencode` work
+that point at `.config/`, so aqua-managed commands such as `rg` work
 without exporting `AQUA_CONFIG`. Recreate the links if they are missing:
 
 ```bash
@@ -55,6 +55,24 @@ task -t .config/Taskfile.yml setup
 If you are using an existing Linux or WSL environment instead of the base
 template, install aqua first, then run the same `task -t .config/Taskfile.yml
 setup` command. It will install Bun and Vite+ if they are missing.
+
+## DeepSeek Harness
+
+The repository uses DeepSeek Harness (`dsh`) as its agent client. `setup`
+installs dsh and the hook bridge. Start the Web UI with the repository patches:
+
+```bash
+task -t .config/Taskfile.yml dsh:web
+```
+
+Run one headless task:
+
+```bash
+task -t .config/Taskfile.yml dsh:headless -- "run the tests"
+```
+
+Provide `DEEPSEEK_API_KEY` in the environment, or save a DeepSeek API key in the
+dsh Web settings. The agent reads `AGENTS.md` and `.agents/skills/` directly.
 
 ## Development
 
@@ -107,16 +125,18 @@ Cloudflare Workers とリモート D1 へのデプロイ手順は
 
 ## Session Backup
 
-Codex と opencode のセッションは age で暗号化して `sessions/` へ保存する。
+Codex と dsh のセッションは age で暗号化して `sessions/` へ保存する。
 鍵管理・注入・復元・サイズ・履歴の扱いは
 [`docs/contributing/session-backup.md`](docs/contributing/session-backup.md) を参照する。
 
 ## Loop Engineering
 
 The loop engineering direction is recorded in
-`docs/adr/0012-adopt-taqt-centered-loop-engineering-policy.md`. taqt is the
-main task/workflow owner, while GitHub monitoring and other external
-integrations are script adapters.
+`docs/adr/0012-adopt-taqt-centered-loop-engineering-policy.md`. taqt keeps the
+GitHub lifecycle (Issue, worktree, commit, PR, merge), while the agent flow
+lives in a skill and verification runs through dsh hooks. The previous loop
+engine was removed; see
+[ADR 0075](docs/adr/0075-move-taqt-loop-to-dsh-skill-and-hooks.md).
 
 ## CI Checks
 

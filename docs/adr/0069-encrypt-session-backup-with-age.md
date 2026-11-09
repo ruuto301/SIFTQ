@@ -1,5 +1,7 @@
 # ADR 0069: セッションを age で暗号化して公開リポジトリへバックアップする
 
+> Status: Superseded by [ADR 0076](0076-back-up-dsh-sessions-with-age.md).
+
 ## 決定
 
 - Codex と opencode の会話セッションを、クライアント側で zstd 圧縮してから age（X25519）で暗号化し、公開リポジトリの専用ディレクトリへ commit する。
