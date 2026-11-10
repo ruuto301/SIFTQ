@@ -1,15 +1,16 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Hono } from "hono";
-import { DshManager } from "./acp";
-import { Store, StoreError, normalizeState } from "./store";
-import { readSandboxes } from "./sandboxes";
+import { readContext, writeContext } from "./context";
+import { DshWebManager } from "./dsh-web";
+import { sandboxWorkspaceForHost, readSandboxes } from "./sandboxes";
 import { readSshHosts } from "./ssh";
+import { Store, StoreError, normalizeState } from "./store";
 import type { ChatEvent } from "./types";
 
 const PORT = Number(process.env["POC_PORT"] ?? 8099);
 const PUBLIC_DIR = join(import.meta.dir, "..", "public");
-const MODE = process.env["POC_DSH"] === "mock" ? "mock" : "real";
 const encoder = new TextEncoder();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,11 +19,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 const store = new Store();
 const subscribers = new Set<(event: ChatEvent) => void>();
-const runtime = new DshManager(store, (event) => {
+const runtime = new DshWebManager(store, (event) => {
   for (const send of subscribers) send(event);
-}, { mode: MODE });
+});
 
 const app = new Hono();
+
+function resolveCwd(target: string): string {
+  console.log("resolveCwd start", target);
+  if (target === "") return process.cwd();
+  const workspace = sandboxWorkspaceForHost(target);
+  if (workspace !== null) {
+    console.log("resolveCwd workspace", workspace);
+    return workspace;
+  }
+  const configured = process.env["POC_SSH_CWD"];
+  if (configured !== undefined && configured !== "") return configured;
+  const sshBin = process.env["POC_SSH_BIN"] ?? "ssh";
+  const probe = spawnSync(sshBin, [target, "pwd"], { encoding: "utf8", windowsHide: true });
+  if (probe.error) throw probe.error;
+  if (probe.status !== 0) throw new Error(probe.stderr.trim() || "ssh " + target + " failed");
+  console.log("resolveCwd probe", probe.stdout.trim());
+  return probe.stdout.trim();
+}
 
 app.get("/api/health", (c) => c.json(runtime.getStatuses()));
 
@@ -46,79 +65,51 @@ app.put("/api/state", async (c) => {
   }
 });
 
-app.post("/api/conversations/:id/prepare", async (c) => {
+app.get("/api/conversations/:id/ui-url", async (c) => {
   try {
-    const configOptions = await runtime.prepare(c.req.param("id"));
-    return c.json({ configOptions });
+    const url = await runtime.getUiUrl(c.req.param("id"));
+    return c.json({ url });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : String(error) }, 503);
   }
 });
 
-app.post("/api/conversations/:id/prompt", async (c) => {
-  const conversationId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  const text = isRecord(body) && typeof body["text"] === "string" ? body["text"].trim() : "";
-  if (text === "") return c.json({ error: "text is required" }, 400);
-  if (runtime.isBusy(conversationId)) return c.json({ error: "prompt already running" }, 409);
-  try {
-    runtime.prompt(conversationId, text);
-    return c.json({ ok: true }, 202);
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
-  }
-});
-
-app.post("/api/conversations/:id/cancel", (c) => {
-  runtime.cancel(c.req.param("id"));
-  return c.json({ ok: true });
-});
-
-app.post("/api/conversations/:id/config", async (c) => {
-  const conversationId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  if (!isRecord(body)) return c.json({ error: "invalid config" }, 400);
-  const configId = typeof body["configId"] === "string" ? body["configId"] : "";
-  const value = typeof body["value"] === "string" ? body["value"] : "";
-  if (configId === "" || value === "") return c.json({ error: "configId and value are required" }, 400);
-  try {
-    const configOptions = await runtime.setConfig(conversationId, configId, value);
-    return c.json({ configOptions });
-  } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
-  }
-});
-
-app.patch("/api/conversations/:id", async (c) => {
-  const conversationId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  if (!isRecord(body)) return c.json({ error: "invalid body" }, 400);
-  const mode = body["permissionMode"];
-  if (mode !== "ask" && mode !== "allow_all") return c.json({ error: "invalid permissionMode" }, 400);
-  const found = store.getConversation(conversationId);
-  if (found === null) return c.json({ error: "conversation not found" }, 404);
-  store.setPermissionMode(conversationId, mode);
-  return c.json({ ok: true });
-});
-
-app.post("/api/permissions/:id", async (c) => {
-  const requestId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
-  if (!isRecord(body)) return c.json({ error: "invalid body" }, 400);
-  if (body["cancelled"] === true) {
-    return runtime.cancelPermission(requestId) ? c.json({ ok: true }) : c.json({ error: "unknown request" }, 404);
-  }
-  const optionId = typeof body["optionId"] === "string" ? body["optionId"] : "";
-  if (optionId === "") return c.json({ error: "optionId is required" }, 400);
-  return runtime.resolvePermission(requestId, optionId)
-    ? c.json({ ok: true })
-    : c.json({ error: "unknown request" }, 404);
-});
-
-app.post("/api/dsh/retry", async (c) => {
+app.post("/api/dsh-web/retry", async (c) => {
   const body = await c.req.json().catch(() => null);
   const target = isRecord(body) && typeof body["target"] === "string" ? body["target"] : undefined;
   return c.json(await runtime.retry(target));
+});
+
+app.get("/api/context/:id", async (c) => {
+  const found = store.getConversation(c.req.param("id"));
+  if (found === null) return c.json({ error: "conversation not found" }, 404);
+  const target = store.getGroupTarget(found.task.project);
+  try {
+    const cwd = resolveCwd(target);
+    return c.json(await readContext(target, cwd));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
+});
+
+app.put("/api/context/:id", async (c) => {
+  const found = store.getConversation(c.req.param("id"));
+  if (found === null) return c.json({ error: "conversation not found" }, 404);
+  const body = await c.req.json().catch(() => null);
+  if (!isRecord(body)) return c.json({ error: "invalid body" }, 400);
+  const data = {
+    memo: typeof body["memo"] === "string" ? body["memo"] : "",
+    browserUrl: typeof body["browserUrl"] === "string" ? body["browserUrl"] : "",
+    browserTitle: typeof body["browserTitle"] === "string" ? body["browserTitle"] : "",
+  };
+  const target = store.getGroupTarget(found.task.project);
+  try {
+    const cwd = resolveCwd(target);
+    await writeContext(target, cwd, found.task.title, data);
+    return c.json({ ok: true });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  }
 });
 
 app.get("/api/events", (c) => {

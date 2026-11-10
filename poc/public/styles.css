@@ -1108,3 +1108,45 @@ select:focus {
     display: none;
   }
 }
+
+.dsh-web-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.dsh-web-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.dsh-web-status {
+  padding: 8px 10px;
+  color: var(--muted);
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.group-header .group-toggle {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.group-target-select {
+  max-width: 140px;
+  font-size: 11px;
+  padding: 1px 2px;
+}
+
+.group-menu {
+  padding: 0 4px;
+}
