@@ -238,8 +238,10 @@ export class DshWebManager {
     const token = base.searchParams.get("token");
     if (token === null || token === "") throw new Error("dsh web token not found");
 
-    const connect = await fetch(`${origin}/connect?token=${encodeURIComponent(token)}&interactions=none`);
-    if (!connect.ok) throw new Error("dsh web connect failed: " + String(connect.status));
+    const connect = await fetch(`${origin}/connect?token=${encodeURIComponent(token)}&interactions=none`, {
+      redirect: "manual",
+    });
+    if (connect.status !== 302) throw new Error("dsh web connect failed: " + String(connect.status));
     const setCookie = connect.headers.get("set-cookie");
     const cookie = setCookie === null ? (proc.cookie ?? "") : (setCookie.split(";")[0] ?? "");
     proc.cookie = cookie;
