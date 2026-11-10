@@ -348,9 +348,25 @@
     }
   }
 
+  function groupTarget(project) {
+    const group = state.groups.find((item) => item.name === project);
+    return group ? group.target : "";
+  }
+
   function groupHeader(key, label, count, project, isTentative) {
     const collapsed = isCollapsed(key);
     const draggable = project !== null;
+    const targetEditor =
+      project === null
+        ? ""
+        : '<select class="group-target-select" data-group="' +
+          esc(project) +
+          '" aria-label="接続先">' +
+          targetOptionsHtml(groupTarget(project)) +
+          "</select>" +
+          '<button type="button" class="button small ghost group-menu" data-action="group-menu" data-group="' +
+          esc(project) +
+          '" title="グループ操作">⋯</button>';
     return (
       '<div class="group-header' +
       (draggable ? " draggable" : "") +
@@ -373,7 +389,9 @@
       '<span class="group-count">' +
       count +
       "</span>" +
-      "</button></div>"
+      "</button>" +
+      targetEditor +
+      "</div>"
     );
   }
 
@@ -469,6 +487,7 @@
 
     const body = tab === "memo" ? memoHtml(task) : chatHtml(task, conversation);
     pane.innerHTML = header + tabs + '<div class="center-body">' + body + "</div>";
+    if (tab === "chat") void loadDshWebForSelectedConversation();
   }
 
   function configSelectsHtml(conversation) {
@@ -513,54 +532,95 @@
   }
 
   function chatHtml(task, conversation) {
-    const messages =
-      conversation.messages.map(messageHtml).join("") ||
-      '<div class="chat-empty">まだメッセージはありません。</div>';
-
-    const streaming =
-      workingConversations.has(conversation.id) ||
-      conversation.messages.some((message) => message.status === "streaming");
-    const working = streaming
-      ? '<div class="working-line"><span class="dot"></span>Working <span data-working-elapsed>0s</span></div>'
-      : "";
-    const stop = streaming
-      ? '<button type="button" class="button small danger" data-action="stop-chat" data-conversation-id="' +
-        conversation.id +
-        '">停止</button>'
-      : "";
-    const permission =
-      '<select class="permission-select" data-action="permission" data-conversation-id="' +
-      conversation.id +
-      '" aria-label="権限">' +
-      '<option value="ask"' +
-      (conversation.permissionMode !== "allow_all" ? " selected" : "") +
-      ">確認する</option>" +
-      '<option value="allow_all"' +
-      (conversation.permissionMode === "allow_all" ? " selected" : "") +
-      ">すべて許可</option>" +
-      "</select>";
-
     return (
-      '<div class="chat-log" id="chat-log" data-conversation-id="' +
+      '<div class="dsh-web-pane" data-conversation-id="' +
       conversation.id +
       '">' +
-      messages +
-      "</div>" +
-      working +
-      '<form class="chat-composer" id="chat-form" data-conversation-id="' +
-      conversation.id +
-      '">' +
-      '<textarea id="chat-input" rows="3" placeholder="メッセージ（Enterで改行・Ctrl/Cmd+Enterで送信）"></textarea>' +
-      '<div class="composer-bar">' +
-      configSelectsHtml(conversation) +
-      permission +
-      '<span class="context-hint">' +
-      esc(contextLine(task)) +
-      "</span>" +
-      stop +
-      '<button type="submit" class="button primary">送信</button>' +
-      "</div></form>"
+      '<div class="dsh-web-status" id="dsh-web-status">dsh web を読み込み中…</div>' +
+      '<iframe class="dsh-web-frame" id="dsh-web-frame" title="dsh web" src="about:blank"></iframe>' +
+      "</div>"
     );
+  }
+
+  async function loadDshWebForSelectedConversation() {
+    const task = selectedTask();
+    if (!task || task.ui.centerTab !== "chat") return;
+    const conversation = currentConversation(task);
+    const frame = document.getElementById("dsh-web-frame");
+    const status = document.getElementById("dsh-web-status");
+    if (!frame) return;
+    try {
+      const response = await fetch("/api/conversations/" + encodeURIComponent(conversation.id) + "/ui-url");
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "dsh web を開けません");
+      if (frame.dataset.sessionId !== payload.url) {
+        frame.src = payload.url;
+        frame.dataset.sessionId = payload.url;
+      }
+      if (status) status.hidden = true;
+    } catch (error) {
+      if (status) {
+        status.hidden = false;
+        status.textContent = error instanceof Error ? error.message : String(error);
+      }
+      setTimeout(() => {
+        const current = selectedTask();
+        if (current && currentConversation(current).id === conversation.id) {
+          void loadDshWebForSelectedConversation();
+        }
+      }, 3000);
+    }
+  }
+
+  function activeBrowserContext(task) {
+    const tab = activeBrowserTab(task);
+    return { browserUrl: tab ? tab.url : "", browserTitle: tab ? tab.title : "" };
+  }
+
+  let contextSaveTimer = null;
+  function scheduleContextSave() {
+    if (contextSaveTimer !== null) clearTimeout(contextSaveTimer);
+    contextSaveTimer = setTimeout(() => {
+      contextSaveTimer = null;
+      void writeContextForSelectedTask();
+    }, 300);
+  }
+
+  async function loadContextForSelectedTask() {
+    const task = selectedTask();
+    if (!task) return;
+    const conversation = currentConversation(task);
+    try {
+      const response = await fetch("/api/context/" + encodeURIComponent(conversation.id));
+      if (!response.ok) return;
+      const data = await response.json();
+      task.memo = typeof data.memo === "string" ? data.memo : task.memo;
+      const tab = activeBrowserTab(task);
+      if (tab && typeof data.browserUrl === "string" && data.browserUrl !== "") {
+        tab.url = data.browserUrl;
+        if (typeof data.browserTitle === "string" && data.browserTitle !== "") tab.title = data.browserTitle;
+      }
+      if (task.ui.centerTab === "memo") renderCenter();
+      renderRight();
+    } catch {
+      // context が無い場合は現在のメモを使う
+    }
+  }
+
+  async function writeContextForSelectedTask() {
+    const task = selectedTask();
+    if (!task) return;
+    const conversation = currentConversation(task);
+    const browser = activeBrowserContext(task);
+    try {
+      await fetch("/api/context/" + encodeURIComponent(conversation.id), {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ memo: task.memo ?? "", browserUrl: browser.browserUrl, browserTitle: browser.browserTitle }),
+      });
+    } catch {
+      // context 保存失敗時はローカル state のみ
+    }
   }
 
   function messageHtml(message) {
@@ -735,7 +795,8 @@
     save();
     render();
     updateDshStatus();
-    prepareSelectedConversation();
+    loadDshWebForSelectedConversation();
+    void loadContextForSelectedTask();
   }
 
   function toggleGroup(key) {
@@ -800,7 +861,7 @@
     task.ui.centerTab = tab;
     save();
     render();
-    if (tab === "chat") prepareSelectedConversation();
+    if (tab === "chat") loadDshWebForSelectedConversation();
   }
 
   function contextItem(action, label, id, active, data) {
@@ -928,46 +989,8 @@
     render();
     const select = document.getElementById("task-project");
     if (select) select.value = project;
-    prepareSelectedConversation();
+    loadDshWebForSelectedConversation();
     toast(kind === "tentative" ? "仮タスクを追加しました" : "タスクを追加しました");
-  }
-
-  async function prepareConversation(conversationId) {
-    try {
-      const response = await fetch("/api/conversations/" + encodeURIComponent(conversationId) + "/prepare", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        const message = payload.error ?? "DSH に接続できません";
-        toast(message);
-        const found = findConversationById(conversationId);
-        if (found) {
-          found.conversation.prepareError = message;
-          renderCenter();
-        }
-        return;
-      }
-      const payload = await response.json();
-      if (!Array.isArray(payload.configOptions)) return;
-      const task = selectedTask();
-      if (!task) return;
-      const conversation = task.conversations.find((item) => item.id === conversationId);
-      if (!conversation) return;
-      conversation.configOptions = payload.configOptions;
-      conversation.dshTarget = selectedTarget();
-      delete conversation.prepareError;
-      preparedConversations.add(conversationId + ":" + selectedTarget());
-      renderCenter();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast(message);
-      const found = findConversationById(conversationId);
-      if (found) {
-        found.conversation.prepareError = message;
-        renderCenter();
-      }
-    }
   }
 
   function sendChat() {
@@ -1059,7 +1082,7 @@
     state.statusFilter = "do";
     save();
     render();
-    prepareSelectedConversation();
+    loadDshWebForSelectedConversation();
     toast("タスクを作成しました");
   }
 
@@ -1069,6 +1092,7 @@
     for (const tab of task.browserTabs) tab.active = tab.id === tabId;
     save();
     render();
+    scheduleContextSave();
   }
 
   function closeBrowserTab(tabId) {
@@ -1086,6 +1110,7 @@
     }
     save();
     render();
+    scheduleContextSave();
   }
 
   function newBrowserTab() {
@@ -1096,6 +1121,7 @@
     save();
     pendingFocus = "browser-url";
     render();
+    scheduleContextSave();
   }
 
   function navigateBrowser() {
@@ -1113,6 +1139,7 @@
     task.updatedAt = new Date().toISOString();
     save();
     render();
+    scheduleContextSave();
   }
 
   function normalizeUrl(raw) {
@@ -1222,6 +1249,9 @@
     const status = dshStatusFor(selectedTarget());
     chip.textContent = "DSH: " + dshStatusLabel(status);
     chip.className = "dsh-status " + status.state;
+    chip.dataset.action = "retry-dsh";
+    chip.dataset.target = selectedTarget();
+    chip.title = "クリックで再接続";
   }
 
   function showSettingsError(message) {
@@ -1278,8 +1308,7 @@
     }
     sshHosts = Array.from(hosts).sort((left, right) => left.localeCompare(right));
     sandboxError = error;
-    const modal = $("#settings-modal");
-    if (modal && !modal.hidden) renderSettings();
+    renderLeft();
   }
 
   function closeSettings() {
@@ -1437,13 +1466,13 @@
     closeSettings();
     render();
     preparedConversations.clear();
-    prepareSelectedConversation();
+    loadDshWebForSelectedConversation();
     toast("設定を保存しました");
   }
 
   async function retryDsh(target) {
     try {
-      const response = await fetch("/api/dsh/retry", {
+      const response = await fetch("/api/dsh-web/retry", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(target ? { target: target } : {}),
@@ -1454,7 +1483,7 @@
         dshStatuses = new Map(entries.map((entry) => [entry.target, entry.status]));
       }
       updateDshStatus();
-      renderSettings();
+      renderLeft();
     } catch (error) {
       showSettingsError(error instanceof Error ? error.message : String(error));
     }
@@ -1521,7 +1550,7 @@
         (event.status.state === "ready" || event.status.state === "mock") &&
         event.target === selectedTarget()
       ) {
-        prepareSelectedConversation();
+        loadDshWebForSelectedConversation();
       }
       return;
     }
@@ -1596,17 +1625,6 @@
     };
   }
 
-  function prepareSelectedConversation() {
-    const task = selectedTask();
-    if (!task || task.ui.centerTab !== "chat") return;
-    const conversation = currentConversation(task);
-    const target = selectedTarget();
-    const currentTarget = conversation.dshTarget ?? "";
-    if (conversation.configOptions.length > 0 && currentTarget === target) return;
-    if (preparedConversations.has(conversation.id + ":" + target)) return;
-    void prepareConversation(conversation.id);
-  }
-
   let dragState = null;
 
   function groupHeaderElement(name) {
@@ -1615,6 +1633,65 @@
         (element) => element.dataset.group === name,
       ) || null
     );
+  }
+
+  function updateGroupTarget(project, target) {
+    const group = state.groups.find((item) => item.name === project);
+    if (!group) return;
+    group.target = target;
+    save();
+    renderLeft();
+    updateDshStatus();
+    loadDshWebForSelectedConversation();
+  }
+
+  function renameGroup(oldName, nextName) {
+    const group = state.groups.find((item) => item.name === oldName);
+    if (!group) return;
+    if (state.groups.some((item) => item.name === nextName)) {
+      toast("同名のグループがあります");
+      return;
+    }
+    group.name = nextName;
+    for (const task of state.tasks) {
+      if (task.project === oldName) task.project = nextName;
+    }
+    state.projectOrder = state.projectOrder.map((name) => (name === oldName ? nextName : name));
+    const oldKey = "project:" + oldName;
+    if (state.collapsed[oldKey] !== undefined) {
+      state.collapsed["project:" + nextName] = state.collapsed[oldKey];
+      delete state.collapsed[oldKey];
+    }
+    save();
+    render();
+  }
+
+  function deleteGroup(name) {
+    for (const task of state.tasks) {
+      if (task.project === name) task.project = "その他";
+    }
+    state.groups = state.groups.filter((item) => item.name !== name);
+    state.projectOrder = state.projectOrder.filter((item) => item !== name);
+    save();
+    render();
+  }
+
+  function showGroupMenu(project, x, y) {
+    const action = window.prompt("グループ操作: rename / delete / cancel", "rename");
+    if (action === "rename") {
+      const next = window.prompt("新しいグループ名", project);
+      if (next && next.trim() && next.trim() !== project) renameGroup(project, next.trim());
+      return;
+    }
+    if (action === "delete") {
+      if (project === "その他") {
+        toast("その他グループは削除できません");
+        return;
+      }
+      if (window.confirm("グループ「" + project + "」を削除しますか？タスクは「その他」へ移動します。")) {
+        deleteGroup(project);
+      }
+    }
   }
 
   function clearDropIndicators() {
@@ -1790,6 +1867,9 @@
       case "toggle-group":
         toggleGroup(target.dataset.key);
         break;
+      case "group-menu":
+        showGroupMenu(target.dataset.group, event.clientX, event.clientY);
+        break;
       case "pin":
         togglePin(id);
         break;
@@ -1847,9 +1927,6 @@
       case "add-tentative":
         addTask("tentative");
         break;
-      case "open-settings":
-        openSettings();
-        break;
       case "close-settings":
         closeSettings();
         break;
@@ -1880,6 +1957,16 @@
   document.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    if (target.classList.contains("group-target-select")) {
+      const project = target.dataset.group;
+      let value = target.value;
+      if (value === "__custom__") {
+        const custom = window.prompt("接続先 (例: yoriwake.sbx)");
+        value = (custom?.trim() ?? "").replace(/^ssh:/, "");
+      }
+      updateGroupTarget(project, value);
+      return;
+    }
     if (target.classList.contains("config-select")) {
       const conversationId = target.dataset.conversationId;
       const configId = target.dataset.configId;
@@ -1946,6 +2033,7 @@
       if (task.unread) task.unread = false;
       save();
       render();
+      void loadContextForSelectedTask();
     }
     showContextMenu(task, event.clientX, event.clientY);
   });
@@ -1980,6 +2068,7 @@
     task.memo = event.target.value;
     task.updatedAt = new Date().toISOString();
     save();
+    scheduleContextSave();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -2016,11 +2105,12 @@
   async function bootstrap() {
     try {
       await loadState();
+      await loadContextForSelectedTask();
       applyWidths();
       setupSplitters();
       render();
       connectEvents();
-      prepareSelectedConversation();
+      loadDshWebForSelectedConversation();
       setInterval(updateWorkingElapsed, 1000);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

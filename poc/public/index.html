@@ -11,8 +11,7 @@
       <header class="topbar">
         <div class="brand">siftq</div>
         <div class="topbar-actions">
-          <span class="dsh-status" id="dsh-status">DSH: 起動中</span>
-          <button type="button" class="button small" data-action="open-settings">設定</button>
+          <span class="dsh-status" id="dsh-status" title="クリックで再接続">DSH: 起動中</span>
         </div>
       </header>
 
@@ -38,27 +37,6 @@
 
         <section class="pane pane-right" id="pane-right" aria-label="ブラウザ"></section>
       </main>
-    </div>
-
-    <div class="modal" id="settings-modal" hidden>
-      <div class="modal-backdrop" data-action="close-settings"></div>
-      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <header class="modal-header">
-          <h2 id="settings-title">設定</h2>
-          <button type="button" class="button small ghost" data-action="close-settings">閉じる</button>
-        </header>
-        <div class="modal-body" id="settings-body"></div>
-      </div>
-    </div>
-
-    <div class="modal" id="permission-modal" hidden>
-      <div class="modal-backdrop"></div>
-      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="permission-title">
-        <header class="modal-header">
-          <h2 id="permission-title">操作の許可</h2>
-        </header>
-        <div class="modal-body" id="permission-body"></div>
-      </div>
     </div>
 
     <div class="context-menu" id="context-menu" hidden></div>
