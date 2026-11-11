@@ -10,6 +10,7 @@ import { MatrixPage } from "../views/MatrixPage";
 import { IdeasPage } from "../views/IdeasPage";
 import { IdeaDetailPage } from "../views/IdeaDetailPage";
 import { DshChatPage } from "../views/DshChatPage";
+import { DsPage } from "../views/DsPage";
 import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
@@ -39,7 +40,7 @@ import type { IdeaRepository } from "../repository/idea-repository";
 type Repository = (c: Context<AppEnv>) => TaskRepository;
 type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
-function activePage(path: string): "ideas" | "matrix" | "tasks" {
+function activePage(path: string): "ideas" | "matrix" | "tasks" | "ds" {
   const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
   return match?.activeKey ?? "tasks";
 }
@@ -140,6 +141,17 @@ function registerTaskListRoutes(app: Hono<AppEnv>, repository: Repository, ideaR
     const result = await ideaRepository(c).find(c.req.param("id"), "local");
     if (!result.ok) return c.text("Internal Server Error", 500);
     return result.value === undefined ? c.notFound() : renderPage(c, <IdeaDetailPage idea={result.value} />);
+  });
+
+  app.get("/ds", async (c) => {
+    const result = await repository(c).list();
+    if (!result.ok) return c.text("Internal Server Error", 500);
+    const tasks = result.value;
+    const requested = c.req.query("task");
+    const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
+    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
+    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
+    return renderPage(c, <DsPage tasks={tasks} selected={selected} wsUrl={wsUrl} workspace={workspace} />);
   });
 
   app.get("/tasks", async (c) => {

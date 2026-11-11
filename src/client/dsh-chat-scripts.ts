@@ -17,6 +17,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var sessionId = null;
   var retry = 0;
   var current = null;
+  var pendingUserLine = null;
   var busy = false;
   var seq = 0;
 
@@ -90,6 +91,18 @@ export const DSH_CHAT_SCRIPT = `(function () {
           return;
         }
         if (message.type === "turn.start") { current = line("assistant", ""); return; }
+        if (message.type === "user.message") {
+          var existing = log.querySelector('[data-message-id="' + message.payload.messageId + '"]');
+          if (!existing) {
+            var last = log.lastElementChild;
+            if (last && last.className.indexOf("dsh-chat__line--user") >= 0 && last.textContent === message.payload.text && !last.dataset.messageId) {
+              last.dataset.messageId = message.payload.messageId;
+            } else {
+              line("user", message.payload.text).dataset.messageId = message.payload.messageId;
+            }
+          }
+          return;
+        }
         if (message.type === "message.delta") {
           if (!current) current = line("assistant", "");
           current.textContent += message.payload.text || "";
@@ -111,7 +124,15 @@ export const DSH_CHAT_SCRIPT = `(function () {
       if (message.kind === "res" && message.method === "session.create") {
         sessionId = message.payload.sessionId;
         setState(message.payload.resumed ? "再接続済み" : "接続済み");
+        sendRequest("session.subscribe", { sessionId: sessionId, sinceSeq: 0 });
         input.focus();
+        return;
+      }
+      if (message.kind === "res" && message.method === "session.subscribe") {
+        return;
+      }
+      if (message.kind === "res" && message.method === "prompt.send") {
+        if (pendingUserLine) { pendingUserLine.dataset.messageId = message.payload.turnId; pendingUserLine = null; }
         return;
       }
       if (message.kind === "err") {
@@ -132,7 +153,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
     event.preventDefault();
     var text = input.value.trim();
     if (text === "" || sessionId === null || busy) return;
-    line("user", text);
+    pendingUserLine = line("user", text);
     input.value = "";
     busy = true;
     send.disabled = true;
