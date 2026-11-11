@@ -43,4 +43,12 @@ export const DS_CSS = `
 .ds .ds__browser-bar input { background: #ffffff; color: #1b1f24; border-color: #cfd6dd; }
 .ds__pane--browser iframe { background: #ffffff; }
 .ds .button { color: #1b1f24; }
+
+.ds__chat-tools { display: flex; gap: 6px; align-items: center; }
+.ds__chat-tools select { font-size: 12px; padding: 4px 8px; border: 1px solid #cfd6dd; border-radius: 999px; background: #fff; color: #1b1f24; }
+.ds__access { position: relative; }
+.ds__pill { font-size: 12px; padding: 4px 10px; border: 1px solid #cfd6dd; border-radius: 999px; background: #fff; color: #1b1f24; cursor: pointer; }
+.ds__menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; background: #fff; border: 1px solid #cfd6dd; border-radius: 8px; padding: 4px; min-width: 180px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); }
+.ds__menu button { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: #1b1f24; font-size: 12px; text-align: left; cursor: pointer; }
+.ds__menu button:hover { background: #eef4ff; }
 `;

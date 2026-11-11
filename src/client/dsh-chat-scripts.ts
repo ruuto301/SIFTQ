@@ -14,6 +14,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var send = document.getElementById("dsh-chat-send");
   var modelSelect = document.getElementById("dsh-chat-model");
   var stopButton = document.getElementById("dsh-chat-stop");
+  var accessButton = document.getElementById("dsh-chat-access");
+  var accessMenu = document.getElementById("dsh-chat-access-menu");
+  var ACCESS_LABELS = { "read-only": "読み取り専用", "workspace-write": "ワークスペース書き込み", "danger-full-access": "フルアクセス" };
+  var accessMode = "workspace-write";
 
   var socket = null;
   var sessionId = null;
@@ -30,6 +34,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
   function setState(text, isError) {
     state.textContent = text;
     state.style.color = isError ? "#c62828" : "";
+  }
+  function setAccess(mode) {
+    accessMode = mode;
+    if (accessButton) accessButton.textContent = ACCESS_LABELS[mode] || mode;
   }
   function requestId() { seq += 1; return "c-" + seq; }
   function sendRequest(method, payload) {
@@ -173,6 +181,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
           if (message.payload && message.payload.state === "idle") { busy = false; send.disabled = false; if (stopButton) stopButton.hidden = true; }
           return;
         }
+        if (message.type === "session.access") { setAccess(message.payload.mode); return; }
         if (message.type === "session.updated") {
           if (modelSelect && message.payload.model) {
             selectedModel = message.payload.model;
@@ -233,7 +242,9 @@ export const DSH_CHAT_SCRIPT = `(function () {
         return;
       }
       if (message.kind === "res" && message.method === "hello") {
-        populateModels(message.payload && message.payload.capabilities ? message.payload.capabilities.models : []);
+        var capabilities = message.payload && message.payload.capabilities ? message.payload.capabilities : {};
+        if (capabilities.defaultAccessMode) setAccess(capabilities.defaultAccessMode);
+        populateModels(capabilities.models || []);
         sendRequest("session.create", { clientKey: "task:" + taskId, cwd: workspace, ...(selectedModel ? { model: selectedModel } : {}) });
         return;
       }
@@ -281,6 +292,23 @@ export const DSH_CHAT_SCRIPT = `(function () {
     stopButton.addEventListener("click", function () {
       if (sessionId !== null) sendRequest("prompt.cancel", { sessionId: sessionId });
     });
+  }
+  if (accessButton && accessMenu) {
+    accessButton.addEventListener("click", function (event) {
+      event.stopPropagation();
+      accessMenu.hidden = !accessMenu.hidden;
+      accessButton.setAttribute("aria-expanded", String(!accessMenu.hidden));
+    });
+    accessMenu.addEventListener("click", function (event) {
+      event.stopPropagation();
+      var target = event.target;
+      var mode = target && target.getAttribute ? target.getAttribute("data-mode") : null;
+      if (!mode) return;
+      setAccess(mode);
+      accessMenu.hidden = true;
+      if (sessionId !== null) sendRequest("session.access", { sessionId: sessionId, mode: mode });
+    });
+    document.addEventListener("click", function () { accessMenu.hidden = true; });
   }
   if (modelSelect) {
     modelSelect.addEventListener("change", function () {

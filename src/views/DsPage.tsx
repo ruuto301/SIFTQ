@@ -34,6 +34,16 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
         <span>Chat</span>
         <div class="ds__chat-tools">
           <select id="dsh-chat-model" aria-label="モデル"></select>
+          <div class="ds__access">
+            <button type="button" class="ds__pill" id="dsh-chat-access" aria-haspopup="menu" aria-expanded="false">
+              ワークスペース書き込み
+            </button>
+            <div class="ds__menu" id="dsh-chat-access-menu" hidden>
+              <button type="button" data-mode="read-only">読み取り専用</button>
+              <button type="button" data-mode="workspace-write">ワークスペース書き込み</button>
+              <button type="button" data-mode="danger-full-access">フルアクセス</button>
+            </div>
+          </div>
           <button type="button" class="button" id="dsh-chat-stop" hidden>
             停止
           </button>
