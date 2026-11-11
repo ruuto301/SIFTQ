@@ -21,4 +21,26 @@ export const DS_CSS = `
   .ds { grid-template-columns: 220px minmax(0, 1fr); }
   .ds__pane--browser { display: none; }
 }
+
+/* DS white theme (scoped) */
+.ds { background: #ffffff; color: #1b1f24; }
+.ds__pane { background: #ffffff; border-color: #d8dde3; }
+.ds__pane-head { background: #f6f8fa; border-color: #e5e7eb; color: #1b1f24; }
+.ds__tasks { background: #ffffff; }
+.ds__task { color: #1b1f24; border-color: #eef0f2; }
+.ds__task.active { background: #eef4ff; }
+.ds__task-title { color: #1b1f24; }
+.ds__empty { color: #555; }
+.ds .dsh-chat { color: #1b1f24; }
+.ds .dsh-chat__log { background: #fafafa; border-color: #e5e7eb; }
+.ds .dsh-chat__line--user { background: #e8f0ff; color: #1b1f24; }
+.ds .dsh-chat__line--tool { color: #666; }
+.ds .dsh-chat__usage { color: #444; }
+.ds .dsh-chat__state { color: #555; }
+.ds .dsh-chat__approval { background: #fff8e1; border-color: #f0c36d; color: #1b1f24; }
+.ds .dsh-chat__approval-detail { color: #555; }
+.ds .dsh-chat__form textarea { background: #ffffff; color: #1b1f24; border-color: #cfd6dd; }
+.ds .ds__browser-bar input { background: #ffffff; color: #1b1f24; border-color: #cfd6dd; }
+.ds__pane--browser iframe { background: #ffffff; }
+.ds .button { color: #1b1f24; }
 `;

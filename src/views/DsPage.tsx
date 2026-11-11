@@ -32,9 +32,15 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
     <section class="ds__pane ds__pane--chat">
       <div class="ds__pane-head">
         <span>Chat</span>
-        <span class="dsh-chat__state" id="dsh-chat-state">
-          {selected === undefined ? "タスク未選択" : "接続中…"}
-        </span>
+        <div class="ds__chat-tools">
+          <select id="dsh-chat-model" aria-label="モデル"></select>
+          <button type="button" class="button" id="dsh-chat-stop" hidden>
+            停止
+          </button>
+          <span class="dsh-chat__state" id="dsh-chat-state">
+            {selected === undefined ? "タスク未選択" : "接続中…"}
+          </span>
+        </div>
       </div>
       {selected === undefined ? (
         <p class="ds__empty">左のタスクを選択してください。</p>
