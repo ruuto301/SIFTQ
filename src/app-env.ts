@@ -11,6 +11,8 @@ export type Env = GithubOAuthEnv & {
   DB?: D1Database;
   SESSION_SECRET?: string;
   PREVIEW_MODE?: string;
+  DSH_TRANSPORT_URL?: string;
+  DSH_WORKSPACE?: string;
 };
 
 export type AppEnv = {

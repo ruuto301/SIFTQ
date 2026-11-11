@@ -9,6 +9,7 @@ import type { NewTaskFrom, NewTaskState } from "../components/NewTaskMeta";
 import { MatrixPage } from "../views/MatrixPage";
 import { IdeasPage } from "../views/IdeasPage";
 import { IdeaDetailPage } from "../views/IdeaDetailPage";
+import { DshChatPage } from "../views/DshChatPage";
 import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
@@ -183,6 +184,14 @@ function registerTaskDetailRoutes(app: Hono<AppEnv>, repository: Repository) {
     const task = await findTask(c, repository, c.req.param("id"));
     if (!task) return c.notFound();
     return renderPage(c, <TaskDetailPage task={task} returnTo={detailReturnTo(c)} listStatus={detailListStatus(c)} />);
+  });
+
+  app.get("/tasks/:id/chat", async (c) => {
+    const task = await findTask(c, repository, c.req.param("id"));
+    if (!task) return c.notFound();
+    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
+    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
+    return renderPage(c, <DshChatPage task={task} wsUrl={wsUrl} workspace={workspace} />);
   });
 
   app.get("/tasks/:id/status/menu", async (c) => {

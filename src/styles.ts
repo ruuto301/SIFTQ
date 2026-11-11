@@ -1,5 +1,6 @@
 import { BASE_CSS } from "./styles/base";
 import { COMMON_CSS, LOGIN_CSS } from "./styles/login";
+import { DSH_CHAT_CSS } from "./styles/dsh-chat";
 import { MATRIX_ACTIONS_CSS, MATRIX_CSS } from "./styles/matrix";
 import { IDEAS_CSS } from "./styles/idea";
 import { TASK_FORM_CSS } from "./styles/task-form";
@@ -15,4 +16,5 @@ export const STYLES_CSS =
   MATRIX_ACTIONS_CSS.slice(1) +
   COMMON_CSS +
   TASK_LIST_RESPONSIVE_CSS +
-  LOGIN_CSS;
+  LOGIN_CSS +
+  DSH_CHAT_CSS;
