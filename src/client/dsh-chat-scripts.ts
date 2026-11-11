@@ -29,6 +29,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var seq = 0;
   var models = [];
   var selectedModel = "";
+  var currentApprovalId = null;
   var totals = { input: 0, output: 0, cacheRead: 0 };
 
   function setState(text, isError) {
@@ -120,6 +121,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
   }
 
   function renderApproval(p) {
+    if (p.approvalId !== undefined && p.approvalId === currentApprovalId && !approval.hidden) return;
+    currentApprovalId = p.approvalId === undefined ? null : p.approvalId;
     approval.innerHTML = "";
     approval.hidden = false;
     var title = document.createElement("div");
@@ -155,7 +158,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
     models.forEach(function (model) {
       var option = document.createElement("option");
       option.value = model.id;
-      option.textContent = (model.provider ? model.provider + " / " : "") + model.model;
+      option.textContent = model.name || ((model.provider ? model.provider + " / " : "") + model.model);
       modelSelect.appendChild(option);
     });
     if (models.length > 0) {
@@ -235,6 +238,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
         if (message.type === "usage") { updateUsage(message.payload); return; }
         if (message.type === "approval.request") { renderApproval(message.payload); return; }
         if (message.type === "approval.resolved") {
+          currentApprovalId = null;
           approval.hidden = true;
           return;
         }
@@ -261,6 +265,13 @@ export const DSH_CHAT_SCRIPT = `(function () {
         return;
       }
       if (message.kind === "err") {
+        var code = message.payload && message.payload.code;
+        if (code === "not_found" && currentApprovalId !== null) {
+          currentApprovalId = null;
+          approval.hidden = true;
+          setState("承認は既に終了しています");
+          return;
+        }
         setState("エラー: " + (message.payload && message.payload.message ? message.payload.message : "unknown"), true);
         busy = false;
         send.disabled = false;
