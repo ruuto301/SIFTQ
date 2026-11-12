@@ -7,15 +7,16 @@ describe("DSH chat script", () => {
     expect(scriptDiagnostics(DSH_CHAT_SCRIPT)).toEqual([]);
   });
 
-  it("drives chat, memo and approval over the transport", () => {
-    for (const method of ["session.create", "prompt.send", "approval.respond", "memo.get", "memo.write", "session.configure", "session.access"]) {
+  it("drives chat, description and approval over the transport", () => {
+    for (const method of ["session.create", "prompt.send", "approval.respond", "desc.get", "session.configure", "session.access"]) {
       expect(DSH_CHAT_SCRIPT).toContain(method);
     }
   });
 
-  it("seeds an unwritten memo with the task description", () => {
+  it("renders the task description and follows description updates", () => {
     expect(DSH_CHAT_SCRIPT).toContain("data-task-description");
-    expect(DSH_CHAT_SCRIPT).toContain("updatedAt === undefined");
+    expect(DSH_CHAT_SCRIPT).toContain("dsh-desc-view");
+    expect(DSH_CHAT_SCRIPT).toContain("desc.updated");
   });
 
   it("sends with Ctrl+Enter and exposes the bridge", () => {

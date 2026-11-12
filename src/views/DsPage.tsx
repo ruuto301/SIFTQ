@@ -51,8 +51,8 @@ function ChatHeader() {
         <button type="button" class="ds__tab active" data-ds-tab="chat" role="tab">
           Chat
         </button>
-        <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
-          Memo
+        <button type="button" class="ds__tab" data-ds-tab="desc" role="tab">
+          説明
         </button>
         <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
           設定
@@ -102,18 +102,13 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
   );
 }
 
-function MemoPane() {
+function DescPane() {
   return (
-    <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
-      <div class="dsh-memo__bar">
-        <span class="dsh-memo__title">メモ</span>
-        <span class="dsh-memo__status" id="dsh-memo-status"></span>
-        <button type="button" class="button" id="dsh-memo-edit">
-          編集
-        </button>
+    <div class="dsh-desc" id="dsh-desc" data-ds-pane="desc" hidden>
+      <div class="dsh-desc__bar">
+        <span class="dsh-desc__title">タスクの説明</span>
       </div>
-      <div class="dsh-memo__view" id="dsh-memo-view"></div>
-      <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）" hidden></textarea>
+      <div class="dsh-desc__view" id="dsh-desc-view"></div>
     </div>
   );
 }
@@ -187,7 +182,7 @@ export const DsPage: FC<{
     <section class="ds__pane ds__pane--chat">
       <ChatHeader />
       <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
-      {selected === undefined ? null : <MemoPane />}
+      {selected === undefined ? null : <DescPane />}
       <SettingsPane />
     </section>
 

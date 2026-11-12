@@ -13,6 +13,7 @@ export type Env = GithubOAuthEnv & {
   PREVIEW_MODE?: string;
   DSH_TRANSPORT_URL?: string;
   DSH_WORKSPACE?: string;
+  DSH_INTERNAL_TOKEN?: string;
 };
 
 export type AppEnv = {

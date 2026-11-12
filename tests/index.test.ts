@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import app from "../src/index";
-import { authenticatedRequest } from "./helpers/authenticated-request";
+import { TEST_SECRET, authBindings, authenticatedRequest } from "./helpers/authenticated-request";
 import { createMemoryTaskRepository } from "./helpers/memory-task-repository";
 
 describe("smoke", () => {
@@ -9,6 +9,17 @@ describe("smoke", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toContain("Matrix");
+  });
+
+  it("accepts the internal transport token on the task API", async () => {
+    const repo = createMemoryTaskRepository();
+    const bindings = { ...authBindings(repo), DSH_INTERNAL_TOKEN: "transport-secret" };
+    const authorized = await app.request("/api/tasks", { headers: { authorization: "Bearer transport-secret" } }, bindings);
+    const rejected = await app.request("/api/tasks", { headers: { authorization: "Bearer wrong" } }, bindings);
+
+    expect(authorized.status).toBe(200);
+    expect(rejected.status).toBe(401);
+    expect(TEST_SECRET).toBe("test-secret");
   });
 
   it("serves the HTMX conflict response handler without authentication", async () => {

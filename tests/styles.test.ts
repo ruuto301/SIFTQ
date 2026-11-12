@@ -165,6 +165,6 @@ describe("Matrix drag feedback styles", () => {
     expect(STYLES_CSS).toContain(".ds--browser-max");
     expect(STYLES_CSS).toContain(".ds-settings__card");
     expect(STYLES_CSS).toContain(".ds__tab2");
-    expect(STYLES_CSS).toContain(".dsh-memo");
+    expect(STYLES_CSS).toContain(".dsh-desc");
   });
 });

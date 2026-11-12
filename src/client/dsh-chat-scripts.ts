@@ -15,12 +15,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var send = document.getElementById("dsh-chat-send");
   var modelSelect = document.getElementById("dsh-chat-model");
   var stopButton = document.getElementById("dsh-chat-stop");
-  var memoInput = document.getElementById("dsh-memo-input");
-  var memoStatus = document.getElementById("dsh-memo-status");
-  var memoView = document.getElementById("dsh-memo-view");
-  var memoEdit = document.getElementById("dsh-memo-edit");
-  var memoTimer = null;
-  var memoText = "";
+  var descView = document.getElementById("dsh-desc-view");
   var bridgeHandlers = [];
   var accessButton = document.getElementById("dsh-chat-access");
   var accessMenu = document.getElementById("dsh-chat-access-menu");
@@ -56,18 +51,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
     accessMode = mode;
     if (accessButton) accessButton.textContent = ACCESS_LABELS[mode] || mode;
   }
-  function setMemo(text, forceInput) {
-    memoText = text || "";
-    if (memoView) memoView.innerHTML = memoText.trim() === "" ? "" : renderMarkdown(memoText);
-    if (memoInput && (forceInput === true || document.activeElement !== memoInput)) memoInput.value = memoText;
-  }
-
-  function setMemoEditing(editing) {
-    if (!memoInput) return;
-    memoInput.hidden = !editing;
-    if (memoView) memoView.hidden = editing;
-    if (memoEdit) memoEdit.textContent = editing ? "表示" : "編集";
-    if (editing) memoInput.focus();
+  function setDesc(text) {
+    if (!descView) return;
+    var value = text || "";
+    descView.innerHTML = value.trim() === "" ? "" : renderMarkdown(value);
   }
 
   function requestId() { seq += 1; return "c-" + seq; }
@@ -219,9 +206,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
           return;
         }
         if (message.type === "session.access") { setAccess(message.payload.mode); return; }
-        if (message.type === "memo.updated") {
-          setMemo(message.payload.text);
-          if (memoStatus) memoStatus.textContent = "更新済み";
+        if (message.type === "desc.updated") {
+          setDesc(message.payload.text);
           return;
         }
         if (message.type === "session.updated") {
@@ -316,25 +302,13 @@ export const DSH_CHAT_SCRIPT = `(function () {
           if (matched) { selectedModel = matched.id; if (modelSelect) modelSelect.value = selectedModel; }
         }
         sendRequest("session.subscribe", { sessionId: sessionId, sinceSeq: 0 });
-        sendRequest("memo.get", { sessionId: sessionId });
+        sendRequest("desc.get", { sessionId: sessionId });
         if (input) input.focus();
         return;
       }
       if (message.kind === "res" && message.method === "session.subscribe") return;
-      if (message.kind === "res" && message.method === "memo.get") {
-        var text = message.payload.text || "";
-        if (text === "" && message.payload.updatedAt === undefined && taskDescription !== "") {
-          // Seed the shared memo with the task description on first open.
-          setMemo(taskDescription);
-          sendRequest("memo.write", { sessionId: sessionId, text: taskDescription });
-          return;
-        }
-        setMemo(text);
-        if (memoStatus) memoStatus.textContent = "";
-        return;
-      }
-      if (message.kind === "res" && message.method === "memo.write") {
-        if (memoStatus) memoStatus.textContent = "保存済み";
+      if (message.kind === "res" && message.method === "desc.get") {
+        setDesc(message.payload.text === "" ? taskDescription : message.payload.text);
         return;
       }
       if (message.kind === "res" && message.method === "prompt.send") {
@@ -399,35 +373,9 @@ export const DSH_CHAT_SCRIPT = `(function () {
       tabs.forEach(function (other) { other.classList.toggle("active", other === tab); });
       panes.forEach(function (pane) { pane.hidden = pane.getAttribute("data-ds-pane") !== name; });
       if (name === "chat" && input) input.focus();
-      if (name === "memo" && sessionId !== null) sendRequest("memo.get", { sessionId: sessionId });
+      if (name === "desc" && sessionId !== null) sendRequest("desc.get", { sessionId: sessionId });
     });
   });
-
-  if (memoEdit) {
-    memoEdit.addEventListener("click", function () {
-      setMemoEditing(memoInput ? memoInput.hidden : false);
-    });
-  }
-  if (memoView) {
-    memoView.addEventListener("dblclick", function () { setMemoEditing(true); });
-  }
-  if (memoInput) {
-    memoInput.addEventListener("input", function () {
-      if (memoStatus) memoStatus.textContent = "未保存";
-      clearTimeout(memoTimer);
-      memoTimer = setTimeout(function () {
-        if (sessionId === null) return;
-        if (memoStatus) memoStatus.textContent = "保存中…";
-        sendRequest("memo.write", { sessionId: sessionId, text: memoInput.value });
-      }, 800);
-    });
-    memoInput.addEventListener("blur", function () {
-      clearTimeout(memoTimer);
-      if (sessionId === null) return;
-      if (memoStatus) memoStatus.textContent = "保存中…";
-      sendRequest("memo.write", { sessionId: sessionId, text: memoInput.value });
-    });
-  }
 
   if (accessButton && accessMenu) {
     accessButton.addEventListener("click", function (event) {

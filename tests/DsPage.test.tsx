@@ -28,7 +28,7 @@ describe("DsPage", () => {
   it("renders the chat, memo and settings tabs plus the browser pane", () => {
     const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} />);
 
-    for (const id of ["dsh-memo", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
+    for (const id of ["dsh-desc", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
       expect(html).toContain(`id="${id}"`);
     }
     expect(html).toContain("ds__resizer");
@@ -38,15 +38,18 @@ describe("DsPage", () => {
     const html = renderToString(<DsPage tasks={[]} selected={undefined} {...props} />);
 
     expect(html).toContain("左のタスクを選択してください。");
-    expect(html).not.toContain('id="dsh-memo"');
+    expect(html).not.toContain('id="dsh-desc"');
   });
 
-  it("hands the task description to the memo client", () => {
+  it("renders the description pane and hands the text to the client", () => {
     const html = renderToString(
       <DsPage tasks={[taskFixture({ description: "手順は https://example.com/docs を参照" })]} selected={taskFixture({ description: "手順は https://example.com/docs を参照" })} {...props} />,
     );
 
     expect(html).toContain('data-task-description="手順は https://example.com/docs を参照"');
+    expect(html).toContain('id="dsh-desc-view"');
+    expect(html).toContain("タスクの説明");
+    expect(html).toContain('data-ds-tab="desc"');
   });
 
   it("renders the do, done and skip tabs with the active status", () => {
