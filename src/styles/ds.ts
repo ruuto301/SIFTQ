@@ -64,6 +64,5 @@ export const DS_CSS = `
 .dsh-memo__view .dsh-code { background: #f6f8fa; border-radius: 6px; padding: 8px; overflow: auto; font-size: 12px; }
 .dsh-memo__view code { background: #f6f8fa; border-radius: 4px; padding: 1px 4px; font-size: 12px; }
 .dsh-memo textarea { flex: 1; min-height: 0; width: 100%; resize: none; border: 1px solid #cfd6dd; border-radius: 6px; padding: 10px; font-size: 13px; line-height: 1.7; color: #1b1f24; background: #fff; }
-.ds__tab-dot { font-size: 8px; color: #4f8cff; vertical-align: super; margin-left: 2px; }
 .dsh-chat[hidden], .dsh-memo[hidden], .dsh-memo textarea[hidden] { display: none !important; }
 `;

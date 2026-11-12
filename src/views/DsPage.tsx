@@ -37,7 +37,6 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           </button>
           <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
             Memo
-            <span class="ds__tab-dot" id="dsh-memo-dot" hidden>●</span>
           </button>
         </div>
         <div class="ds__chat-tools">
@@ -75,9 +74,6 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           <div class="dsh-memo__bar">
             <span class="dsh-memo__title">メモ</span>
             <span class="dsh-memo__status" id="dsh-memo-status"></span>
-            <button type="button" class="button" id="dsh-memo-copy">
-              コピー
-            </button>
             <button type="button" class="button" id="dsh-memo-edit">
               編集
             </button>

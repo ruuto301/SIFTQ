@@ -17,9 +17,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var memoInput = document.getElementById("dsh-memo-input");
   var memoStatus = document.getElementById("dsh-memo-status");
   var memoView = document.getElementById("dsh-memo-view");
-  var memoCopy = document.getElementById("dsh-memo-copy");
   var memoEdit = document.getElementById("dsh-memo-edit");
-  var memoDot = document.getElementById("dsh-memo-dot");
   var memoTimer = null;
   var memoText = "";
   var accessButton = document.getElementById("dsh-chat-access");
@@ -53,7 +51,6 @@ export const DSH_CHAT_SCRIPT = `(function () {
     memoText = text || "";
     if (memoView) memoView.innerHTML = memoText.trim() === "" ? "" : renderMarkdown(memoText);
     if (memoInput && (forceInput === true || document.activeElement !== memoInput)) memoInput.value = memoText;
-    if (memoDot) memoDot.hidden = memoText.trim() === "";
   }
 
   function setMemoEditing(editing) {
@@ -377,16 +374,6 @@ export const DSH_CHAT_SCRIPT = `(function () {
     });
   });
 
-  if (memoCopy) {
-    memoCopy.addEventListener("click", function () {
-      if (memoText === "") return;
-      if (navigator.clipboard) navigator.clipboard.writeText(memoText);
-      if (memoStatus) {
-        memoStatus.textContent = "コピーしました";
-        setTimeout(function () { if (memoStatus) memoStatus.textContent = ""; }, 1500);
-      }
-    });
-  }
   if (memoEdit) {
     memoEdit.addEventListener("click", function () {
       setMemoEditing(memoInput ? memoInput.hidden : false);
