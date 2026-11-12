@@ -19,6 +19,7 @@
 | P07 | Delete confirmation dialog | Matrix 上の task を完全削除する確認ダイアログ |
 | P08 | Idea list | Ideaをカード一覧で管理する画面 |
 | P09 | Idea detail | Idea詳細画面 title、description、pinned を確認・編集する |
+| P10 | DS | task ごとに DSH の chat、description、設定、browser を 1 画面で扱う |
 
 ## 画面詳細
 
@@ -123,13 +124,34 @@
   - `キャンセル` は task を変更せずにダイアログを閉じる。
   - `削除` は task を完全削除し、Matrix と Task list から除外する。
 
+- `DS` (`/ds`)
+  - 3 ペイン構成とし、左に Task list、中央に DSH、右に Browser を表示する。
+  - 左ペインは `do`、`done`、`skip` の status 切り替えボタンを表示する。
+  - status は `/ds?status=<status>` で保持し、未指定または不正な status は `do` とする。
+  - 選択した status と一致する task だけを表示する。
+  - 各行は title、status badge、`working` badge を表示する。
+  - task 行を右クリックすると action menu を表示する。
+  - action menu の選択肢は `do`、`done`、`skip` への変更、`working` の切り替え、task detail を開く、削除とする。
+  - status 変更後、選択中 status と一致しない行は一覧から除外する。選択中だった場合は同じ status の一覧へ移動する。
+  - 削除は確認後に task を完全削除する。
+  - 中央ペインは `Chat`、`説明`、`設定` のタブを表示する。
+  - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
+  - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
+  - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
+  - `説明` タブは task の description を表示する。DSH はこの description を共有テキストとして読み書きする。
+  - `設定` タブは選択中 profile の設定を表示し、保存する。
+  - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
+  - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。
+  - ペイン幅と最大化状態は再読み込み後も維持する。
+
 ## 画面遷移
 
-共通ナビゲーションは左から `Ideas`、`Matrix`、`Tasks` の順に表示する。一覧、詳細、モバイル表示で同じ順序とする。
+共通ナビゲーションは左から `Ideas`、`Matrix`、`Tasks`、`DS` の順に表示する。一覧、詳細、モバイル表示で同じ順序とする。
 画面遷移は `presentation.json` の `navigation` を正本とする。`task docs:domain:svg` で `domain-model.json` にマージし、図（`nav.svg`）を生成する。
 
 ## モック BE プレビュー
 
 - `bun run preview:mock` で起動する。
 - `http://127.0.0.1:8787` を開き、パスワード `preview` でログインする。
+- `DS` は DSH transport（`dsh siftq`）と browser 実行環境を必要とする。
 - Matrix と Task list は固定初期データを表示する。Idea list は固定初期データにブラウザのlocalStorageで作成・編集・削除・ピン留め・並べ替えの変更を重ねる。localStorageを削除するとIdeaだけ初期状態に戻る。
