@@ -135,6 +135,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
     var card = document.createElement("details");
     card.className = "dsh-card";
     var head = document.createElement("summary");
+    head.dataset.callId = callId;
+    head.dataset.name = name;
     head.textContent = "tool: " + name + "（実行中）";
     card.appendChild(head);
     var body = document.createElement("pre");
@@ -256,8 +258,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
           return;
         }
         if (message.type === "tool.start") {
-          var card = toolCard(message.payload.callId, message.payload.name, message.payload.inputSummary);
-          card.head.dataset.callId = message.payload.callId;
+          toolCard(message.payload.callId, message.payload.name, message.payload.inputSummary);
           return;
         }
         if (message.type === "tool.end") {
@@ -267,8 +268,12 @@ export const DSH_CHAT_SCRIPT = `(function () {
             if (cards[i].querySelector("summary").dataset.callId === message.payload.callId) { found = cards[i]; break; }
           }
           if (found) {
-            found.querySelector("summary").textContent = "tool: " + message.payload.callId.slice(0, 8) + "（" + message.payload.status + "）";
+            var summaryNode = found.querySelector("summary");
+            var toolName = summaryNode.dataset.name || message.payload.callId.slice(0, 8);
+            summaryNode.textContent = "tool: " + toolName + "（" + message.payload.status + "）";
+            summaryNode.classList.add("dsh-card--done");
             var pre = found.querySelector("pre");
+            pre.classList.add("dsh-card__body--done");
             if (message.payload.outputSummary) pre.textContent = message.payload.outputSummary;
           }
           return;
