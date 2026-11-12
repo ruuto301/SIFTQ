@@ -102,6 +102,9 @@ export function TaskDetailPage({
         <a class="button" href={cancelHref}>
           Tasks
         </a>
+        <a class="button" href={`/tasks/${task.id}/chat`}>
+          DSH chat
+        </a>
       </div>
       <div class="detail-grid">
         <form

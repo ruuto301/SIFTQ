@@ -40,6 +40,13 @@ function sessionSecret(c: Context<AppEnv>): string | null {
   return c.env.SESSION_SECRET ?? null;
 }
 
+/** The DSH transport reaches the task API with a shared secret instead of a session. */
+function hasInternalToken(c: Context<AppEnv>): boolean {
+  const token = c.env.DSH_INTERNAL_TOKEN;
+  if (token === undefined || token === "") return false;
+  return c.req.header("authorization") === `Bearer ${token}`;
+}
+
 function unauthorizedResponse(c: Context<AppEnv>): Response {
   if (c.req.path.startsWith("/api/")) {
     return c.json(
@@ -61,6 +68,7 @@ function unauthorizedResponse(c: Context<AppEnv>): Response {
 
 app.use("*", async (c, next) => {
   if (isPublicPath(c.req.path)) return next();
+  if (hasInternalToken(c)) return next();
   const secret = sessionSecret(c);
   if (secret === null) return c.text("Authentication is not configured", 503);
   const session = getCookie(c, SESSION_COOKIE_NAME);

@@ -43,7 +43,7 @@ TRS は2つの層でできている。仕様レイヤーで「あるべき振る
 | F-11 status filter | 指定なし / is:do / is:done / is:skip / 不正 |
 | F-12 label filter | なし / label:working / working only |
 | F-13 page | 範囲内 / 0 / 負 / 非数値 / 超過 / 25 境界 |
-| F-14 画面 | matrix / list / detail / new / preview |
+| F-14 画面 | matrix / list / detail / new / preview / ds |
 | F-15 pinned | true / false |
 | F-16 操作 | 作成 / 更新 / 削除 / 並べ替え / pin |
 

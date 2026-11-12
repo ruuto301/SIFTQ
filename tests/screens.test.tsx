@@ -24,6 +24,9 @@ describe("screen registry", () => {
 
   it("aggregates client files to presentation screens in screen order", () => {
     expect(screenByFile()).toEqual({
+      "dsh-chat-scripts.ts": ["P10"],
+      "ds-scripts.ts": ["P10"],
+      "ds-settings-scripts.ts": ["P10"],
       "matrix-scripts.ts": ["P01"],
       "task-list-scripts.ts": ["P02"],
       "task-form-scripts.ts": ["P03", "P04"],
@@ -33,6 +36,7 @@ describe("screen registry", () => {
 
   it("derives html page ids and entities from the registry", () => {
     expect(htmlPageIds()).toEqual({
+      "/ds": "html_ds_page",
       "/login": "html_login_page",
       "/matrix": "html_matrix_page",
       "/ideas": "html_ideas_page",
@@ -42,6 +46,7 @@ describe("screen registry", () => {
       "/tasks/:id": "html_task_page",
     });
     expect(pageEntities()).toEqual({
+      "/ds": "tasks",
       "/matrix": "tasks",
       "/ideas": "ideas",
       "/ideas/:id": "ideas",

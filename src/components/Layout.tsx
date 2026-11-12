@@ -9,7 +9,7 @@ const HTMX_SCRIPT = "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.j
 const STYLE_ASSETS = CLIENT_ASSETS.filter((asset) => asset.kind === "style");
 const SCRIPT_ASSETS = CLIENT_ASSETS.filter((asset) => asset.kind === "script");
 
-export const Layout: FC<{ active: "ideas" | "matrix" | "tasks"; children?: JSX.Element }> = ({
+export const Layout: FC<{ active: "ideas" | "matrix" | "tasks" | "ds"; children?: JSX.Element }> = ({
   active,
   children,
 }) => (

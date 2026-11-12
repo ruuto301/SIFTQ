@@ -1,4 +1,4 @@
-export type ActiveKey = "ideas" | "matrix" | "tasks";
+export type ActiveKey = "ideas" | "matrix" | "tasks" | "ds";
 
 type Nav = {
   label: string;
@@ -45,6 +45,14 @@ export const SCREENS: readonly Screen[] = [
     pageId: "html_new_task_page",
     presentationId: "P04",
     clientFiles: ["task-form-scripts.ts"],
+  },
+  {
+    path: "/ds",
+    pageId: "html_ds_page",
+    entity: "tasks",
+    presentationId: "P10",
+    clientFiles: ["dsh-chat-scripts.ts", "ds-scripts.ts", "ds-settings-scripts.ts"],
+    nav: { label: "DS", order: 3, activeKey: "ds" },
   },
   {
     path: "/ideas",

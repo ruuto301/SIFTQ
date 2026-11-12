@@ -9,6 +9,8 @@ import type { NewTaskFrom, NewTaskState } from "../components/NewTaskMeta";
 import { MatrixPage } from "../views/MatrixPage";
 import { IdeasPage } from "../views/IdeasPage";
 import { IdeaDetailPage } from "../views/IdeaDetailPage";
+import { DshChatPage } from "../views/DshChatPage";
+import { DsPage } from "../views/DsPage";
 import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
@@ -38,7 +40,7 @@ import type { IdeaRepository } from "../repository/idea-repository";
 type Repository = (c: Context<AppEnv>) => TaskRepository;
 type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
-function activePage(path: string): "ideas" | "matrix" | "tasks" {
+function activePage(path: string): "ideas" | "matrix" | "tasks" | "ds" {
   const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
   return match?.activeKey ?? "tasks";
 }
@@ -185,6 +187,14 @@ function registerTaskDetailRoutes(app: Hono<AppEnv>, repository: Repository) {
     return renderPage(c, <TaskDetailPage task={task} returnTo={detailReturnTo(c)} listStatus={detailListStatus(c)} />);
   });
 
+  app.get("/tasks/:id/chat", async (c) => {
+    const task = await findTask(c, repository, c.req.param("id"));
+    if (!task) return c.notFound();
+    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
+    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
+    return renderPage(c, <DshChatPage task={task} wsUrl={wsUrl} workspace={workspace} />);
+  });
+
   app.get("/tasks/:id/status/menu", async (c) => {
     const task = await findTask(c, repository, c.req.param("id"));
     if (!task) return c.notFound();
@@ -275,8 +285,27 @@ function registerTaskEditRoutes(app: Hono<AppEnv>, repository: Repository) {
   });
 }
 
+function registerDsRoute(app: Hono<AppEnv>, repository: Repository) {
+  app.get("/ds", async (c) => {
+    const result = await repository(c).list();
+    if (!result.ok) return c.text("Internal Server Error", 500);
+    const rawStatus = c.req.query("status");
+    const status: TaskStatus = isTaskStatus(rawStatus) ? rawStatus : "do";
+    const tasks = result.value.filter((task) => task.status === status);
+    const requested = c.req.query("task");
+    const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
+    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
+    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
+    return renderPage(
+      c,
+      <DsPage tasks={tasks} selected={selected} status={status} wsUrl={wsUrl} workspace={workspace} />,
+    );
+  });
+}
+
 export function registerTaskScreenRoutes(app: Hono<AppEnv>, repository: Repository, ideaRepository: IdeaRepositoryFactory) {
   registerTaskListRoutes(app, repository, ideaRepository);
+  registerDsRoute(app, repository);
   registerTaskDetailRoutes(app, repository);
   registerTaskCreateRoute(app, repository);
   registerTaskEditRoutes(app, repository);

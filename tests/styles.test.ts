@@ -159,4 +159,13 @@ describe("Matrix drag feedback styles", () => {
     const placeholder = STYLES_CSS.match(/(?:^|\n)\.matrix-drag-placeholder\s*\{[^}]*\}/);
     expect(placeholder?.[0]).toContain("pointer-events: none;");
   });
+
+  it("defines the DS panes, resizers, settings and memo", () => {
+    expect(STYLES_CSS).toContain(".ds__resizer");
+    expect(STYLES_CSS).toContain(".ds--browser-max");
+    expect(STYLES_CSS).toContain(".ds-settings__card");
+    expect(STYLES_CSS).toContain(".ds__tab2");
+    expect(STYLES_CSS).toContain(".dsh-desc");
+    expect(STYLES_CSS).toContain(".ds__task-item");
+  });
 });

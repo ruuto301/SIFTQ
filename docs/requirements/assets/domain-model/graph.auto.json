@@ -519,9 +519,31 @@
           "status": 409
         }
       ]
+    },
+    "html_ds_page": {
+      "kind": "html",
+      "method": "GET",
+      "path": "/ds",
+      "operation": "load",
+      "success": 200,
+      "entity": "tasks"
     }
   },
   "screenCalls": [
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_patch"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_delete"
+    },
     {
       "screen": "P08",
       "trigger": "POST",
