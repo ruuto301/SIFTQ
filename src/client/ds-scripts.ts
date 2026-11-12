@@ -17,19 +17,28 @@ export const DS_SCRIPT = `(function () {
   var pendingUrl = null;
   var tabs = [];
   var activeTabId = null;
+  var currentUrl = "";
 
   function setStatus(text) { if (status) status.textContent = text || ""; }
+  function isHttp(url) { return /^https?:\\/\\//i.test(String(url || "")); }
   function normalize(value) {
     var url = String(value || "").trim();
     if (url === "") return "";
-    if (!/^https?:\\/\\//i.test(url)) url = "https://" + url;
-    return url;
+    if (isHttp(url)) return url;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return "";
+    return "https://" + url;
   }
   function stored() {
-    try { return localStorage.getItem(storageKey) || ""; } catch (e) { return ""; }
+    var value = "";
+    try { value = localStorage.getItem(storageKey) || ""; } catch (e) { value = ""; }
+    if (!isHttp(value)) {
+      try { localStorage.removeItem(storageKey); } catch (e) { /* ignore */ }
+      return "";
+    }
+    return value;
   }
   function remember(url) {
-    if (!url || url === "about:blank") return;
+    if (!isHttp(url)) return;
     try { localStorage.setItem(storageKey, url); } catch (e) { /* ignore */ }
   }
   function request(method, payload) {
@@ -121,7 +130,8 @@ export const DS_SCRIPT = `(function () {
       node.className = "ds__tab2" + (tab.id === activeTabId ? " active" : "");
       var label = document.createElement("span");
       label.className = "ds__tab2-label";
-      label.textContent = tab.title || tab.url || "新しいタブ";
+      var blank = !tab.url || tab.url === "about:blank";
+      label.textContent = tab.title || (blank ? "新しいタブ" : tab.url);
       label.title = tab.url || "";
       label.addEventListener("click", function () {
         if (tab.id === activeTabId) return;
@@ -193,7 +203,11 @@ export const DS_SCRIPT = `(function () {
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     var url = normalize(input.value);
-    if (url === "") return;
+    if (url === "") {
+      if (String(input.value || "").trim() !== "") setStatus("http(s) の URL のみ開けます");
+      input.value = currentUrl;
+      return;
+    }
     input.value = url;
     if (sessionId === null || !started) {
       pendingUrl = url;
@@ -227,7 +241,11 @@ export const DS_SCRIPT = `(function () {
         if (Array.isArray(payload.tabs)) tabs = payload.tabs;
         if (payload.activeTabId !== undefined) activeTabId = payload.activeTabId;
         renderTabs();
-        if (payload.url) { input.value = payload.url; remember(payload.url); }
+        if (payload.url !== undefined) {
+          currentUrl = payload.url === "about:blank" ? "" : payload.url;
+          input.value = currentUrl;
+          remember(payload.url);
+        }
         return;
       }
       return;
@@ -242,11 +260,17 @@ export const DS_SCRIPT = `(function () {
       activeTabId = message.payload.activeTabId || activeTabId;
       renderTabs();
       var activeUrl = message.payload.url;
-      if (activeUrl) { input.value = activeUrl; remember(activeUrl); }
+      if (activeUrl !== undefined) {
+        currentUrl = activeUrl === "about:blank" ? "" : activeUrl;
+        input.value = currentUrl;
+        remember(activeUrl);
+      }
       setStatus("接続済み");
       fitToPane();
       observePane();
-      var target = pendingUrl || stored();
+      var current = message.payload.url || "";
+      var blank = current === "" || current === "about:blank";
+      var target = pendingUrl || (blank ? stored() : "");
       if (target && message.method === "browser.start") {
         setStatus("読み込み中…");
         request("browser.navigate", { sessionId: sessionId, url: target });
@@ -262,7 +286,11 @@ export const DS_SCRIPT = `(function () {
     }
     if (message.kind === "res" && message.method === "browser.history") {
       setStatus("");
-      if (message.payload.url) { input.value = message.payload.url; remember(message.payload.url); }
+      if (message.payload.url !== undefined) {
+        currentUrl = message.payload.url === "about:blank" ? "" : message.payload.url;
+        input.value = currentUrl;
+        remember(message.payload.url);
+      }
       return;
     }
     if (message.kind === "err" && message.method === "browser.start") {
