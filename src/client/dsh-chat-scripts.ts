@@ -33,6 +33,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var totals = { input: 0, output: 0, cacheRead: 0 };
 
   function setState(text, isError) {
+    if (!state) return;
     state.textContent = text;
     state.style.color = isError ? "#c62828" : "";
   }

@@ -44,12 +44,6 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
               <button type="button" data-mode="danger-full-access">フルアクセス</button>
             </div>
           </div>
-          <button type="button" class="button" id="dsh-chat-stop" hidden>
-            停止
-          </button>
-          <span class="dsh-chat__state" id="dsh-chat-state">
-            {selected === undefined ? "タスク未選択" : "接続中…"}
-          </span>
         </div>
       </div>
       {selected === undefined ? (
