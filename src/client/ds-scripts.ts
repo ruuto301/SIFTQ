@@ -179,6 +179,8 @@ export const DS_SCRIPT = `(function () {
       canvas.height = viewport.height;
       started = true;
       setStatus("接続済み");
+      fitToPane();
+      observePane();
       var target = pendingUrl || stored();
       if (target) { request("browser.navigate", { sessionId: sessionId, url: target }); }
       pendingUrl = null;
@@ -188,10 +190,40 @@ export const DS_SCRIPT = `(function () {
       setStatus("起動できません: " + (message.payload.message || "unknown"));
       return;
     }
+    if (message.kind === "res" && message.method === "browser.resize") {
+      viewport = { width: message.payload.width, height: message.payload.height };
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      return;
+    }
     if (message.kind === "err" && message.method === "browser.navigate") {
       setStatus("読み込み失敗: " + (message.payload.message || "unknown"));
       return;
     }
+  }
+
+  var resizeTimer = null;
+  var observer = null;
+  function paneSize() {
+    var rect = canvas.getBoundingClientRect();
+    return { width: Math.max(320, Math.round(rect.width)), height: Math.max(240, Math.round(rect.height)) };
+  }
+  function fitToPane() {
+    if (sessionId === null) return;
+    var size = paneSize();
+    if (Math.abs(size.width - viewport.width) < 8 && Math.abs(size.height - viewport.height) < 8) return;
+    viewport = size;
+    canvas.width = size.width;
+    canvas.height = size.height;
+    request("browser.resize", { sessionId: sessionId, width: size.width, height: size.height });
+  }
+  function observePane() {
+    if (observer !== null || typeof ResizeObserver === "undefined") return;
+    observer = new ResizeObserver(function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fitToPane, 250);
+    });
+    observer.observe(canvas.parentElement || canvas);
   }
 
   function start() {
