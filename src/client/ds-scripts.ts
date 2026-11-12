@@ -109,6 +109,161 @@ export const DS_SCRIPT = `(function () {
   });
   applyLayout();
 
+  // Task list context menu: status, working, open and delete (same API as the Matrix).
+  var STATUS_LABELS = { do: "進行中", done: "完了", skip: "見送り" };
+  var taskList = document.querySelector(".ds__tasks");
+  if (taskList) initTaskMenu(taskList);
+
+  function initTaskMenu(list) {
+    var menu = null;
+    var menuRow = null;
+    function closeMenu() {
+      if (menu) menu.remove();
+      menu = null;
+      menuRow = null;
+    }
+    function currentFilter() {
+      var active = document.querySelector(".ds__status-tabs .is-active");
+      return active ? active.textContent.trim() : "do";
+    }
+    function addItem(box, label, action, isDelete) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className = isDelete === true ? "matrix-menu-item matrix-menu-item--delete" : "matrix-menu-item";
+      item.setAttribute("data-ds-task-action", action);
+      item.textContent = label;
+      box.appendChild(item);
+    }
+    function reloadFilter() {
+      location.assign("/ds?status=" + encodeURIComponent(currentFilter()));
+    }
+    function applyTask(row, task) {
+      row.setAttribute("data-task-version", String(task.version));
+      row.setAttribute("data-task-status", task.status);
+      row.setAttribute("data-task-working", task.working === true ? "true" : "false");
+      var badge = row.querySelector(".status");
+      if (badge) {
+        badge.className = "status status--" + task.status;
+        badge.textContent = task.status;
+      }
+      var dot = row.querySelector(".ds__dot");
+      if (dot) dot.className = "ds__dot ds__dot--" + task.status;
+      var workingBadge = row.querySelector(".working-badge");
+      if (task.working === true && workingBadge === null) {
+        var meta = row.querySelector(".ds__task-meta");
+        var created = document.createElement("span");
+        created.className = "working-badge";
+        created.textContent = "working";
+        if (meta) meta.appendChild(created);
+      } else if (task.working !== true && workingBadge !== null) {
+        workingBadge.remove();
+      }
+      if (task.status !== currentFilter()) {
+        var wasSelected = row.querySelector(".ds__task.active") !== null;
+        row.remove();
+        if (wasSelected) reloadFilter();
+      }
+    }
+    function patchTask(row, body) {
+      var id = row.getAttribute("data-task-id");
+      var version = Number(row.getAttribute("data-task-version"));
+      closeMenu();
+      fetch("/api/tasks/" + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({}, body, { version: version })),
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            location.reload();
+            return null;
+          }
+          return response.json();
+        })
+        .then(function (task) {
+          if (task) applyTask(row, task);
+        })
+        .catch(function () {
+          location.reload();
+        });
+    }
+    function deleteTask(row) {
+      if (!window.confirm("このタスクを削除しますか？")) return;
+      var id = row.getAttribute("data-task-id");
+      var version = Number(row.getAttribute("data-task-version"));
+      var wasSelected = row.querySelector(".ds__task.active") !== null;
+      closeMenu();
+      fetch("/api/tasks/" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: version }),
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            location.reload();
+            return;
+          }
+          row.remove();
+          if (wasSelected) reloadFilter();
+        })
+        .catch(function () {
+          location.reload();
+        });
+    }
+    function openMenu(row, x, y) {
+      closeMenu();
+      menuRow = row;
+      var status = row.getAttribute("data-task-status") || "do";
+      var working = row.getAttribute("data-task-working") === "true";
+      var box = document.createElement("div");
+      box.className = "matrix-menu";
+      ["do", "done", "skip"].forEach(function (value) {
+        addItem(box, (value === status ? "● " : "　") + STATUS_LABELS[value], "status:" + value, false);
+      });
+      addItem(box, working ? "作業中を解除" : "作業中にする", "working", false);
+      addItem(box, "タスク詳細を開く", "open", false);
+      addItem(box, "削除", "delete", true);
+      box.addEventListener("click", function (event) {
+        var item = event.target.closest ? event.target.closest("[data-ds-task-action]") : null;
+        if (item === null) return;
+        var action = item.getAttribute("data-ds-task-action");
+        var target = menuRow;
+        if (target === null) return;
+        if (action === "open") {
+          closeMenu();
+          location.assign("/tasks/" + encodeURIComponent(target.getAttribute("data-task-id")));
+          return;
+        }
+        if (action === "delete") {
+          deleteTask(target);
+          return;
+        }
+        if (action === "working") {
+          patchTask(target, { working: target.getAttribute("data-task-working") !== "true" });
+          return;
+        }
+        if (action.indexOf("status:") === 0) patchTask(target, { status: action.slice("status:".length) });
+      });
+      document.body.appendChild(box);
+      var rect = box.getBoundingClientRect();
+      box.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + "px";
+      box.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + "px";
+      menu = box;
+    }
+    document.addEventListener("contextmenu", function (event) {
+      var row = event.target.closest ? event.target.closest(".ds__task-item") : null;
+      if (row === null || !list.contains(row)) return;
+      event.preventDefault();
+      openMenu(row, event.clientX, event.clientY);
+    });
+    document.addEventListener("click", function (event) {
+      if (menu !== null && !menu.contains(event.target)) closeMenu();
+    }, true);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeMenu();
+    });
+  }
+
   function draw(data) {
     var image = new Image();
     image.onload = function () {

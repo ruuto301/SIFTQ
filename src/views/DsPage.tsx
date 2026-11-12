@@ -29,13 +29,24 @@ function TaskPane({ tasks, selected, status }: TaskPaneProps) {
       <StatusTabs active={status} />
       <ul class="ds__tasks">
         {tasks.map((task) => (
-          <li key={task.id}>
+          <li
+            key={task.id}
+            class="ds__task-item"
+            data-task-id={task.id}
+            data-task-version={task.version}
+            data-task-status={task.status}
+            data-task-working={task.working ? "true" : "false"}
+          >
             <a
               class={selected?.id === task.id ? "ds__task active" : "ds__task"}
               href={`/ds?task=${encodeURIComponent(task.id)}`}
             >
               <span class={`ds__dot ds__dot--${task.status}`} aria-hidden="true"></span>
               <span class="ds__task-title">{task.title}</span>
+              <span class="ds__task-meta">
+                <span class={`status status--${task.status}`}>{task.status}</span>
+                {task.working ? <span class="working-badge">working</span> : null}
+              </span>
             </a>
           </li>
         ))}

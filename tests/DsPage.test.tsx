@@ -25,6 +25,18 @@ describe("DsPage", () => {
     expect(html).toContain('placeholder="指示を入力"');
   });
 
+  it("marks task rows for the context menu", () => {
+    const html = renderToString(
+      <DsPage tasks={[taskFixture({ id: "t9", version: 3, working: true })]} selected={taskFixture({ id: "t9" })} {...props} />,
+    );
+
+    expect(html).toContain('data-task-id="t9"');
+    expect(html).toContain('data-task-version="3"');
+    expect(html).toContain('data-task-status="do"');
+    expect(html).toContain('data-task-working="true"');
+    expect(html).toContain('class="working-badge"');
+  });
+
   it("renders the send button as an arrow", () => {
     const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} />);
 
@@ -34,7 +46,7 @@ describe("DsPage", () => {
     expect(html).toContain("↑");
   });
 
-  it("renders the chat, memo and settings tabs plus the browser pane", () => {
+  it("renders the chat, description and settings tabs plus the browser pane", () => {
     const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} />);
 
     for (const id of ["dsh-desc", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
@@ -42,7 +54,9 @@ describe("DsPage", () => {
     }
     expect(html).toContain("ds__resizer");
   });
+});
 
+describe("DsPage task list", () => {
   it("asks for a task selection when none is provided", () => {
     const html = renderToString(<DsPage tasks={[]} selected={undefined} {...props} />);
 

@@ -23,6 +23,15 @@ describe("DS browser script", () => {
     expect(DS_SCRIPT).toContain("ds-browser-canvas");
   });
 
+  it("opens a task context menu with status, working and delete actions", () => {
+    expect(DS_SCRIPT).toContain("contextmenu");
+    expect(DS_SCRIPT).toContain("data-task-version");
+    expect(DS_SCRIPT).toContain("/api/tasks/");
+    for (const label of ["進行中", "完了", "見送り", "作業中にする", "削除"]) {
+      expect(DS_SCRIPT).toContain(label);
+    }
+  });
+
   it("rejects non-http URLs and ignores frames from inactive tabs", () => {
     expect(DS_SCRIPT).toContain("http(s) の URL のみ開けます");
     expect(DS_SCRIPT).toContain("tabId");
