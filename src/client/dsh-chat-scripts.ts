@@ -5,6 +5,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var taskId = root.getAttribute("data-task-id");
   var wsUrl = root.getAttribute("data-ws-url") || "ws://127.0.0.1:8799";
   var workspace = root.getAttribute("data-workspace") || "/mnt/c/projects";
+  var taskDescription = root.getAttribute("data-task-description") || "";
   var log = document.getElementById("dsh-chat-log");
   var state = document.getElementById("dsh-chat-state");
   var usage = document.getElementById("dsh-chat-usage");
@@ -321,7 +322,14 @@ export const DSH_CHAT_SCRIPT = `(function () {
       }
       if (message.kind === "res" && message.method === "session.subscribe") return;
       if (message.kind === "res" && message.method === "memo.get") {
-        setMemo(message.payload.text);
+        var text = message.payload.text || "";
+        if (text === "" && message.payload.updatedAt === undefined && taskDescription !== "") {
+          // Seed the shared memo with the task description on first open.
+          setMemo(taskDescription);
+          sendRequest("memo.write", { sessionId: sessionId, text: taskDescription });
+          return;
+        }
+        setMemo(text);
         if (memoStatus) memoStatus.textContent = "";
         return;
       }

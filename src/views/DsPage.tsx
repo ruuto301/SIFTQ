@@ -1,5 +1,4 @@
 import type { FC } from "hono/jsx";
-import { DescriptionContent } from "../components/DescriptionContent";
 import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
 
@@ -86,6 +85,7 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
       data-task-id={selected.id}
       data-ws-url={wsUrl}
       data-workspace={workspace}
+      data-task-description={selected.description}
     >
       <div class="dsh-chat__usage" id="dsh-chat-usage" hidden></div>
       <div class="dsh-chat__log" id="dsh-chat-log" aria-live="polite"></div>
@@ -102,7 +102,7 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
   );
 }
 
-function MemoPane({ description }: { description: string }) {
+function MemoPane() {
   return (
     <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
       <div class="dsh-memo__bar">
@@ -114,12 +114,6 @@ function MemoPane({ description }: { description: string }) {
       </div>
       <div class="dsh-memo__view" id="dsh-memo-view"></div>
       <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）" hidden></textarea>
-      <section class="dsh-memo__desc">
-        <div class="dsh-memo__desc-title">タスクの説明</div>
-        <div class="dsh-memo__desc-body" id="dsh-memo-desc">
-          <DescriptionContent description={description} />
-        </div>
-      </section>
     </div>
   );
 }
@@ -193,7 +187,7 @@ export const DsPage: FC<{
     <section class="ds__pane ds__pane--chat">
       <ChatHeader />
       <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
-      {selected === undefined ? null : <MemoPane description={selected.description} />}
+      {selected === undefined ? null : <MemoPane />}
       <SettingsPane />
     </section>
 

@@ -73,10 +73,6 @@ export const DS_CSS = `
 .dsh-memo__view .dsh-code { background: #f6f8fa; border-radius: 6px; padding: 8px; overflow: auto; font-size: 12px; }
 .dsh-memo__view code { background: #f6f8fa; border-radius: 4px; padding: 1px 4px; font-size: 12px; }
 .dsh-memo textarea { flex: 1; min-height: 0; width: 100%; resize: none; border: 1px solid #cfd6dd; border-radius: 6px; padding: 10px; font-size: 13px; line-height: 1.7; color: #1b1f24; background: #fff; }
-.dsh-memo__desc { flex: 0 1 auto; max-height: 40%; overflow: auto; border-top: 1px solid #e5e7eb; padding-top: 8px; }
-.dsh-memo__desc-title { font-size: 11px; color: #666; margin-bottom: 4px; }
-.dsh-memo__desc-body { font-size: 12px; line-height: 1.7; color: #1b1f24; white-space: pre-wrap; }
-.dsh-memo__desc-body .description-image { max-width: 100%; }
 .dsh-chat[hidden], .dsh-memo[hidden], .dsh-memo textarea[hidden] { display: none !important; }
 
 .ds-settings { flex: 1; min-height: 0; display: flex; gap: 8px; padding: 8px; background: #fff; }

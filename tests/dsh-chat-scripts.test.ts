@@ -13,6 +13,11 @@ describe("DSH chat script", () => {
     }
   });
 
+  it("seeds an unwritten memo with the task description", () => {
+    expect(DSH_CHAT_SCRIPT).toContain("data-task-description");
+    expect(DSH_CHAT_SCRIPT).toContain("updatedAt === undefined");
+  });
+
   it("sends with Ctrl+Enter and exposes the bridge", () => {
     expect(DSH_CHAT_SCRIPT).toContain("__dsBridge");
     expect(DSH_CHAT_SCRIPT).toContain("ctrlKey");
