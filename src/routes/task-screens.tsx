@@ -143,17 +143,6 @@ function registerTaskListRoutes(app: Hono<AppEnv>, repository: Repository, ideaR
     return result.value === undefined ? c.notFound() : renderPage(c, <IdeaDetailPage idea={result.value} />);
   });
 
-  app.get("/ds", async (c) => {
-    const result = await repository(c).list();
-    if (!result.ok) return c.text("Internal Server Error", 500);
-    const tasks = result.value;
-    const requested = c.req.query("task");
-    const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
-    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
-    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
-    return renderPage(c, <DsPage tasks={tasks} selected={selected} wsUrl={wsUrl} workspace={workspace} />);
-  });
-
   app.get("/tasks", async (c) => {
     const result = await repository(c).list();
     if (!result.ok) return c.text("Internal Server Error", 500);
@@ -296,8 +285,22 @@ function registerTaskEditRoutes(app: Hono<AppEnv>, repository: Repository) {
   });
 }
 
+function registerDsRoute(app: Hono<AppEnv>, repository: Repository) {
+  app.get("/ds", async (c) => {
+    const result = await repository(c).list();
+    if (!result.ok) return c.text("Internal Server Error", 500);
+    const tasks = result.value;
+    const requested = c.req.query("task");
+    const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
+    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
+    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
+    return renderPage(c, <DsPage tasks={tasks} selected={selected} wsUrl={wsUrl} workspace={workspace} />);
+  });
+}
+
 export function registerTaskScreenRoutes(app: Hono<AppEnv>, repository: Repository, ideaRepository: IdeaRepositoryFactory) {
   registerTaskListRoutes(app, repository, ideaRepository);
+  registerDsRoute(app, repository);
   registerTaskDetailRoutes(app, repository);
   registerTaskCreateRoute(app, repository);
   registerTaskEditRoutes(app, repository);

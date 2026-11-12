@@ -723,6 +723,14 @@
           "status": 409
         }
       ]
+    },
+    "html_ds_page": {
+      "kind": "html",
+      "method": "GET",
+      "path": "/ds",
+      "operation": "load",
+      "success": 200,
+      "entity": "tasks"
     }
   },
   "relations": [],

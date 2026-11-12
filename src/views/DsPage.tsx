@@ -1,22 +1,16 @@
 import type { FC } from "hono/jsx";
 import type { Task } from "../task";
 
-/**
- * DS screen: task list (left), DSH chat (center), browser (right).
- * The chat and browser panes are driven by client scripts.
- */
-export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: string; workspace: string }> = ({
-  tasks,
-  selected,
-  wsUrl,
-  workspace,
-}) => (
-  <div class="ds" id="ds-root">
+type TaskPaneProps = { tasks: Task[]; selected: Task | undefined };
+type ChatPaneProps = { selected: Task | undefined; wsUrl: string; workspace: string };
+
+function TaskPane({ tasks, selected }: TaskPaneProps) {
+  return (
     <aside class="ds__pane ds__pane--tasks">
       <div class="ds__pane-head">Tasks</div>
       <ul class="ds__tasks">
         {tasks.map((task) => (
-          <li>
+          <li key={task.id}>
             <a
               class={selected?.id === task.id ? "ds__task active" : "ds__task"}
               href={`/ds?task=${encodeURIComponent(task.id)}`}
@@ -28,84 +22,103 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
         ))}
       </ul>
     </aside>
+  );
+}
 
-    <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
-
-    <section class="ds__pane ds__pane--chat">
-      <div class="ds__pane-head">
-        <div class="ds__tabs" role="tablist">
-          <button type="button" class="ds__tab active" data-ds-tab="chat" role="tab">
-            Chat
+function ChatHeader() {
+  return (
+    <div class="ds__pane-head">
+      <div class="ds__tabs" role="tablist">
+        <button type="button" class="ds__tab active" data-ds-tab="chat" role="tab">
+          Chat
+        </button>
+        <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
+          Memo
+        </button>
+        <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
+          設定
+        </button>
+      </div>
+      <div class="ds__chat-tools">
+        <select id="dsh-chat-model" aria-label="モデル"></select>
+        <div class="ds__access">
+          <button type="button" class="ds__pill" id="dsh-chat-access" aria-haspopup="menu" aria-expanded="false">
+            ワークスペース書き込み
           </button>
-          <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
-            Memo
-          </button>
-          <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
-            設定
-          </button>
-        </div>
-        <div class="ds__chat-tools">
-          <select id="dsh-chat-model" aria-label="モデル"></select>
-          <div class="ds__access">
-            <button type="button" class="ds__pill" id="dsh-chat-access" aria-haspopup="menu" aria-expanded="false">
-              ワークスペース書き込み
-            </button>
-            <div class="ds__menu" id="dsh-chat-access-menu" hidden>
-              <button type="button" data-mode="read-only">読み取り専用</button>
-              <button type="button" data-mode="workspace-write">ワークスペース書き込み</button>
-              <button type="button" data-mode="danger-full-access">フルアクセス</button>
-            </div>
+          <div class="ds__menu" id="dsh-chat-access-menu" hidden>
+            <button type="button" data-mode="read-only">読み取り専用</button>
+            <button type="button" data-mode="workspace-write">ワークスペース書き込み</button>
+            <button type="button" data-mode="danger-full-access">フルアクセス</button>
           </div>
         </div>
       </div>
-      {selected === undefined ? (
-        <p class="ds__empty">左のタスクを選択してください。</p>
-      ) : (
-        <>
-        <div class="dsh-chat" id="dsh-chat" data-ds-pane="chat" data-task-id={selected.id} data-ws-url={wsUrl} data-workspace={workspace}>
-          <div class="dsh-chat__usage" id="dsh-chat-usage" hidden></div>
-          <div class="dsh-chat__log" id="dsh-chat-log" aria-live="polite"></div>
-          <div class="dsh-chat__approval" id="dsh-chat-approval" hidden></div>
-          <form class="dsh-chat__form" id="dsh-chat-form">
-            <textarea id="dsh-chat-input" rows={3} placeholder="指示を入力"></textarea>
-            <div class="dsh-chat__buttons">
-              <button type="submit" class="button" id="dsh-chat-send">
-                送信
-              </button>
-            </div>
-          </form>
+    </div>
+  );
+}
+
+function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
+  if (selected === undefined) return <p class="ds__empty">左のタスクを選択してください。</p>;
+  return (
+    <div
+      class="dsh-chat"
+      id="dsh-chat"
+      data-ds-pane="chat"
+      data-task-id={selected.id}
+      data-ws-url={wsUrl}
+      data-workspace={workspace}
+    >
+      <div class="dsh-chat__usage" id="dsh-chat-usage" hidden></div>
+      <div class="dsh-chat__log" id="dsh-chat-log" aria-live="polite"></div>
+      <div class="dsh-chat__approval" id="dsh-chat-approval" hidden></div>
+      <form class="dsh-chat__form" id="dsh-chat-form">
+        <textarea id="dsh-chat-input" rows={3} placeholder="指示を入力"></textarea>
+        <div class="dsh-chat__buttons">
+          <button type="submit" class="button" id="dsh-chat-send">
+            送信
+          </button>
         </div>
-        <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
-          <div class="dsh-memo__bar">
-            <span class="dsh-memo__title">メモ</span>
-            <span class="dsh-memo__status" id="dsh-memo-status"></span>
-            <button type="button" class="button" id="dsh-memo-edit">
-              編集
-            </button>
-          </div>
-          <div class="dsh-memo__view" id="dsh-memo-view"></div>
-          <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）" hidden></textarea>
-        </div>
-        </>
-      )}
-      <div class="ds-settings" id="ds-settings" data-ds-pane="settings" hidden>
-        <div class="ds-settings__ns" id="ds-settings-ns"></div>
-        <div class="ds-settings__body">
-          <div class="ds-settings__head">
-            <span class="ds-settings__title" id="ds-settings-title">設定</span>
-            <span class="ds-settings__status" id="ds-settings-status"></span>
-            <button type="button" class="button" id="ds-settings-save">
-              保存
-            </button>
-          </div>
-          <div class="ds-settings__form" id="ds-settings-form"></div>
-          <textarea class="ds-settings__json" id="ds-settings-json" hidden></textarea>
-        </div>
+      </form>
+    </div>
+  );
+}
+
+function MemoPane() {
+  return (
+    <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
+      <div class="dsh-memo__bar">
+        <span class="dsh-memo__title">メモ</span>
+        <span class="dsh-memo__status" id="dsh-memo-status"></span>
+        <button type="button" class="button" id="dsh-memo-edit">
+          編集
+        </button>
       </div>
-    </section>
+      <div class="dsh-memo__view" id="dsh-memo-view"></div>
+      <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）" hidden></textarea>
+    </div>
+  );
+}
 
-    <div class="ds__resizer" data-resize="right" role="separator" aria-orientation="vertical" aria-label="ブラウザペインの幅"></div>
+function SettingsPane() {
+  return (
+    <div class="ds-settings" id="ds-settings" data-ds-pane="settings" hidden>
+      <div class="ds-settings__ns" id="ds-settings-ns"></div>
+      <div class="ds-settings__body">
+        <div class="ds-settings__head">
+          <span class="ds-settings__title" id="ds-settings-title">設定</span>
+          <span class="ds-settings__status" id="ds-settings-status"></span>
+          <button type="button" class="button" id="ds-settings-save">
+            保存
+          </button>
+        </div>
+        <div class="ds-settings__form" id="ds-settings-form"></div>
+        <textarea class="ds-settings__json" id="ds-settings-json" hidden></textarea>
+      </div>
+    </div>
+  );
+}
 
+function BrowserPane() {
+  return (
     <aside class="ds__pane ds__pane--browser">
       <div class="ds__pane-head">
         <span>Browser</span>
@@ -132,5 +145,33 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
       </form>
       <canvas id="ds-browser-canvas" tabindex={0}></canvas>
     </aside>
+  );
+}
+
+/**
+ * DS screen: task list (left), DSH chat (center), browser (right).
+ * The chat, memo, settings and browser panes are driven by client scripts.
+ */
+export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: string; workspace: string }> = ({
+  tasks,
+  selected,
+  wsUrl,
+  workspace,
+}) => (
+  <div class="ds" id="ds-root">
+    <TaskPane tasks={tasks} selected={selected} />
+
+    <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
+
+    <section class="ds__pane ds__pane--chat">
+      <ChatHeader />
+      <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
+      {selected === undefined ? null : <MemoPane />}
+      <SettingsPane />
+    </section>
+
+    <div class="ds__resizer" data-resize="right" role="separator" aria-orientation="vertical" aria-label="ブラウザペインの幅"></div>
+
+    <BrowserPane />
   </div>
 );
