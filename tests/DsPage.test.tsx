@@ -41,6 +41,17 @@ describe("DsPage", () => {
     expect(html).not.toContain('id="dsh-memo"');
   });
 
+  it("shows the task description in the memo pane", () => {
+    const html = renderToString(
+      <DsPage tasks={[taskFixture({ description: "手順は https://example.com/docs を参照" })]} selected={taskFixture({ description: "手順は https://example.com/docs を参照" })} {...props} />,
+    );
+
+    expect(html).toContain('id="dsh-memo-desc"');
+    expect(html).toContain("タスクの説明");
+    expect(html).toContain("手順は");
+    expect(html).toContain('href="https://example.com/docs"');
+  });
+
   it("renders the do, done and skip tabs with the active status", () => {
     const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} status="done" />);
 
