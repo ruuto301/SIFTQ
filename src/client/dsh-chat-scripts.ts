@@ -20,6 +20,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var memoEdit = document.getElementById("dsh-memo-edit");
   var memoTimer = null;
   var memoText = "";
+  var bridgeHandlers = [];
   var accessButton = document.getElementById("dsh-chat-access");
   var accessMenu = document.getElementById("dsh-chat-access-menu");
   var ACCESS_LABELS = { "read-only": "読み取り専用", "workspace-write": "ワークスペース書き込み", "danger-full-access": "フルアクセス" };
@@ -37,6 +38,13 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var selectedModel = "";
   var currentApprovalId = null;
   var totals = { input: 0, output: 0, cacheRead: 0 };
+
+  window.__dsBridge = {
+    send: function (method, payload) { return sendRequest(method, payload); },
+    onEvent: function (handler) { bridgeHandlers.push(handler); },
+    getSessionId: function () { return sessionId; },
+    isReady: function () { return socket !== null && socket.readyState === 1; },
+  };
 
   function setState(text, isError) {
     if (!state) return;
@@ -200,6 +208,9 @@ export const DSH_CHAT_SCRIPT = `(function () {
     socket.addEventListener("message", function (event) {
       var message;
       try { message = JSON.parse(event.data); } catch (e) { return; }
+      bridgeHandlers.forEach(function (handler) {
+        try { handler(message); } catch (error) { /* isolated */ }
+      });
       if (message.kind === "evt") {
         if (message.type === "transport.ready") return;
         if (message.type === "session.state") {

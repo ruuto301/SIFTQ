@@ -11,6 +11,7 @@ import { DESCRIPTION_EDITOR_SCRIPT } from "./task-form-scripts";
 import { TASK_LIST_SELECTION_SCRIPT } from "./task-list-scripts";
 import { DSH_CHAT_SCRIPT } from "./dsh-chat-scripts";
 import { DS_SCRIPT } from "./ds-scripts";
+import { DS_SETTINGS_SCRIPT } from "./ds-settings-scripts";
 
 export type ClientAsset = {
   path: string;
@@ -42,6 +43,12 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/dsh-chat.js",
     body: DSH_CHAT_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/ds-settings.js",
+    body: DS_SETTINGS_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },

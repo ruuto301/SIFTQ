@@ -38,6 +38,9 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
             Memo
           </button>
+          <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
+            設定
+          </button>
         </div>
         <div class="ds__chat-tools">
           <select id="dsh-chat-model" aria-label="モデル"></select>
@@ -83,6 +86,20 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
         </div>
         </>
       )}
+      <div class="ds-settings" id="ds-settings" data-ds-pane="settings" hidden>
+        <div class="ds-settings__ns" id="ds-settings-ns"></div>
+        <div class="ds-settings__body">
+          <div class="ds-settings__head">
+            <span class="ds-settings__title" id="ds-settings-title">設定</span>
+            <span class="ds-settings__status" id="ds-settings-status"></span>
+            <button type="button" class="button" id="ds-settings-save">
+              保存
+            </button>
+          </div>
+          <div class="ds-settings__form" id="ds-settings-form"></div>
+          <textarea class="ds-settings__json" id="ds-settings-json" hidden></textarea>
+        </div>
+      </div>
     </section>
 
     <aside class="ds__pane ds__pane--browser">
