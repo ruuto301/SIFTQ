@@ -55,14 +55,7 @@ export const DS_CSS = `
 .ds__tabs { display: flex; gap: 4px; }
 .ds__tab { border: 0; background: transparent; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #555; }
 .ds__tab.active { background: #eef4ff; color: #1b1f24; font-weight: 600; }
-.dsh-memo { flex: 1; min-height: 0; overflow: auto; padding: 8px; background: #fff; }
-.dsh-memo__head { font-size: 12px; font-weight: 600; color: #1b1f24; margin-bottom: 8px; }
-.dsh-memo__list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
-.dsh-memo__entry { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; font-size: 12px; white-space: pre-wrap; color: #1b1f24; }
-.dsh-memo__entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; color: #666; font-size: 11px; }
-.dsh-memo__entry-actions { display: flex; gap: 4px; }
-.dsh-memo__editor textarea { width: 100%; resize: vertical; border: 1px solid #cfd6dd; border-radius: 6px; padding: 6px; font-size: 12px; color: #1b1f24; background: #fff; }
-.dsh-memo__actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
-
-.dsh-chat[hidden], .dsh-memo[hidden] { display: none !important; }
+.dsh-memo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #fff; }
+.dsh-memo textarea { flex: 1; min-height: 0; width: 100%; resize: none; border: 1px solid #cfd6dd; border-radius: 6px; padding: 8px; font-size: 13px; line-height: 1.6; color: #1b1f24; background: #fff; }
+.dsh-memo__status { font-size: 11px; color: #666; text-align: right; }
 `;

@@ -71,15 +71,8 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           </form>
         </div>
         <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
-          <div class="dsh-memo__head">共有メモ（自分 / LLM）</div>
-          <div class="dsh-memo__list" id="dsh-memo-list"></div>
-          <div class="dsh-memo__editor">
-            <textarea id="dsh-memo-input" rows={2} placeholder="メモを追加 / 編集中の内容"></textarea>
-            <div class="dsh-memo__actions">
-              <button type="button" class="button" id="dsh-memo-save">追加</button>
-              <button type="button" class="button" id="dsh-memo-cancel" hidden>編集をやめる</button>
-            </div>
-          </div>
+          <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）"></textarea>
+          <div class="dsh-memo__status" id="dsh-memo-status"></div>
         </div>
         </>
       )}
