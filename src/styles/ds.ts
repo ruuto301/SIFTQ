@@ -91,4 +91,22 @@ export const DS_CSS = `
 .ds-settings__note { font-size: 11px; color: #666; }
 .ds-settings__json { flex: 1; min-height: 220px; width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; border: 1px solid #cfd6dd; border-radius: 6px; padding: 8px; color: #1b1f24; background: #fff; }
 .ds-settings[hidden], .ds-settings__json[hidden] { display: none !important; }
+
+.ds-settings__ns-title { font-size: 12px; font-weight: 600; color: #1b1f24; padding: 4px 8px 8px; }
+.ds-settings__block { display: flex; flex-direction: column; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; }
+.ds-settings__block-title { font-size: 12px; font-weight: 600; color: #1b1f24; }
+.ds-settings__cards { display: flex; flex-direction: column; gap: 6px; }
+.ds-settings__card { display: flex; align-items: center; gap: 8px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; }
+.ds-settings__card.active { border-color: #4f8cff; background: #f5f9ff; }
+.ds-settings__card-name { font-size: 13px; color: #1b1f24; }
+.ds-settings__card-sub { font-size: 11px; color: #777; }
+.ds-settings__card-actions { margin-left: auto; display: flex; gap: 6px; }
+.ds-settings__dot { width: 8px; height: 8px; border-radius: 50%; background: #bbb; flex: 0 0 auto; }
+.ds-settings__dot.good { background: #3fb950; }
+.ds-settings__dot.bad { background: #f85149; }
+.ds-settings__hint { font-size: 10px; color: #999; }
+.ds-settings__link { border: 0; background: transparent; color: #2368d8; cursor: pointer; font-size: 11px; padding: 0; }
+.ds-settings__grid select { padding: 5px 8px; border: 1px solid #cfd6dd; border-radius: 6px; background: #fff; color: #1b1f24; font-size: 12px; }
+.ds-settings__models-head { display: flex; align-items: center; gap: 10px; }
+.ds-settings__add { align-self: flex-start; }
 `;
