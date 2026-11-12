@@ -14,6 +14,11 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var send = document.getElementById("dsh-chat-send");
   var modelSelect = document.getElementById("dsh-chat-model");
   var stopButton = document.getElementById("dsh-chat-stop");
+  var memoList = document.getElementById("dsh-memo-list");
+  var memoInput = document.getElementById("dsh-memo-input");
+  var memoSave = document.getElementById("dsh-memo-save");
+  var memoCancel = document.getElementById("dsh-memo-cancel");
+  var memoEditId = null;
   var accessButton = document.getElementById("dsh-chat-access");
   var accessMenu = document.getElementById("dsh-chat-access-menu");
   var ACCESS_LABELS = { "read-only": "読み取り専用", "workspace-write": "ワークスペース書き込み", "danger-full-access": "フルアクセス" };
@@ -41,6 +46,56 @@ export const DSH_CHAT_SCRIPT = `(function () {
     accessMode = mode;
     if (accessButton) accessButton.textContent = ACCESS_LABELS[mode] || mode;
   }
+  function renderMemo(entries) {
+    if (!memoList) return;
+    memoList.innerHTML = "";
+    (entries || []).forEach(function (entry) {
+      var row = document.createElement("div");
+      row.className = "dsh-memo__entry";
+      var head = document.createElement("div");
+      head.className = "dsh-memo__entry-head";
+      var author = document.createElement("span");
+      author.textContent = entry.author === "model" ? "LLM" : "自分";
+      head.appendChild(author);
+      if (entry.author === "user") {
+        var actions = document.createElement("span");
+        actions.className = "dsh-memo__entry-actions";
+        var edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "button";
+        edit.textContent = "編集";
+        edit.addEventListener("click", function () {
+          memoEditId = entry.id;
+          if (memoInput) memoInput.value = entry.text;
+          if (memoCancel) memoCancel.hidden = false;
+          if (memoSave) memoSave.textContent = "保存";
+        });
+        var remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "button";
+        remove.textContent = "削除";
+        remove.addEventListener("click", function () {
+          if (sessionId !== null) sendRequest("memo.delete", { sessionId: sessionId, entryId: entry.id });
+        });
+        actions.appendChild(edit);
+        actions.appendChild(remove);
+        head.appendChild(actions);
+      }
+      row.appendChild(head);
+      var body = document.createElement("div");
+      body.textContent = entry.text;
+      row.appendChild(body);
+      memoList.appendChild(row);
+    });
+  }
+
+  function resetMemoEditor() {
+    memoEditId = null;
+    if (memoInput) memoInput.value = "";
+    if (memoSave) memoSave.textContent = "追加";
+    if (memoCancel) memoCancel.hidden = true;
+  }
+
   function requestId() { seq += 1; return "c-" + seq; }
   function sendRequest(method, payload) {
     if (!socket || socket.readyState !== 1) return null;
@@ -187,6 +242,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
           return;
         }
         if (message.type === "session.access") { setAccess(message.payload.mode); return; }
+        if (message.type === "memo.updated") { renderMemo(message.payload.entries); return; }
         if (message.type === "session.updated") {
           var updated = message.payload || {};
           var match = models.find(function (model) {
@@ -279,10 +335,13 @@ export const DSH_CHAT_SCRIPT = `(function () {
           if (matched) { selectedModel = matched.id; if (modelSelect) modelSelect.value = selectedModel; }
         }
         sendRequest("session.subscribe", { sessionId: sessionId, sinceSeq: 0 });
+        sendRequest("memo.get", { sessionId: sessionId });
         if (input) input.focus();
         return;
       }
       if (message.kind === "res" && message.method === "session.subscribe") return;
+      if (message.kind === "res" && message.method === "memo.get") { renderMemo(message.payload.entries); return; }
+      if (message.kind === "res" && message.method === "memo.write") { resetMemoEditor(); return; }
       if (message.kind === "res" && message.method === "prompt.send") {
         if (pendingUserLine) { pendingUserLine.dataset.messageId = message.payload.turnId; pendingUserLine = null; }
         return;
@@ -326,6 +385,19 @@ export const DSH_CHAT_SCRIPT = `(function () {
     stopButton.addEventListener("click", function () {
       if (sessionId !== null) sendRequest("prompt.cancel", { sessionId: sessionId });
     });
+  }
+  if (memoSave) {
+    memoSave.addEventListener("click", function () {
+      var text = memoInput ? memoInput.value.trim() : "";
+      if (text === "" || sessionId === null) return;
+      var payload = { sessionId: sessionId, text: text };
+      if (memoEditId !== null) payload.entryId = memoEditId;
+      sendRequest("memo.write", payload);
+      resetMemoEditor();
+    });
+  }
+  if (memoCancel) {
+    memoCancel.addEventListener("click", resetMemoEditor);
   }
   if (accessButton && accessMenu) {
     accessButton.addEventListener("click", function (event) {

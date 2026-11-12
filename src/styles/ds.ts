@@ -51,4 +51,13 @@ export const DS_CSS = `
 .ds__menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; background: #fff; border: 1px solid #cfd6dd; border-radius: 8px; padding: 4px; min-width: 180px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); }
 .ds__menu button { display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: #1b1f24; font-size: 12px; text-align: left; cursor: pointer; }
 .ds__menu button:hover { background: #eef4ff; }
+
+.dsh-memo { border-top: 1px solid #e5e7eb; padding: 8px; background: #fff; max-height: 34%; overflow: auto; }
+.dsh-memo summary { cursor: pointer; font-size: 12px; font-weight: 600; color: #1b1f24; }
+.dsh-memo__list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.dsh-memo__entry { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; font-size: 12px; white-space: pre-wrap; color: #1b1f24; }
+.dsh-memo__entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; color: #666; font-size: 11px; }
+.dsh-memo__entry-actions { display: flex; gap: 4px; }
+.dsh-memo__editor textarea { width: 100%; resize: vertical; border: 1px solid #cfd6dd; border-radius: 6px; padding: 6px; font-size: 12px; color: #1b1f24; background: #fff; }
+.dsh-memo__actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; }
 `;
