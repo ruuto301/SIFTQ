@@ -114,7 +114,17 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           最大化
         </button>
       </div>
+      <div class="ds__tabs" id="ds-browser-tabs"></div>
       <form class="ds__browser-bar" id="ds-browser-form">
+        <button type="button" class="ds__nav" id="ds-browser-back" title="戻る">
+          ←
+        </button>
+        <button type="button" class="ds__nav" id="ds-browser-forward" title="進む">
+          →
+        </button>
+        <button type="button" class="ds__nav" id="ds-browser-reload" title="再読み込み">
+          ⟳
+        </button>
         <input id="ds-browser-url" type="text" placeholder="https://example.com" />
         <button type="submit" class="button">
           開く

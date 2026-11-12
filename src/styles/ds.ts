@@ -116,4 +116,13 @@ export const DS_CSS = `
 .ds-settings__grid select { padding: 5px 8px; border: 1px solid #cfd6dd; border-radius: 6px; background: #fff; color: #1b1f24; font-size: 12px; }
 .ds-settings__models-head { display: flex; align-items: center; gap: 10px; }
 .ds-settings__add { align-self: flex-start; }
+
+.ds__tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px 0; overflow-x: auto; border-bottom: 1px solid #e5e7eb; }
+.ds__tab2 { display: flex; align-items: center; gap: 4px; max-width: 160px; padding: 3px 6px; border: 1px solid #e5e7eb; border-bottom: none; border-radius: 6px 6px 0 0; background: #f7f8fa; font-size: 11px; color: #333; }
+.ds__tab2.active { background: #fff; border-color: #cfd6dd; font-weight: 600; }
+.ds__tab2-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.ds__tab2-close { border: 0; background: transparent; cursor: pointer; font-size: 11px; color: #777; padding: 0 2px; }
+.ds__tab2-new { border: 0; background: transparent; cursor: pointer; font-size: 14px; color: #555; padding: 0 6px; }
+.ds__nav { border: 1px solid #cfd6dd; background: #fff; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; color: #1b1f24; font-size: 12px; line-height: 1; }
+.ds__nav:hover { background: #eef4ff; }
 `;

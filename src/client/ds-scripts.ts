@@ -1,4 +1,4 @@
-/** DS browser pane: CDP screencast canvas with forwarded input. */
+/** DS browser pane: CDP screencast canvas, tabs and history controls. */
 export const DS_SCRIPT = `(function () {
   var root = document.getElementById("ds-root");
   if (!root) return;
@@ -6,6 +6,7 @@ export const DS_SCRIPT = `(function () {
   var form = document.getElementById("ds-browser-form");
   var input = document.getElementById("ds-browser-url");
   var status = document.getElementById("ds-browser-status");
+  var tabBar = document.getElementById("ds-browser-tabs");
   if (!canvas || !form || !input) return;
   var chat = document.getElementById("dsh-chat");
   var taskId = chat ? chat.getAttribute("data-task-id") : null;
@@ -14,8 +15,29 @@ export const DS_SCRIPT = `(function () {
   var sessionId = null;
   var started = false;
   var pendingUrl = null;
+  var tabs = [];
+  var activeTabId = null;
 
   function setStatus(text) { if (status) status.textContent = text || ""; }
+  function normalize(value) {
+    var url = String(value || "").trim();
+    if (url === "") return "";
+    if (!/^https?:\\/\\//i.test(url)) url = "https://" + url;
+    return url;
+  }
+  function stored() {
+    try { return localStorage.getItem(storageKey) || ""; } catch (e) { return ""; }
+  }
+  function remember(url) {
+    if (!url || url === "about:blank") return;
+    try { localStorage.setItem(storageKey, url); } catch (e) { /* ignore */ }
+  }
+  function request(method, payload) {
+    var bridge = window.__dsBridge;
+    if (!bridge || !bridge.isReady()) return false;
+    bridge.send(method, payload);
+    return true;
+  }
 
   // Pane widths and browser maximization, persisted per browser.
   var LAYOUT_KEY = "ds-layout:v1";
@@ -77,25 +99,6 @@ export const DS_SCRIPT = `(function () {
     });
   });
   applyLayout();
-  function normalize(value) {
-    var url = String(value || "").trim();
-    if (url === "") return "";
-    if (!/^https?:\\/\\//i.test(url)) url = "https://" + url;
-    return url;
-  }
-  function stored() {
-    try { return localStorage.getItem(storageKey) || ""; } catch (e) { return ""; }
-  }
-  function remember(url) {
-    try { localStorage.setItem(storageKey, url); } catch (e) { /* ignore */ }
-  }
-
-  function request(method, payload) {
-    var bridge = window.__dsBridge;
-    if (!bridge || !bridge.isReady()) return false;
-    bridge.send(method, payload);
-    return true;
-  }
 
   function draw(data) {
     var image = new Image();
@@ -104,18 +107,56 @@ export const DS_SCRIPT = `(function () {
         canvas.width = image.width;
         canvas.height = image.height;
       }
-      var context = canvas.getContext("2d");
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
       setStatus("");
     };
     image.src = "data:image/jpeg;base64," + data;
   }
 
+  function renderTabs() {
+    if (!tabBar) return;
+    tabBar.innerHTML = "";
+    tabs.forEach(function (tab) {
+      var node = document.createElement("div");
+      node.className = "ds__tab2" + (tab.id === activeTabId ? " active" : "");
+      var label = document.createElement("span");
+      label.className = "ds__tab2-label";
+      label.textContent = tab.title || tab.url || "新しいタブ";
+      label.title = tab.url || "";
+      label.addEventListener("click", function () {
+        if (tab.id === activeTabId) return;
+        request("browser.tab.select", { sessionId: sessionId, tabId: tab.id });
+      });
+      var close = document.createElement("button");
+      close.type = "button";
+      close.className = "ds__tab2-close";
+      close.textContent = "×";
+      close.title = "タブを閉じる";
+      close.addEventListener("click", function (event) {
+        event.stopPropagation();
+        request("browser.tab.close", { sessionId: sessionId, tabId: tab.id });
+      });
+      node.appendChild(label);
+      node.appendChild(close);
+      tabBar.appendChild(node);
+    });
+    var add = document.createElement("button");
+    add.type = "button";
+    add.className = "ds__tab2-new";
+    add.textContent = "+";
+    add.title = "新しいタブ";
+    add.addEventListener("click", function () {
+      request("browser.tab.new", { sessionId: sessionId, url: "about:blank" });
+    });
+    tabBar.appendChild(add);
+  }
+
   function point(event) {
     var rect = canvas.getBoundingClientRect();
-    var x = ((event.clientX - rect.left) / rect.width) * viewport.width;
-    var y = ((event.clientY - rect.top) / rect.height) * viewport.height;
-    return { x: Math.round(x), y: Math.round(y) };
+    return {
+      x: Math.round(((event.clientX - rect.left) / rect.width) * viewport.width),
+      y: Math.round(((event.clientY - rect.top) / rect.height) * viewport.height),
+    };
   }
 
   canvas.addEventListener("click", function (event) {
@@ -154,7 +195,6 @@ export const DS_SCRIPT = `(function () {
     var url = normalize(input.value);
     if (url === "") return;
     input.value = url;
-    remember(url);
     if (sessionId === null || !started) {
       pendingUrl = url;
       return;
@@ -163,31 +203,55 @@ export const DS_SCRIPT = `(function () {
     request("browser.navigate", { sessionId: sessionId, url: url });
   });
 
+  function history(action) {
+    if (sessionId === null) return;
+    setStatus("読み込み中…");
+    request("browser.history", { sessionId: sessionId, action: action });
+  }
+  var back = document.getElementById("ds-browser-back");
+  var forward = document.getElementById("ds-browser-forward");
+  var reload = document.getElementById("ds-browser-reload");
+  if (back) back.addEventListener("click", function () { history("back"); });
+  if (forward) forward.addEventListener("click", function () { history("forward"); });
+  if (reload) reload.addEventListener("click", function () { history("reload"); });
+
   function onEvent(message) {
     if (message.kind === "evt") {
-      if (message.type === "browser.frame") { draw(message.payload.data); return; }
+      if (message.type === "browser.frame") {
+        if (message.payload.tabId !== undefined && activeTabId !== null && message.payload.tabId !== activeTabId) return;
+        draw(message.payload.data);
+        return;
+      }
       if (message.type === "browser.state") {
-        if (message.payload.url) { input.value = message.payload.url; remember(message.payload.url); }
+        var payload = message.payload || {};
+        if (Array.isArray(payload.tabs)) tabs = payload.tabs;
+        if (payload.activeTabId !== undefined) activeTabId = payload.activeTabId;
+        renderTabs();
+        if (payload.url) { input.value = payload.url; remember(payload.url); }
         return;
       }
       return;
     }
-    if (message.kind === "res" && message.method === "browser.start") {
-      sessionId = message.payload.sessionId;
-      viewport = { width: message.payload.width || 1280, height: message.payload.height || 800 };
+    if (message.kind === "res" && (message.method === "browser.start" || message.method === "browser.tab.new" || message.method === "browser.tab.close" || message.method === "browser.tab.select")) {
+      sessionId = message.payload.sessionId || sessionId;
+      viewport = { width: message.payload.width || viewport.width, height: message.payload.height || viewport.height };
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       started = true;
+      if (Array.isArray(message.payload.tabs)) tabs = message.payload.tabs;
+      activeTabId = message.payload.activeTabId || activeTabId;
+      renderTabs();
+      var activeUrl = message.payload.url;
+      if (activeUrl) { input.value = activeUrl; remember(activeUrl); }
       setStatus("接続済み");
       fitToPane();
       observePane();
       var target = pendingUrl || stored();
-      if (target) { request("browser.navigate", { sessionId: sessionId, url: target }); }
+      if (target && message.method === "browser.start") {
+        setStatus("読み込み中…");
+        request("browser.navigate", { sessionId: sessionId, url: target });
+      }
       pendingUrl = null;
-      return;
-    }
-    if (message.kind === "err" && message.method === "browser.start") {
-      setStatus("起動できません: " + (message.payload.message || "unknown"));
       return;
     }
     if (message.kind === "res" && message.method === "browser.resize") {
@@ -196,7 +260,16 @@ export const DS_SCRIPT = `(function () {
       canvas.height = viewport.height;
       return;
     }
-    if (message.kind === "err" && message.method === "browser.navigate") {
+    if (message.kind === "res" && message.method === "browser.history") {
+      setStatus("");
+      if (message.payload.url) { input.value = message.payload.url; remember(message.payload.url); }
+      return;
+    }
+    if (message.kind === "err" && message.method === "browser.start") {
+      setStatus("起動できません: " + (message.payload.message || "unknown"));
+      return;
+    }
+    if (message.kind === "err" && (message.method === "browser.navigate" || message.method === "browser.history")) {
       setStatus("読み込み失敗: " + (message.payload.message || "unknown"));
       return;
     }
