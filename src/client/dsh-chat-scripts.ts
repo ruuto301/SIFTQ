@@ -187,9 +187,14 @@ export const DSH_CHAT_SCRIPT = `(function () {
         }
         if (message.type === "session.access") { setAccess(message.payload.mode); return; }
         if (message.type === "session.updated") {
-          if (modelSelect && message.payload.model) {
-            selectedModel = message.payload.model;
-            modelSelect.value = selectedModel;
+          var updated = message.payload || {};
+          var match = models.find(function (model) {
+            if (model.id === updated.model) return true;
+            return model.model === updated.model && (!updated.provider || model.provider === updated.provider);
+          });
+          if (match && modelSelect) {
+            selectedModel = match.id;
+            modelSelect.value = match.id;
           }
           return;
         }
