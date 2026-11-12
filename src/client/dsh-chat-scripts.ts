@@ -162,7 +162,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
       modelSelect.appendChild(option);
     });
     if (models.length > 0) {
-      selectedModel = models[0].id;
+      var preferred = models.find(function (model) { return model["default"] === true; }) || models[0];
+      selectedModel = preferred.id;
       modelSelect.value = selectedModel;
     }
   }
@@ -242,19 +243,35 @@ export const DSH_CHAT_SCRIPT = `(function () {
           approval.hidden = true;
           return;
         }
-        if (message.type === "turn.end") { busy = false; send.disabled = false; if (stopButton) stopButton.hidden = true; return; }
+        if (message.type === "turn.end") {
+          var reason = message.payload && message.payload.reason;
+          if (reason && reason.kind === "error" && reason.error && reason.error.message) {
+            var failure = document.createElement("div");
+            failure.className = "dsh-chat__line dsh-chat__error";
+            failure.textContent = "エラー: " + String(reason.error.message).split(String.fromCharCode(10))[0].slice(0, 300);
+            log.appendChild(failure);
+            scroll();
+          }
+          busy = false; send.disabled = false; if (stopButton) stopButton.hidden = true; return;
+        }
         return;
       }
       if (message.kind === "res" && message.method === "hello") {
         var capabilities = message.payload && message.payload.capabilities ? message.payload.capabilities : {};
         if (capabilities.defaultAccessMode) setAccess(capabilities.defaultAccessMode);
         populateModels(capabilities.models || []);
-        sendRequest("session.create", { clientKey: "task:" + taskId, cwd: workspace, ...(selectedModel ? { model: selectedModel } : {}) });
+        sendRequest("session.create", { clientKey: "task:" + taskId, cwd: workspace });
         return;
       }
       if (message.kind === "res" && message.method === "session.create") {
         sessionId = message.payload.sessionId;
         setState(message.payload.resumed ? "再接続済み" : "接続済み");
+        if (message.payload.model) {
+          var matched = models.find(function (model) {
+            return model.model === message.payload.model && (!message.payload.provider || model.provider === message.payload.provider);
+          });
+          if (matched) { selectedModel = matched.id; if (modelSelect) modelSelect.value = selectedModel; }
+        }
         sendRequest("session.subscribe", { sessionId: sessionId, sinceSeq: 0 });
         if (input) input.focus();
         return;
