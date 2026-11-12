@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { DsPage } from "../src/views/DsPage";
 import { taskFixture } from "./helpers/task-fixture";
 
-const props = { wsUrl: "ws://127.0.0.1:8799", workspace: "/mnt/c/projects" };
+const props = { status: "do", wsUrl: "ws://127.0.0.1:8799", workspace: "/mnt/c/projects" } as const;
 
 describe("DsPage", () => {
   it("renders the task list with the active task", () => {
@@ -39,5 +39,15 @@ describe("DsPage", () => {
 
     expect(html).toContain("左のタスクを選択してください。");
     expect(html).not.toContain('id="dsh-memo"');
+  });
+
+  it("renders the do, done and skip tabs with the active status", () => {
+    const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} status="done" />);
+
+    for (const status of ["do", "done", "skip"]) {
+      expect(html).toContain(`href="/ds?status=${status}"`);
+    }
+    expect(html).toContain('aria-current="true"');
+    expect(html).toContain(">done<");
   });
 });

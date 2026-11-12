@@ -289,12 +289,17 @@ function registerDsRoute(app: Hono<AppEnv>, repository: Repository) {
   app.get("/ds", async (c) => {
     const result = await repository(c).list();
     if (!result.ok) return c.text("Internal Server Error", 500);
-    const tasks = result.value;
+    const rawStatus = c.req.query("status");
+    const status: TaskStatus = isTaskStatus(rawStatus) ? rawStatus : "do";
+    const tasks = result.value.filter((task) => task.status === status);
     const requested = c.req.query("task");
     const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
     const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
     const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
-    return renderPage(c, <DsPage tasks={tasks} selected={selected} wsUrl={wsUrl} workspace={workspace} />);
+    return renderPage(
+      c,
+      <DsPage tasks={tasks} selected={selected} status={status} wsUrl={wsUrl} workspace={workspace} />,
+    );
   });
 }
 

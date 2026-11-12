@@ -8,6 +8,8 @@ export const DS_CSS = `
 .ds__pane { display: flex; flex-direction: column; min-height: 0; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 8px; overflow: hidden; }
 .ds__pane-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
 .ds__tasks { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
+.ds__status-tabs { padding: 8px 8px 0; gap: 4px; }
+.ds__status-tabs .button.small { min-height: 26px; padding: 3px 10px; font-size: 11px; }
 .ds__task { display: flex; align-items: center; gap: 8px; padding: 8px 12px; text-decoration: none; color: inherit; border-bottom: 1px solid rgba(127, 127, 127, 0.1); }
 .ds__task.active { background: rgba(80, 140, 255, 0.15); }
 .ds__task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

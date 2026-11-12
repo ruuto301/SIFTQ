@@ -1,13 +1,32 @@
 import type { FC } from "hono/jsx";
-import type { Task } from "../task";
+import { TASK_STATUSES } from "../task";
+import type { Task, TaskStatus } from "../task";
 
-type TaskPaneProps = { tasks: Task[]; selected: Task | undefined };
+type TaskPaneProps = { tasks: Task[]; selected: Task | undefined; status: TaskStatus };
 type ChatPaneProps = { selected: Task | undefined; wsUrl: string; workspace: string };
 
-function TaskPane({ tasks, selected }: TaskPaneProps) {
+function StatusTabs({ active }: { active: TaskStatus }) {
+  return (
+    <nav class="task-status-filter task-status-filter--toolbar ds__status-tabs" aria-label="Filter tasks by status" data-task-status-tabs>
+      {TASK_STATUSES.map((status) => (
+        <a
+          key={status}
+          class={status === active ? "button small is-active" : "button small"}
+          aria-current={status === active ? "true" : undefined}
+          href={`/ds?status=${status}`}
+        >
+          {status}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function TaskPane({ tasks, selected, status }: TaskPaneProps) {
   return (
     <aside class="ds__pane ds__pane--tasks">
       <div class="ds__pane-head">Tasks</div>
+      <StatusTabs active={status} />
       <ul class="ds__tasks">
         {tasks.map((task) => (
           <li key={task.id}>
@@ -152,14 +171,15 @@ function BrowserPane() {
  * DS screen: task list (left), DSH chat (center), browser (right).
  * The chat, memo, settings and browser panes are driven by client scripts.
  */
-export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: string; workspace: string }> = ({
-  tasks,
-  selected,
-  wsUrl,
-  workspace,
-}) => (
+export const DsPage: FC<{
+  tasks: Task[];
+  selected: Task | undefined;
+  status: TaskStatus;
+  wsUrl: string;
+  workspace: string;
+}> = ({ tasks, selected, status, wsUrl, workspace }) => (
   <div class="ds" id="ds-root">
-    <TaskPane tasks={tasks} selected={selected} />
+    <TaskPane tasks={tasks} selected={selected} status={status} />
 
     <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
 
