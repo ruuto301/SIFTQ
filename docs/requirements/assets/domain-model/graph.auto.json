@@ -491,6 +491,20 @@
   },
   "screenCalls": [
     {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_patch"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_delete"
+    },
+    {
       "screen": "P08",
       "trigger": "POST",
       "view": "screen:P08",
