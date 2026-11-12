@@ -103,14 +103,17 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
     </section>
 
     <aside class="ds__pane ds__pane--browser">
-      <div class="ds__pane-head">Browser</div>
+      <div class="ds__pane-head">
+        <span>Browser</span>
+        <span class="ds__browser-status" id="ds-browser-status"></span>
+      </div>
       <form class="ds__browser-bar" id="ds-browser-form">
         <input id="ds-browser-url" type="text" placeholder="https://example.com" />
         <button type="submit" class="button">
           開く
         </button>
       </form>
-      <iframe id="ds-browser-frame" title="browser" src="about:blank"></iframe>
+      <canvas id="ds-browser-canvas" tabindex={0}></canvas>
     </aside>
   </div>
 );

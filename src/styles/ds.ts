@@ -15,7 +15,9 @@ export const DS_CSS = `
 .ds__pane--chat .dsh-chat__form textarea { width: 100%; background: transparent; color: inherit; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 6px; padding: 8px; }
 .ds__browser-bar { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
 .ds__browser-bar input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 6px; background: transparent; color: inherit; }
-.ds__pane--browser iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+.ds__pane--browser canvas { flex: 1; width: 100%; height: 100%; border: 0; background: #fff; outline: none; cursor: default; object-fit: contain; }
+.ds__browser-status { font-size: 11px; color: #666; }
+.ds__pane--browser { min-height: 0; }
 .ds__empty { padding: 16px; opacity: 0.7; }
 @media (max-width: 1100px) {
   .ds { grid-template-columns: 220px minmax(0, 1fr); }
