@@ -386,6 +386,17 @@ export const DSH_CHAT_SCRIPT = `(function () {
       if (sessionId !== null) sendRequest("prompt.cancel", { sessionId: sessionId });
     });
   }
+  var tabs = document.querySelectorAll("[data-ds-tab]");
+  var panes = document.querySelectorAll("[data-ds-pane]");
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var name = tab.getAttribute("data-ds-tab");
+      tabs.forEach(function (other) { other.classList.toggle("active", other === tab); });
+      panes.forEach(function (pane) { pane.hidden = pane.getAttribute("data-ds-pane") !== name; });
+      if (name === "chat" && input) input.focus();
+    });
+  });
+
   if (memoSave) {
     memoSave.addEventListener("click", function () {
       var text = memoInput ? memoInput.value.trim() : "";

@@ -31,7 +31,14 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
 
     <section class="ds__pane ds__pane--chat">
       <div class="ds__pane-head">
-        <span>Chat</span>
+        <div class="ds__tabs" role="tablist">
+          <button type="button" class="ds__tab active" data-ds-tab="chat" role="tab">
+            Chat
+          </button>
+          <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
+            Memo
+          </button>
+        </div>
         <div class="ds__chat-tools">
           <select id="dsh-chat-model" aria-label="モデル"></select>
           <div class="ds__access">
@@ -49,7 +56,8 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
       {selected === undefined ? (
         <p class="ds__empty">左のタスクを選択してください。</p>
       ) : (
-        <div class="dsh-chat" id="dsh-chat" data-task-id={selected.id} data-ws-url={wsUrl} data-workspace={workspace}>
+        <>
+        <div class="dsh-chat" id="dsh-chat" data-ds-pane="chat" data-task-id={selected.id} data-ws-url={wsUrl} data-workspace={workspace}>
           <div class="dsh-chat__usage" id="dsh-chat-usage" hidden></div>
           <div class="dsh-chat__log" id="dsh-chat-log" aria-live="polite"></div>
           <div class="dsh-chat__approval" id="dsh-chat-approval" hidden></div>
@@ -61,18 +69,19 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
               </button>
             </div>
           </form>
-          <details class="dsh-memo" id="dsh-memo">
-            <summary>メモ（共有）</summary>
-            <div class="dsh-memo__list" id="dsh-memo-list"></div>
-            <div class="dsh-memo__editor">
-              <textarea id="dsh-memo-input" rows={2} placeholder="メモを追加 / 編集中の内容"></textarea>
-              <div class="dsh-memo__actions">
-                <button type="button" class="button" id="dsh-memo-save">追加</button>
-                <button type="button" class="button" id="dsh-memo-cancel" hidden>編集をやめる</button>
-              </div>
-            </div>
-          </details>
         </div>
+        <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
+          <div class="dsh-memo__head">共有メモ（自分 / LLM）</div>
+          <div class="dsh-memo__list" id="dsh-memo-list"></div>
+          <div class="dsh-memo__editor">
+            <textarea id="dsh-memo-input" rows={2} placeholder="メモを追加 / 編集中の内容"></textarea>
+            <div class="dsh-memo__actions">
+              <button type="button" class="button" id="dsh-memo-save">追加</button>
+              <button type="button" class="button" id="dsh-memo-cancel" hidden>編集をやめる</button>
+            </div>
+          </div>
+        </div>
+        </>
       )}
     </section>
 
