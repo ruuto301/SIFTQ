@@ -67,7 +67,7 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           <div class="dsh-chat__log" id="dsh-chat-log" aria-live="polite"></div>
           <div class="dsh-chat__approval" id="dsh-chat-approval" hidden></div>
           <form class="dsh-chat__form" id="dsh-chat-form">
-            <textarea id="dsh-chat-input" rows={3} placeholder="DSH に指示する"></textarea>
+            <textarea id="dsh-chat-input" rows={3} placeholder="指示を入力"></textarea>
             <div class="dsh-chat__buttons">
               <button type="submit" class="button" id="dsh-chat-send">
                 送信

@@ -356,6 +356,16 @@ export const DSH_CHAT_SCRIPT = `(function () {
     });
   }
 
+  if (input) {
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+      }
+    });
+  }
+
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     var text = input.value.trim();
