@@ -1,5 +1,10 @@
 export const DS_CSS = `
-.ds { display: grid; grid-template-columns: 260px minmax(0, 1fr) 380px; gap: 8px; height: calc(100vh - 120px); padding: 8px; }
+.ds { display: grid; grid-template-columns: var(--ds-left, 260px) 6px minmax(0, 1fr) 6px var(--ds-right, 380px); gap: 4px; height: calc(100vh - 120px); padding: 8px; }
+.ds__resizer { cursor: col-resize; border-radius: 3px; background: transparent; align-self: stretch; touch-action: none; }
+.ds__resizer:hover, .ds__resizer.dragging { background: #dbe6ff; }
+.ds.ds--browser-max { grid-template-columns: minmax(0, 1fr); }
+.ds.ds--browser-max .ds__pane--tasks, .ds.ds--browser-max .ds__pane--chat, .ds.ds--browser-max .ds__resizer { display: none; }
+.ds__max { border: 1px solid #cfd6dd; background: #fff; border-radius: 6px; font-size: 11px; padding: 2px 8px; cursor: pointer; color: #1b1f24; }
 .ds__pane { display: flex; flex-direction: column; min-height: 0; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 8px; overflow: hidden; }
 .ds__pane-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
 .ds__tasks { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
@@ -15,13 +20,13 @@ export const DS_CSS = `
 .ds__pane--chat .dsh-chat__form textarea { width: 100%; background: transparent; color: inherit; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 6px; padding: 8px; }
 .ds__browser-bar { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
 .ds__browser-bar input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 6px; background: transparent; color: inherit; }
-.ds__pane--browser canvas { flex: 1; width: 100%; height: 100%; border: 0; background: #fff; outline: none; cursor: default; object-fit: contain; }
+.ds__pane--browser canvas { flex: 1; width: 100%; height: 100%; min-height: 0; border: 0; background: #fff; outline: none; cursor: default; object-fit: contain; }
 .ds__browser-status { font-size: 11px; color: #666; }
 .ds__pane--browser { min-height: 0; }
 .ds__empty { padding: 16px; opacity: 0.7; }
 @media (max-width: 1100px) {
-  .ds { grid-template-columns: 220px minmax(0, 1fr); }
-  .ds__pane--browser { display: none; }
+  .ds:not(.ds--browser-max) { grid-template-columns: var(--ds-left, 220px) 6px minmax(0, 1fr); }
+  .ds:not(.ds--browser-max) .ds__pane--browser, .ds:not(.ds--browser-max) .ds__resizer[data-resize="right"] { display: none; }
 }
 
 /* DS white theme (scoped) */

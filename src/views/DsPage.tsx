@@ -29,6 +29,8 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
       </ul>
     </aside>
 
+    <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
+
     <section class="ds__pane ds__pane--chat">
       <div class="ds__pane-head">
         <div class="ds__tabs" role="tablist">
@@ -102,10 +104,15 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
       </div>
     </section>
 
+    <div class="ds__resizer" data-resize="right" role="separator" aria-orientation="vertical" aria-label="ブラウザペインの幅"></div>
+
     <aside class="ds__pane ds__pane--browser">
       <div class="ds__pane-head">
         <span>Browser</span>
         <span class="ds__browser-status" id="ds-browser-status"></span>
+        <button type="button" class="ds__max" id="ds-browser-max" title="最大化">
+          最大化
+        </button>
       </div>
       <form class="ds__browser-bar" id="ds-browser-form">
         <input id="ds-browser-url" type="text" placeholder="https://example.com" />

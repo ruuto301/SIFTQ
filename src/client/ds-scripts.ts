@@ -16,6 +16,67 @@ export const DS_SCRIPT = `(function () {
   var pendingUrl = null;
 
   function setStatus(text) { if (status) status.textContent = text || ""; }
+
+  // Pane widths and browser maximization, persisted per browser.
+  var LAYOUT_KEY = "ds-layout:v1";
+  var layout = { left: 260, right: 380, max: false };
+  try {
+    var savedLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null");
+    if (savedLayout && typeof savedLayout === "object") {
+      layout.left = Number(savedLayout.left) || 260;
+      layout.right = Number(savedLayout.right) || 380;
+      layout.max = savedLayout.max === true;
+    }
+  } catch (e) { /* ignore */ }
+  function saveLayout() {
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) { /* ignore */ }
+  }
+  function applyLayout() {
+    root.style.setProperty("--ds-left", layout.left + "px");
+    root.style.setProperty("--ds-right", layout.right + "px");
+    root.classList.toggle("ds--browser-max", layout.max);
+    if (maxButton) maxButton.textContent = layout.max ? "戻す" : "最大化";
+  }
+  var maxButton = document.getElementById("ds-browser-max");
+  if (maxButton) {
+    maxButton.addEventListener("click", function () {
+      layout.max = !layout.max;
+      applyLayout();
+      saveLayout();
+      window.dispatchEvent(new Event("resize"));
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".ds__resizer"), function (handle) {
+    handle.addEventListener("pointerdown", function (event) {
+      if (layout.max) return;
+      event.preventDefault();
+      var side = handle.getAttribute("data-resize");
+      var startX = event.clientX;
+      var start = side === "left" ? layout.left : layout.right;
+      handle.setPointerCapture(event.pointerId);
+      handle.classList.add("dragging");
+      function move(moveEvent) {
+        var delta = moveEvent.clientX - startX;
+        var next = side === "left" ? start + delta : start - delta;
+        var min = side === "left" ? 180 : 260;
+        var max = side === "left" ? 520 : 900;
+        layout[side] = Math.round(Math.min(max, Math.max(min, next)));
+        applyLayout();
+      }
+      function up() {
+        handle.classList.remove("dragging");
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", up);
+        handle.removeEventListener("pointercancel", up);
+        saveLayout();
+        window.dispatchEvent(new Event("resize"));
+      }
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", up);
+      handle.addEventListener("pointercancel", up);
+    });
+  });
+  applyLayout();
   function normalize(value) {
     var url = String(value || "").trim();
     if (url === "") return "";
