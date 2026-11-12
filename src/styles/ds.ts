@@ -52,6 +52,9 @@ export const DS_CSS = `
 .ds .ds__browser-bar input { background: #ffffff; color: #1b1f24; border-color: #cfd6dd; }
 .ds__pane--browser iframe { background: #ffffff; }
 .ds .button { color: #1b1f24; }
+.dsh-chat__send { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #1b1f24; background: #1b1f24; color: #ffffff; font-size: 14px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.dsh-chat__send:hover { opacity: 0.85; }
+.dsh-chat__send[data-state="stop"] { background: #ffffff; color: #c62828; border-color: #f0c36d; }
 
 .ds__chat-tools { display: flex; gap: 6px; align-items: center; }
 .ds__chat-tools select { font-size: 12px; padding: 4px 8px; border: 1px solid #cfd6dd; border-radius: 999px; background: #fff; color: #1b1f24; }

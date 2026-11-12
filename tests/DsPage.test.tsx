@@ -25,6 +25,15 @@ describe("DsPage", () => {
     expect(html).toContain('placeholder="指示を入力"');
   });
 
+  it("renders the send button as an arrow", () => {
+    const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} />);
+
+    expect(html).toContain('id="dsh-chat-send"');
+    expect(html).toContain('data-state="send"');
+    expect(html).toContain('aria-label="送信"');
+    expect(html).toContain("↑");
+  });
+
   it("renders the chat, memo and settings tabs plus the browser pane", () => {
     const html = renderToString(<DsPage tasks={[taskFixture()]} selected={taskFixture()} {...props} />);
 

@@ -19,6 +19,12 @@ describe("DSH chat script", () => {
     expect(DSH_CHAT_SCRIPT).toContain("desc.updated");
   });
 
+  it("switches the send button to stop while a turn runs", () => {
+    expect(DSH_CHAT_SCRIPT).toContain("prompt.cancel");
+    expect(DSH_CHAT_SCRIPT).toContain("dataset.state");
+    expect(DSH_CHAT_SCRIPT).toContain('"■"');
+  });
+
   it("sends with Ctrl+Enter and exposes the bridge", () => {
     expect(DSH_CHAT_SCRIPT).toContain("__dsBridge");
     expect(DSH_CHAT_SCRIPT).toContain("ctrlKey");

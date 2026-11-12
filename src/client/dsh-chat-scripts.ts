@@ -14,7 +14,6 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var input = document.getElementById("dsh-chat-input");
   var send = document.getElementById("dsh-chat-send");
   var modelSelect = document.getElementById("dsh-chat-model");
-  var stopButton = document.getElementById("dsh-chat-stop");
   var descView = document.getElementById("dsh-desc-view");
   var bridgeHandlers = [];
   var accessButton = document.getElementById("dsh-chat-access");
@@ -41,6 +40,15 @@ export const DSH_CHAT_SCRIPT = `(function () {
     getSessionId: function () { return sessionId; },
     isReady: function () { return socket !== null && socket.readyState === 1; },
   };
+
+  function setBusy(value) {
+    busy = value;
+    if (!send) return;
+    send.dataset.state = value ? "stop" : "send";
+    send.textContent = value ? "■" : "↑";
+    send.setAttribute("aria-label", value ? "停止" : "送信");
+    send.title = value ? "停止" : "送信 (Ctrl+Enter)";
+  }
 
   function setState(text, isError) {
     if (!state) return;
@@ -202,7 +210,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
       if (message.kind === "evt") {
         if (message.type === "transport.ready") return;
         if (message.type === "session.state") {
-          if (message.payload && message.payload.state === "idle") { busy = false; send.disabled = false; if (stopButton) stopButton.hidden = true; }
+          if (message.payload && message.payload.state === "idle") setBusy(false);
           return;
         }
         if (message.type === "session.access") { setAccess(message.payload.mode); return; }
@@ -281,7 +289,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
             log.appendChild(failure);
             scroll();
           }
-          busy = false; send.disabled = false; if (stopButton) stopButton.hidden = true; return;
+          setBusy(false);
+          return;
         }
         return;
       }
@@ -324,9 +333,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
           return;
         }
         setState("エラー: " + (message.payload && message.payload.message ? message.payload.message : "unknown"), true);
-        busy = false;
-        send.disabled = false;
-        if (stopButton) stopButton.hidden = true;
+        setBusy(false);
         return;
       }
     });
@@ -354,15 +361,18 @@ export const DSH_CHAT_SCRIPT = `(function () {
     if (text === "" || sessionId === null || busy) return;
     pendingUserLine = line("user", text);
     input.value = "";
-    busy = true;
-    send.disabled = true;
-    if (stopButton) stopButton.hidden = false;
+    setBusy(true);
     sendRequest("prompt.send", { sessionId: sessionId, clientMessageId: "m-" + Date.now(), text: text });
   });
 
-  if (stopButton) {
-    stopButton.addEventListener("click", function () {
-      if (sessionId !== null) sendRequest("prompt.cancel", { sessionId: sessionId });
+  if (send) {
+    send.addEventListener("click", function () {
+      if (busy) {
+        if (sessionId !== null) sendRequest("prompt.cancel", { sessionId: sessionId });
+        return;
+      }
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
     });
   }
   var tabs = document.querySelectorAll("[data-ds-tab]");

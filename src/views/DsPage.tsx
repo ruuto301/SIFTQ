@@ -93,8 +93,15 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
       <form class="dsh-chat__form" id="dsh-chat-form">
         <textarea id="dsh-chat-input" rows={3} placeholder="指示を入力"></textarea>
         <div class="dsh-chat__buttons">
-          <button type="submit" class="button" id="dsh-chat-send">
-            送信
+          <button
+            type="button"
+            class="dsh-chat__send"
+            id="dsh-chat-send"
+            data-state="send"
+            aria-label="送信"
+            title="送信 (Ctrl+Enter)"
+          >
+            ↑
           </button>
         </div>
       </form>
