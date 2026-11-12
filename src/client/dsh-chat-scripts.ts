@@ -16,7 +16,12 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var stopButton = document.getElementById("dsh-chat-stop");
   var memoInput = document.getElementById("dsh-memo-input");
   var memoStatus = document.getElementById("dsh-memo-status");
+  var memoView = document.getElementById("dsh-memo-view");
+  var memoCopy = document.getElementById("dsh-memo-copy");
+  var memoEdit = document.getElementById("dsh-memo-edit");
+  var memoDot = document.getElementById("dsh-memo-dot");
   var memoTimer = null;
+  var memoText = "";
   var accessButton = document.getElementById("dsh-chat-access");
   var accessMenu = document.getElementById("dsh-chat-access-menu");
   var ACCESS_LABELS = { "read-only": "読み取り専用", "workspace-write": "ワークスペース書き込み", "danger-full-access": "フルアクセス" };
@@ -44,6 +49,21 @@ export const DSH_CHAT_SCRIPT = `(function () {
     accessMode = mode;
     if (accessButton) accessButton.textContent = ACCESS_LABELS[mode] || mode;
   }
+  function setMemo(text, forceInput) {
+    memoText = text || "";
+    if (memoView) memoView.innerHTML = memoText.trim() === "" ? "" : renderMarkdown(memoText);
+    if (memoInput && (forceInput === true || document.activeElement !== memoInput)) memoInput.value = memoText;
+    if (memoDot) memoDot.hidden = memoText.trim() === "";
+  }
+
+  function setMemoEditing(editing) {
+    if (!memoInput) return;
+    memoInput.hidden = !editing;
+    if (memoView) memoView.hidden = editing;
+    if (memoEdit) memoEdit.textContent = editing ? "表示" : "編集";
+    if (editing) memoInput.focus();
+  }
+
   function requestId() { seq += 1; return "c-" + seq; }
   function sendRequest(method, payload) {
     if (!socket || socket.readyState !== 1) return null;
@@ -191,7 +211,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
         }
         if (message.type === "session.access") { setAccess(message.payload.mode); return; }
         if (message.type === "memo.updated") {
-          if (memoInput && document.activeElement !== memoInput) memoInput.value = message.payload.text || "";
+          setMemo(message.payload.text);
           if (memoStatus) memoStatus.textContent = "更新済み";
           return;
         }
@@ -293,8 +313,8 @@ export const DSH_CHAT_SCRIPT = `(function () {
       }
       if (message.kind === "res" && message.method === "session.subscribe") return;
       if (message.kind === "res" && message.method === "memo.get") {
-        if (memoInput && document.activeElement !== memoInput) memoInput.value = message.payload.text || "";
-        if (memoStatus) memoStatus.textContent = "読み込み済み";
+        setMemo(message.payload.text);
+        if (memoStatus) memoStatus.textContent = "";
         return;
       }
       if (message.kind === "res" && message.method === "memo.write") {
@@ -357,6 +377,24 @@ export const DSH_CHAT_SCRIPT = `(function () {
     });
   });
 
+  if (memoCopy) {
+    memoCopy.addEventListener("click", function () {
+      if (memoText === "") return;
+      if (navigator.clipboard) navigator.clipboard.writeText(memoText);
+      if (memoStatus) {
+        memoStatus.textContent = "コピーしました";
+        setTimeout(function () { if (memoStatus) memoStatus.textContent = ""; }, 1500);
+      }
+    });
+  }
+  if (memoEdit) {
+    memoEdit.addEventListener("click", function () {
+      setMemoEditing(memoInput ? memoInput.hidden : false);
+    });
+  }
+  if (memoView) {
+    memoView.addEventListener("dblclick", function () { setMemoEditing(true); });
+  }
   if (memoInput) {
     memoInput.addEventListener("input", function () {
       if (memoStatus) memoStatus.textContent = "未保存";

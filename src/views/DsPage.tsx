@@ -37,6 +37,7 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           </button>
           <button type="button" class="ds__tab" data-ds-tab="memo" role="tab">
             Memo
+            <span class="ds__tab-dot" id="dsh-memo-dot" hidden>●</span>
           </button>
         </div>
         <div class="ds__chat-tools">
@@ -71,8 +72,18 @@ export const DsPage: FC<{ tasks: Task[]; selected: Task | undefined; wsUrl: stri
           </form>
         </div>
         <div class="dsh-memo" id="dsh-memo" data-ds-pane="memo" hidden>
-          <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）"></textarea>
-          <div class="dsh-memo__status" id="dsh-memo-status"></div>
+          <div class="dsh-memo__bar">
+            <span class="dsh-memo__title">メモ</span>
+            <span class="dsh-memo__status" id="dsh-memo-status"></span>
+            <button type="button" class="button" id="dsh-memo-copy">
+              コピー
+            </button>
+            <button type="button" class="button" id="dsh-memo-edit">
+              編集
+            </button>
+          </div>
+          <div class="dsh-memo__view" id="dsh-memo-view"></div>
+          <textarea id="dsh-memo-input" placeholder="このタスクのメモ（自分 / LLM 共有）" hidden></textarea>
         </div>
         </>
       )}

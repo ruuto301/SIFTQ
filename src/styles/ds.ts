@@ -55,7 +55,15 @@ export const DS_CSS = `
 .ds__tabs { display: flex; gap: 4px; }
 .ds__tab { border: 0; background: transparent; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #555; }
 .ds__tab.active { background: #eef4ff; color: #1b1f24; font-weight: 600; }
-.dsh-memo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #fff; }
-.dsh-memo textarea { flex: 1; min-height: 0; width: 100%; resize: none; border: 1px solid #cfd6dd; border-radius: 6px; padding: 8px; font-size: 13px; line-height: 1.6; color: #1b1f24; background: #fff; }
-.dsh-memo__status { font-size: 11px; color: #666; text-align: right; }
+.dsh-memo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #fff; }
+.dsh-memo__bar { display: flex; align-items: center; gap: 8px; }
+.dsh-memo__title { font-size: 12px; font-weight: 600; color: #1b1f24; }
+.dsh-memo__status { margin-left: auto; font-size: 11px; color: #666; }
+.dsh-memo__view { flex: 1; min-height: 0; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; font-size: 13px; line-height: 1.7; color: #1b1f24; white-space: pre-wrap; }
+.dsh-memo__view:empty:before { content: "メモはまだありません。「編集」から入力できます。"; color: #999; }
+.dsh-memo__view .dsh-code { background: #f6f8fa; border-radius: 6px; padding: 8px; overflow: auto; font-size: 12px; }
+.dsh-memo__view code { background: #f6f8fa; border-radius: 4px; padding: 1px 4px; font-size: 12px; }
+.dsh-memo textarea { flex: 1; min-height: 0; width: 100%; resize: none; border: 1px solid #cfd6dd; border-radius: 6px; padding: 10px; font-size: 13px; line-height: 1.7; color: #1b1f24; background: #fff; }
+.ds__tab-dot { font-size: 8px; color: #4f8cff; vertical-align: super; margin-left: 2px; }
+.dsh-chat[hidden], .dsh-memo[hidden], .dsh-memo textarea[hidden] { display: none !important; }
 `;
