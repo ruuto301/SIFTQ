@@ -212,6 +212,10 @@ export function applyTaskPatch(task: Task, patch: TaskPatch): Task {
   return { ...task, ...patch };
 }
 
+export function nextTaskOrder(tasks: readonly Task[], area: TaskArea): number {
+  return tasks.filter((task) => task.area === area).reduce((maximum, task) => Math.max(maximum, task.order), 0) + 1;
+}
+
 export function selectMovedTasks(before: readonly Task[], after: readonly Task[]): Task[] {
   const previous = new Map(before.map((task) => [task.id, task]));
   return after.filter((task) => {

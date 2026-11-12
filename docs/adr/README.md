@@ -40,7 +40,7 @@
 | [ADR 0034: リリースと Worker デプロイを分離する](0034-separate-release-and-worker-deployment.md) | Accepted. | GitHub Release はリポジトリ変更、Worker デプロイは本番更新として分離し、変更種別で実施有無を判断する。 |
 | [ADR 0035: 画面遷移図の生成ツールとして、D2を採用する](0035-adopt-d2-for-screen-flow-diagram.md) | Suspended by ADR 0044. | 画面遷移図の生成ツールとして、D2を採用する |
 | [ADR 0036: Adopt Better Auth as future authentication migration target](0036-adopt-better-auth-as-future-auth-migration-target.md) | Partially superseded by ADR 0072. | 将来のユーザー別認証・認可の移行先として Better Auth を採用する。 |
-| [ADR 0037: LLMクライアントをcodexからopencodeに変更する](0037-switch-llm-client-to-opencode.md) | Accepted. | LLMクライアントをcodexからopencodeに変更する。 |
+| [ADR 0037: LLMクライアントをcodexからopencodeに変更する](0037-switch-llm-client-to-opencode.md) | Superseded by ADR 0074. | LLMクライアントをcodexからopencodeに変更する。 |
 | [ADR 0038: Task一覧のページングにoffset方式を採用する](0038-task-list-offset-pagination.md) | Accepted. | Task一覧を25件固定のoffset分割とし、`?page=`で指定する。 |
 | [ADR 0039: Task一覧のページングUIはGitHub issue一覧と同様にする](0039-task-list-pagination-ui.md) | Accepted. | ページ番号＋前へ/次へ、中間省略、status切替で1ページ目、一覧下のみ配置。 |
 | [ADR 0040: 実施中を直交boolean workingで表す](0040-represent-working-as-orthogonal-boolean.md) | Accepted. | 実施中はstatusと直交するboolean `working`で表し、終了時も自動解除しない。 |
@@ -71,11 +71,15 @@
 | [ADR 0065: 生成物をtmp配下へ集約する](0065-keep-generated-artifacts-under-tmp.md) | Accepted. | 生成物、cache、一時ファイルを`tmp/`へ集約する。 |
 | [ADR 0066: レスポンシブ対応のブレークポイントを定める](0066-define-responsive-breakpoints.md) | Accepted. | モバイルファーストで`640 / 768 / 1024 / 1280px`の閾値を採用する。 |
 | [ADR 0067: design step と design_notes を廃止する](0067-remove-design-step-and-design-notes.md) | Accepted. | design step と design_notes を廃止し、design artifact の生成と表示を削除する。 |
-| [ADR 0068: taqt loop の簡略化と検証・再試行方針を定める](0068-simplify-taqt-loop-and-verification-policy.md) | Accepted. | checker / post_review を廃止し、e2e 粒度・一時失敗の再試行・工程別モデル・検証対象の選択と並列実行を定める。 |
-| [ADR 0069: セッションを age で暗号化して公開リポジトリへバックアップする](0069-encrypt-session-backup-with-age.md) | Accepted. | セッションを zstd + age で暗号化して公開リポジトリへ保存し、秘密鍵はリポジトリ外に置いて手動のバックアップ・復元タスクを用意する。 |
+| [ADR 0068: taqt loop の簡略化と検証・再試行方針を定める](0068-simplify-taqt-loop-and-verification-policy.md) | Superseded by ADR 0075. | checker / post_review を廃止し、e2e 粒度・一時失敗の再試行・工程別モデル・検証対象の選択と並列実行を定める。 |
+| [ADR 0069: セッションを age で暗号化して公開リポジトリへバックアップする](0069-encrypt-session-backup-with-age.md) | Superseded by ADR 0076. | セッションを zstd + age で暗号化して公開リポジトリへ保存し、秘密鍵はリポジトリ外に置いて手動のバックアップ・復元タスクを用意する。 |
 | [ADR 0070: ドメインモデルをコード由来の自動グラフと表現層から生成する](0070-generate-domain-model-from-code-graph-and-presentation.md) | Accepted. | ドメインモデルをコードから抽出する自動部分と人が編集する表現部分に分け、マージ結果を正本として生成する。 |
 | [ADR 0071: Cloudflare 操作 CLI に統合 CLI を採用する](0071-adopt-cloudflare-unified-cli.md) | Accepted. | Cloudflare 操作の主 CLI を統合 CLI とし、ローカル D1 migration は Wrangler を併用する。 |
 | [ADR 0072: 認証を GitHub OAuth と login allowlist に置き換える](0072-adopt-github-oauth-login-with-allowlist.md) | Accepted. | 共有パスワード認証を GitHub OAuth App 認証へ置き換え、login allowlist のアカウントのみ許可し、署名付き Cookie セッションを維持する。 |
+| [ADR 0073: 本番の認証済み smoke を自動化する](0073-automate-authenticated-production-smoke.md) | Accepted. | 本番の認証済み smoke を自動化する。 |
+| [ADR 0074: LLMクライアントをopencodeからdshへ変更する](0074-switch-llm-client-to-dsh.md) | Accepted. | 主クライアントをDeepSeek Harnessへ変更し、指示とスキルは標準探索に任せ、opencode依存を削除する。 |
+| [ADR 0075: taqt loopをdshのskillとhookへ移行する](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | Accepted. | フローをskill、検証をdshフックと外側の再検証に移し、汎用loopエンジンを削除する。 |
+| [ADR 0076: dshのセッションをageで暗号化してバックアップする](0076-back-up-dsh-sessions-with-age.md) | Accepted. | dshのセッションログをファイル単位でzstd + ageし、opencodeのDBバックアップを廃止する。 |
 
 ## 検証待ち
 
@@ -89,9 +93,8 @@
 | V-052-001 | [ADR 0052](0052-define-provisional-adr-verification-lifecycle.md) | データ不足と否定を区別できるか | 不足例はデータ不足、充足未達例は否定になる | 暫定 | 運用データ未収集 | - | 状態運用のテスト結果が蓄積した時 |
 | V-052-002 | [ADR 0052](0052-define-provisional-adr-verification-lifecycle.md) | 検証結果の記録と決定変更を分離できるか | 結果は検証結果、新しい決定は新ADRになる | 暫定 | 運用データ未収集 | - | 運用の実例が蓄積した時 |
 | V-066-001 | [ADR 0066](0066-define-responsive-breakpoints.md) | 4つの閾値が現在の画面構成に適用できるか | 主要画面を代表的なビューポート幅で確認する | レスポンシブ実装と代表的な操作フローが揃っている | 各幅で横スクロールや操作不能な重なりがない | 暫定 | 主要画面の追加、レイアウト構成の変更、または検証不合格時 |
-| V-068-001 | [ADR 0068](0068-simplify-taqt-loop-and-verification-policy.md) | review 構造を外しても closure は同等以上か | 全 gold を repetition 3 以上で完走し、簡略 arm の closure が review arm 以上 | 全 gold の完走結果が揃っている | 簡略 arm の closure が review arm 以上 | 暫定 | 全量比較の完走または gold 更新時 |
-| V-068-002 | [ADR 0068](0068-simplify-taqt-loop-and-verification-policy.md) | 非フロント変更で e2e を省いても escaped は 0 か | 非フロント変更 run の escaped が 0 | 非フロント変更 run が蓄積している | escaped が 0 | 暫定 | 検証対象や変更分類の変更時 |
-| V-068-003 | [ADR 0068](0068-simplify-taqt-loop-and-verification-policy.md) | 一時失敗の再試行で human 直行が減るか | 一時失敗 run の再試行後の終端が human 直行より減る | 一時失敗 run が蓄積している | 再試行で human 直行が減る | 暫定 | 失敗種別や provider の変更時 |
-| V-068-004 | [ADR 0068](0068-simplify-taqt-loop-and-verification-policy.md) | 工程ごとのモデル指定で closure が改善するか | モデル別に repetition 3 以上で closure を比較する | モデル別の完走結果が揃っている | 強いモデルで closure が改善 | 暫定 | モデルまたは工程構成の変更時 |
-| V-068-005 | [ADR 0068](0068-simplify-taqt-loop-and-verification-policy.md) | 変更範囲による検証選択と並列実行で費用が下がるか | 同一変更の before / after で検証時間とコストを比較する | before / after が取得できる | 費用が非悪化し escaped が 0 | 暫定 | 検証基盤または並列度の変更時 |
+| V-074-001 | [ADR 0074](0074-switch-llm-client-to-dsh.md) | dsh headlessで1タスクを完結できるか | 終了コード0で最終回答が返る | 暫定 | 未評価 | - | 初回の実タスク実行後 |
+| V-074-002 | [ADR 0074](0074-switch-llm-client-to-dsh.md) | opencode依存の削除後もCIが通るか | 既存のCIゲートが成功する | 暫定 | 静的ゲートは通過。全体CIは未実行 | - | CI実行後 |
+| V-075-001 | [ADR 0075](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | フックは検証失敗時にcommitをブロックできるか | commitが実行されず失敗理由が返る | 暫定 | フック単体テストで確認 | - | dsh実セッションで確認後 |
+| V-075-002 | [ADR 0075](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | 停止前の再試行は上限で停止できるか | 上限到達後に停止する | 暫定 | フック単体テストで確認 | - | dsh実セッションで確認後 |
 | V-071-002 | [ADR 0071](0071-adopt-cloudflare-unified-cli.md) | 統合 CLI の採用で Cloudflare 操作の入口が一つに揃うか | 主要操作が統合 CLI で完結する | 各操作が統合 CLI で実行できる | 主要操作が統合 CLI で完結する | 暫定 | 主要操作の追加・変更時 |

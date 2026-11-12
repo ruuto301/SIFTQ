@@ -256,6 +256,7 @@ test("shows the Matrix task action menu in delete, skip, done, working order", a
   const menu = page.locator(".matrix-menu");
   await expect(menu).toBeVisible();
   await expect(menu.locator("[data-matrix-action]")).toHaveText([
+    "Ideasに移動",
     "delete",
     "skip",
     "done",

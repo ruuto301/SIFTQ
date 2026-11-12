@@ -1,6 +1,4 @@
 profiles:
   main:
-    loop: main_loop
     env_keys:
       - DEEPSEEK_API_KEY
-      - OPENCODE_API_KEY

@@ -26,6 +26,14 @@
 - `pinned` はカードの固定状態を表す。
 - Idea は作成、編集、削除、ピン留め、並べ替えを行う。
 
+## Idea と Task の相互移動
+
+- Idea から Task へ移動すると、title と description を引き継ぎ、`status = do`、`area = 1`、`working = false` の Task を area 1 の末尾に作成して元の Idea を削除する。
+- Task から Idea へ移動すると、title と description を引き継ぎ、`pinned = false` の Idea を unpinned の末尾に作成して元の Task を version 付きで削除する。
+- 移動は移動先の作成後に元を削除する。元の削除に失敗した場合は移動先を削除して元を残す。
+- Idea は version を持たないため、削除時は最新の Idea を対象にする。
+- 移動で生じた `order` の穴は既存の delete と同様に許容する。
+
 ## Title
 
 - `title` は Task と Idea が共有する `Title` 値オブジェクトである。

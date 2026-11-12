@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from loop.schema import load_document, validate_task, write_document
+from .task_document import load_document, validate_task, write_document
 
 from .task_paths import DEFAULT_TASK_ROOT, PRIORITY_ORDER
 

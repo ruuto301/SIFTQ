@@ -23,9 +23,9 @@ def main(argv: list[str] | None = None) -> int:
     task_path, task = load_task(args.task)
     source = task["source"]
     branch = issue_branch(task)
-    title = f"#{source['issue_number']} development feedback loop"
+    title = f"#{source['issue_number']} taqt flow"
     body = (
-        f"Implements {issue_ref(task)} through taqt development feedback loop.\n\n"
+        f"Implements {issue_ref(task)} through the taqt flow.\n\n"
         f"- task: `{task['id']}`\n"
         f"- run state: `{task.get('run', {}).get('state_path')}`\n"
     )

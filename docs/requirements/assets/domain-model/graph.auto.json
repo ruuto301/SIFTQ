@@ -127,6 +127,24 @@
         }
       ]
     },
+    "ideas_id_move_to_task": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/ideas/{id}/move-to-task",
+      "operation": "id-move-to-task",
+      "success": 200,
+      "entity": "ideas",
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        }
+      ]
+    },
     "images_create": {
       "kind": "api",
       "method": "POST",
@@ -337,6 +355,28 @@
         {
           "status": 400,
           "code": "INVALID_ORDER"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        }
+      ]
+    },
+    "tasks_id_move_to_idea": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/tasks/{id}/move-to-idea",
+      "operation": "id-move-to-idea",
+      "success": 200,
+      "entity": "tasks",
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ORDER"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
         },
         {
           "status": 409,

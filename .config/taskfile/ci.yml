@@ -189,6 +189,8 @@ tasks:
 
   ci:lint:codex-task-perms:
     desc: Check that Taskfile tasks are allowed in Codex rules.
+    env:
+      LC_ALL: C
     cmds:
       - uv run python scripts/codex_rule_coverage.py --check
       - |
@@ -226,9 +228,9 @@ tasks:
       - vp lint .
 
   ci:lint:python:
-    desc: Run ruff on scripts/ci and scripts/e2e with the safe pyflakes rule set.
+    desc: Run ruff on scripts/ci, scripts/e2e, and scripts/flow with the safe pyflakes rule set.
     cmds:
-      - uv run ruff check scripts/ci scripts/e2e --select E4,E7,E9,F
+      - uv run ruff check scripts/ci scripts/e2e scripts/flow --select E4,E7,E9,F
 
   ci:test:
     desc: Run Vitest and Playwright E2E.

@@ -1,0 +1,9 @@
+- insert:
+    - id: mcp-gateway
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: mcp-gateway
+        transport: streamable-http
+        url: http://mcp-gateway.docker.internal/mcp
+        headers:
+          Authorization: Bearer proxy-managed

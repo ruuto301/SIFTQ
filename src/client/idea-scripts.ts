@@ -212,8 +212,6 @@ function createIdeaCard(idea) {
   var title = document.createElement("h2"); title.textContent = idea.title; link.appendChild(title);
   var description = document.createElement("p"); description.className = "idea-card__description"; renderIdeaDescription(description, idea.description); link.appendChild(description);
   card.appendChild(link);
-  var footer = document.createElement("footer"); footer.className = "idea-card__footer";
-  var more = document.createElement("button"); more.type = "button"; more.className = "idea-card__more"; more.setAttribute("aria-label", "More options for " + idea.title); var dots = document.createElement("span"); dots.setAttribute("aria-hidden", "true"); more.appendChild(dots); footer.appendChild(more); card.appendChild(footer);
   return card;
 }
 function createNewIdea(title, description) {
@@ -227,8 +225,23 @@ function createNewIdea(title, description) {
 var ideaMenu = null;
 var ideaMenuCard = null;
 var ideaDeleteModal = null;
+var ideaMovePending = false;
 function closeIdeaMenu() { if (ideaMenu) ideaMenu.remove(); ideaMenu = null; ideaMenuCard = null; }
 function closeIdeaDeleteModal() { if (ideaDeleteModal) ideaDeleteModal.remove(); ideaDeleteModal = null; }
+function showIdeaMoveError() { var notice = document.getElementById("move-error"); if (notice) notice.hidden = false; }
+function hideIdeaMoveError() { var notice = document.getElementById("move-error"); if (notice) notice.hidden = true; }
+function persistIdeaMoveToTask(card) {
+  var id = ideaCardId(card);
+  if (!id || ideaMovePending) return;
+  ideaMovePending = true;
+  setTimeout(function () { closeIdeaMenu(); }, 0);
+  hideIdeaMoveError();
+  ideaApi("/api/ideas/" + encodeURIComponent(id) + "/move-to-task", { method: "POST" }).then(function (task) {
+    if (!task) return;
+    card.remove();
+    updateIdeaGroups();
+  }).catch(function () { showIdeaMoveError(); }).finally(function () { ideaMovePending = false; });
+}
 function removeIdeaCard(card) {
   var id = ideaCardId(card);
   if (!id) return;
@@ -244,11 +257,12 @@ function renderIdeaDeleteModal(card) {
   backdrop.addEventListener("click", function (event) { var button = event.target.closest ? event.target.closest("[data-idea-modal-action]") : null; if (!button) return; if (button.getAttribute("data-idea-modal-action") === "confirm") { closeIdeaDeleteModal(); removeIdeaCard(card); } else closeIdeaDeleteModal(); });
   backdrop.appendChild(dialog); document.body.appendChild(backdrop); ideaDeleteModal = backdrop;
 }
-function openIdeaMenu(card, button) {
+function openIdeaMenu(card, x, y) {
   closeIdeaMenu(); ideaMenuCard = card; var menu = document.createElement("div"); menu.className = "matrix-menu";
+  var moveButton = document.createElement("button"); moveButton.type = "button"; moveButton.className = "matrix-menu-item matrix-menu-item--move-to-task"; moveButton.textContent = "Matrixに移動"; moveButton.setAttribute("data-idea-action", "move-to-task"); menu.appendChild(moveButton);
   var deleteButton = document.createElement("button"); deleteButton.type = "button"; deleteButton.className = "matrix-menu-item matrix-menu-item--delete"; deleteButton.textContent = "削除"; deleteButton.setAttribute("data-idea-action", "delete"); menu.appendChild(deleteButton);
-  menu.addEventListener("click", function (event) { var item = event.target.closest("[data-idea-action]"); if (item && item.getAttribute("data-idea-action") === "delete") { var target = ideaMenuCard; closeIdeaMenu(); renderIdeaDeleteModal(target); } });
-  document.body.appendChild(menu); var rect = button.getBoundingClientRect(); var menuRect = menu.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - menuRect.width - 8)) + "px"; menu.style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - menuRect.height - 8)) + "px"; ideaMenu = menu;
+  menu.addEventListener("click", function (event) { var item = event.target.closest("[data-idea-action]"); if (!item) return; var action = item.getAttribute("data-idea-action"); if (action === "move-to-task") { persistIdeaMoveToTask(ideaMenuCard); return; } if (action === "delete") { var target = ideaMenuCard; closeIdeaMenu(); renderIdeaDeleteModal(target); } });
+  document.body.appendChild(menu); var menuRect = menu.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(x, window.innerWidth - menuRect.width - 8)) + "px"; menu.style.top = Math.max(8, Math.min(y, window.innerHeight - menuRect.height - 8)) + "px"; ideaMenu = menu;
 }
 function setIdeaComposerOpen(composer, open) { var trigger = composer.querySelector("[data-idea-composer-trigger]"); var editor = composer.querySelector("[data-idea-composer-editor]"); composer.classList.toggle("ideas-composer--open", open); composer.setAttribute("data-idea-composer-open", open ? "true" : "false"); if (trigger) trigger.setAttribute("aria-expanded", open ? "true" : "false"); if (editor) editor.hidden = !open; if (open) { var title = composer.querySelector(".ideas-composer__title"); if (title) title.focus(); } }
 function finishIdeaComposer(composer) { var title = composer.querySelector(".ideas-composer__title"); var description = composer.querySelector(".ideas-composer__description"); createNewIdea(title ? title.value.trim() : "", description ? description.value.trim() : ""); if (title) title.value = ""; if (description) description.value = ""; setIdeaComposerOpen(composer, false); }
@@ -266,11 +280,18 @@ function initializeIdeaDetails() {
 document.addEventListener("DOMContentLoaded", initializeIdeaDetails);
 document.addEventListener("htmx:load", initializeIdeaDetails);
 window.addEventListener("resize", layoutIdeaMasonry);
+document.addEventListener("contextmenu", function (event) {
+  var modal = document.querySelector("[data-idea-modal]"); if (modal && modal.open) return;
+  var card = event.target.closest ? event.target.closest(".idea-card[data-idea-id]") : null;
+  if (!card || ideaMovePending) return;
+  event.preventDefault();
+  openIdeaMenu(card, event.clientX, event.clientY);
+});
 document.addEventListener("click", function (event) {
   if (ideaMenu && !ideaMenu.contains(event.target)) closeIdeaMenu();
   var modal = document.querySelector("[data-idea-modal]"); if (modal && modal.open) return;
   var card = event.target.closest ? event.target.closest(".idea-card[data-idea-id]") : null; if (!card) return;
-  var more = event.target.closest(".idea-card__more"); if (more) { event.preventDefault(); openIdeaMenu(card, more); return; }
+  if (ideaMovePending) { event.preventDefault(); return; }
   if (event.target.closest(".idea-card__pin")) { event.preventDefault(); toggleIdeaCardPin(card); return; }
   event.preventDefault();
    openIdeaModal(card);
