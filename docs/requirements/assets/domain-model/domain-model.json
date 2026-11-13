@@ -614,6 +614,30 @@
         }
       ]
     },
+    "projects_reorder": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/projects/reorder",
+      "operation": "reorder",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_ORDER"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PROJECT"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
     "tasks_id_move_to_idea": {
       "kind": "api",
       "method": "POST",
@@ -946,6 +970,20 @@
     }
   ],
   "screenCalls": [
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_bulk_project"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "projects_reorder"
+    },
     {
       "screen": "P10",
       "trigger": "POST",

@@ -123,6 +123,10 @@
   - action menu の選択肢は `do`、`done`、`skip` への変更、`working` の切り替え、`プロジェクト` サブメニュー（`未分類` と各 project）、task detail を開く、削除とする。
   - status 変更後、選択中 status と一致しない行は一覧から除外する。選択中だった場合は同じ status の一覧へ移動する。
   - project 変更後は一覧を読み込み直してグループへ反映する。
+  - task カードをドラッグして別の project グループへドロップすると、その task の project を変更する。`未分類` へドロップすると project を未設定へ戻す。
+  - project 見出しをドラッグして別の見出しへドロップすると並び順を変更し、`projects.sort_order` を更新する。`未分類` は並び替えの対象外で常に最後に表示する。
+  - ドラッグ中は受け入れ可能なターゲットで `dragover` を `preventDefault` し、`dropEffect = "move"` とドロップ位置の表示（枠線・挿入線）を出す。`dragend` または `Escape` で表示を戻す。
+  - 並び替えや project 変更に失敗した場合は元の表示へ戻し、左ペインに失敗を表示する。
   - 削除は確認後に task を完全削除する。
   - 中央ペインは `Chat`、`説明`、`設定` のタブを表示する。
   - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。

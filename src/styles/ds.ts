@@ -86,6 +86,23 @@ export const DS_CSS = `
   gap: 8px;
 }
 
+.ds__groups-status {
+  margin: 0 12px 6px;
+  padding: 6px 10px;
+  border: 1px solid #f3c2c2;
+  border-radius: 8px;
+  background: #fdf3f3;
+  color: #b3261e;
+  font-size: 12px;
+}
+
+.ds__groups-status[hidden] { display: none; }
+
+.ds__group.dragging { opacity: 0.6; }
+.ds__group--drop { outline: 2px dashed #2f6feb; outline-offset: 2px; border-radius: 8px; }
+.ds__group--drop-before { box-shadow: 0 -2px 0 0 #2f6feb; }
+.ds__group--drop-after { box-shadow: 0 2px 0 0 #2f6feb; }
+
 .ds__group-head {
   display: flex;
   align-items: center;
@@ -138,6 +155,7 @@ export const DS_CSS = `
 }
 
 .ds__task-item { border: 0; }
+.ds__task-item.dragging { opacity: 0.5; }
 
 .ds__task {
   display: flex;

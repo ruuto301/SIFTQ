@@ -18,6 +18,10 @@ export function isProjectRecord(value: unknown): value is Record<string, unknown
   return typeof value === "object" && value !== null;
 }
 
+export function isProjectOrderValid(order: number): boolean {
+  return Number.isSafeInteger(order) && order > 0;
+}
+
 export function toProject(value: unknown): Project | undefined {
   if (!isProjectRecord(value)) return undefined;
 

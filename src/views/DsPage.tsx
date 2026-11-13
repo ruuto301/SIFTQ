@@ -79,6 +79,7 @@ function TaskPane({ groups, selected, status }: TaskPaneProps) {
     <aside class="ds__pane ds__pane--tasks">
       <div class="ds__pane-head">Tasks</div>
       <StatusTabs active={status} />
+      <div class="ds__groups-status" id="ds-groups-status" role="status" hidden></div>
       <div class="ds__groups">
         {groups.map((group) => (
           <TaskGroupSection key={group.project?.id ?? "__none__"} group={group} selected={selected} />

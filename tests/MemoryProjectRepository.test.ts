@@ -32,4 +32,41 @@ describe("MemoryProjectRepository", () => {
 
     expect(await repository.find("missing")).toEqual({ ok: true, value: undefined });
   });
+
+  it("reorders projects and returns the updated list", async () => {
+    const repository = createMemoryProjectRepository(PROJECTS);
+
+    const moved = await repository.move([
+      { id: "a", order: 3 },
+      { id: "m", order: 1 },
+      { id: "z", order: 2 },
+    ]);
+
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(moved.value.map((project) => [project.id, project.sort_order])).toEqual([
+      ["m", 1],
+      ["z", 2],
+      ["a", 3],
+    ]);
+    const listed = await repository.list();
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    expect(listed.value.map((project) => project.id)).toEqual(["m", "z", "a"]);
+  });
+
+  it("rejects an unknown project without changing any order", async () => {
+    const repository = createMemoryProjectRepository(PROJECTS);
+
+    const moved = await repository.move([
+      { id: "a", order: 1 },
+      { id: "missing", order: 2 },
+    ]);
+
+    expect(moved).toEqual({ ok: false, error: { code: "INVALID_PROJECT" } });
+    const listed = await repository.list();
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    expect(listed.value.map((project) => project.id)).toEqual(["a", "m", "z"]);
+  });
 });

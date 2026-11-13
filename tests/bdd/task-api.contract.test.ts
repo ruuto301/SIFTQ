@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import type { Task } from "../../src/task";
+import type { Project } from "../../src/project";
 import { authenticatedRequest } from "../helpers/authenticated-request";
 import { taskFixture } from "../helpers/task-fixture";
 import { createMemoryTaskRepository } from "../helpers/memory-task-repository";
+import { createMemoryProjectRepository } from "../../src/preview/MemoryProjectRepository";
+import { PREVIEW_PROJECTS } from "../../src/preview/projects";
 import type { TaskRepository } from "../../src/repository/task-repository";
+import type { ProjectRepository } from "../../src/repository/project-repository";
 
 let repo: TaskRepository;
 
@@ -11,7 +15,12 @@ beforeEach(() => {
   repo = createMemoryTaskRepository();
 });
 
-function request(method: string, path: string, body?: unknown) {
+function requestWith(
+  projectRepository: ProjectRepository,
+  method: string,
+  path: string,
+  body?: unknown,
+) {
   const init: RequestInit = {
     method,
     headers: { "content-type": "application/json" },
@@ -20,7 +29,15 @@ function request(method: string, path: string, body?: unknown) {
     init.body = JSON.stringify(body);
   }
 
-  return authenticatedRequest(path, repo, init);
+  return authenticatedRequest(path, repo, init, projectRepository);
+}
+
+function request(method: string, path: string, body?: unknown) {
+  return requestWith(createMemoryProjectRepository(PREVIEW_PROJECTS), method, path, body);
+}
+
+function freshProjectRepository(): ProjectRepository {
+  return createMemoryProjectRepository(PREVIEW_PROJECTS);
 }
 
 describe("BDD-TM-001: task creation", () => {
@@ -130,6 +147,129 @@ describe("BDD-TM-002: project assignment", () => {
       "kits",
       "scripts",
     ]);
+  });
+});
+
+describe("project reorder", () => {
+  const defaultIds = ["Yoriwake", "dsh", "customer_portal", "affiliate", "kits", "scripts"];
+
+  it("reorders projects and returns the new order from the list", async () => {
+    const projects = freshProjectRepository();
+
+    const response = await requestWith(projects, "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "customer_portal", order: 1 },
+        { id: "Yoriwake", order: 2 },
+        { id: "dsh", order: 3 },
+      ],
+    });
+    const expected = ["customer_portal", "Yoriwake", "dsh", "affiliate", "kits", "scripts"];
+
+    expect(response.status).toBe(200);
+    const reordered: Project[] = await response.json();
+    expect(reordered.map((project) => project.id)).toEqual(expected);
+
+    const listed = await requestWith(projects, "GET", "/api/projects");
+    const persisted: Project[] = await listed.json();
+    expect(persisted.map((project) => project.id)).toEqual(expected);
+  });
+
+  it("keeps the stored order when a request is rejected", async () => {
+    const projects = freshProjectRepository();
+
+    const rejected = await requestWith(projects, "POST", "/api/projects/reorder", {
+      projects: [{ id: "missing", order: 1 }],
+    });
+    const listed = await requestWith(projects, "GET", "/api/projects");
+    const persisted: Project[] = await listed.json();
+
+    expect(rejected.status).toBe(400);
+    expect(persisted.map((project) => project.id)).toEqual(defaultIds);
+  });
+});
+
+describe("project reorder validation", () => {
+  it("rejects an empty projects array", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated project id", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "dsh", order: 1 },
+        { id: "dsh", order: 2 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated order", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "dsh", order: 1 },
+        { id: "kits", order: 1 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_ORDER");
+  });
+
+  it("rejects an unknown project id", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [{ id: "missing", order: 1 }],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+});
+
+describe("project reorder input validation", () => {
+  it.each([
+    ["missing projects", {}, "INVALID_INPUT"],
+    ["a non-object element", { projects: ["dsh"] }, "INVALID_INPUT"],
+    ["a non-string id", { projects: [{ id: 1, order: 1 }] }, "INVALID_INPUT"],
+    ["a non-numeric order", { projects: [{ id: "dsh", order: "1" }] }, "INVALID_ORDER"],
+    ["a zero order", { projects: [{ id: "dsh", order: 0 }] }, "INVALID_ORDER"],
+    ["a fractional order", { projects: [{ id: "dsh", order: 1.5 }] }, "INVALID_ORDER"],
+  ])("rejects %s", async (_name, body, code) => {
+    const response = await requestWith(
+      freshProjectRepository(),
+      "POST",
+      "/api/projects/reorder",
+      body,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code });
+  });
+
+  it("rejects malformed JSON", async () => {
+    const response = await authenticatedRequest(
+      "/api/projects/reorder",
+      repo,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{",
+      },
+      freshProjectRepository(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code: "INVALID_INPUT" });
   });
 });
 

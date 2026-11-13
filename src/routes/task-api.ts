@@ -10,9 +10,9 @@ import {
   parseTaskVersionInputs,
 } from "../task";
 import type { DomainError, Result, Task, TaskVersionInput } from "../task";
-import { isProjectId } from "../project";
+import { isProjectId, isProjectOrderValid } from "../project";
 import type { TaskRepository } from "../repository/task-repository";
-import type { ProjectRepository } from "../repository/project-repository";
+import type { ProjectOrderUpdate, ProjectRepository } from "../repository/project-repository";
 import type { IdeaRepository } from "../repository/idea-repository";
 import { nextIdeaOrder } from "../idea";
 import type { Idea } from "../idea";
@@ -264,6 +264,34 @@ function registerProjectRoutes<T extends ApiEnv>(
     const result = await projectRepository(c).list();
     if (!result.ok) return problem(c, 500, result.error.code);
     return c.json(result.value);
+  });
+
+  app.post("/api/projects/reorder", async (c) => {
+    const body = await readJsonRecord(c);
+    const rawProjects = body?.["projects"];
+    if (!Array.isArray(rawProjects) || rawProjects.length === 0) {
+      return problem(c, 400, "INVALID_INPUT");
+    }
+    const seenIds = new Set<string>();
+    const seenOrders = new Set<number>();
+    const updates: ProjectOrderUpdate[] = [];
+    for (const rawProject of rawProjects) {
+      if (!isRecord(rawProject)) return problem(c, 400, "INVALID_INPUT");
+      const id = rawProject["id"];
+      if (typeof id !== "string") return problem(c, 400, "INVALID_INPUT");
+      const order = rawProject["order"];
+      if (typeof order !== "number" || !isProjectOrderValid(order)) {
+        return problem(c, 400, "INVALID_ORDER");
+      }
+      if (seenIds.has(id)) return problem(c, 400, "INVALID_INPUT");
+      if (seenOrders.has(order)) return problem(c, 400, "INVALID_ORDER");
+      seenIds.add(id);
+      seenOrders.add(order);
+      updates.push({ id, order });
+    }
+    const moved = await projectRepository(c).move(updates);
+    if (!moved.ok) return problem(c, moved.error.code === "INVALID_PROJECT" ? 400 : 500, moved.error.code);
+    return c.json(moved.value);
   });
 }
 

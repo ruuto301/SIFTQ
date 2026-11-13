@@ -4,7 +4,11 @@ import { createD1ProjectRepository } from "../src/repository/d1-project-reposito
 
 type Execution = { query: string; values: readonly unknown[] };
 
-function successResult<T>(results: T[]): D1Result<T> {
+function isRowArray<T>(value: unknown): value is T[] {
+  return Array.isArray(value);
+}
+
+function successResult<T>(results: T[], changes = 0): D1Result<T> {
   return {
     success: true,
     results,
@@ -15,7 +19,7 @@ function successResult<T>(results: T[]): D1Result<T> {
       rows_written: 0,
       last_row_id: 0,
       changed_db: false,
-      changes: 0,
+      changes,
     },
   };
 }
@@ -40,12 +44,13 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 
   run<T = Record<string, unknown>>(): Promise<D1Result<T>> {
     this.recorder.record(this.query, this.values);
-    return Promise.resolve(successResult<T>([]));
+    return Promise.resolve(successResult<T>([], 1));
   }
 
   all<T = Record<string, unknown>>(): Promise<D1Result<T>> {
     this.recorder.record(this.query, this.values);
-    return Promise.resolve(successResult<T>([]));
+    const rows = this.recorder.resultSets.shift();
+    return Promise.resolve(successResult<T>(isRowArray<T>(rows) ? rows : []));
   }
 
   raw<T = unknown[]>(_options: { columnNames: true }): Promise<[string[], ...T[]]>;
@@ -57,13 +62,14 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 
 class RecordingD1Database implements D1Database {
   readonly executions: Execution[] = [];
+  readonly resultSets: unknown[] = [];
 
   prepare(query: string): D1PreparedStatement {
     return new RecordingPreparedStatement(this, query);
   }
 
-  batch(): Promise<never> {
-    return Promise.reject(new Error("batch is not implemented in this test double"));
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
+    return Promise.all(statements.map((statement) => statement.run<T>()));
   }
 
   exec(): Promise<never> {
@@ -81,6 +87,10 @@ class RecordingD1Database implements D1Database {
   record(query: string, values: readonly unknown[]): void {
     this.executions.push({ query, values: [...values] });
   }
+}
+
+function projectRow(id: string, sortOrder: number): Record<string, unknown> {
+  return { id, name: id.toUpperCase(), path: null, sort_order: sortOrder, archived: 0 };
 }
 
 describe("D1 project repository", () => {
@@ -101,5 +111,45 @@ describe("D1 project repository", () => {
     expect(found).toEqual({ ok: true, value: undefined });
     expect(database.executions[0]?.query).toContain("FROM projects WHERE id = ?");
     expect(database.executions[0]?.values).toEqual(["dsh"]);
+  });
+
+  it("updates sort_order in one batch and returns the reordered list", async () => {
+    const database = new RecordingD1Database();
+    database.resultSets.push(
+      [projectRow("a", 1), projectRow("b", 2)],
+      [projectRow("a", 2), projectRow("b", 1)],
+    );
+
+    const moved = await createD1ProjectRepository(database).move([
+      { id: "a", order: 2 },
+      { id: "b", order: 1 },
+    ]);
+
+    expect(moved).toEqual({
+      ok: true,
+      value: [
+        { id: "b", name: "B", path: null, sort_order: 1, archived: false },
+        { id: "a", name: "A", path: null, sort_order: 2, archived: false },
+      ],
+    });
+    const updates = database.executions.filter((execution) =>
+      execution.query.includes("UPDATE projects SET sort_order = ?"),
+    );
+    expect(updates.map((execution) => execution.values)).toEqual([
+      [2, "a"],
+      [1, "b"],
+    ]);
+  });
+
+  it("rejects an unknown project id without issuing updates", async () => {
+    const database = new RecordingD1Database();
+    database.resultSets.push([projectRow("a", 1)]);
+
+    const moved = await createD1ProjectRepository(database).move([{ id: "missing", order: 1 }]);
+
+    expect(moved).toEqual({ ok: false, error: { code: "INVALID_PROJECT" } });
+    expect(
+      database.executions.some((execution) => execution.query.startsWith("UPDATE")),
+    ).toBe(false);
   });
 });

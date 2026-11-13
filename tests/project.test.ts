@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { isProjectId, sortProjects, toProject } from "../src/project";
+import { isProjectId, isProjectOrderValid, sortProjects, toProject } from "../src/project";
 
 describe("project id", () => {
   it("accepts ids with letters, digits, hyphen and underscore", () => {
@@ -36,5 +36,20 @@ describe("sortProjects", () => {
 
     expect(sortProjects(projects).map((project) => project.id)).toEqual(["a", "b"]);
     expect(projects.map((project) => project.id)).toEqual(["b", "a"]);
+  });
+});
+
+describe("isProjectOrderValid", () => {
+  it("accepts positive safe integers", () => {
+    expect(isProjectOrderValid(1)).toBe(true);
+    expect(isProjectOrderValid(42)).toBe(true);
+  });
+
+  it("rejects zero, negative, fractional, and unsafe values", () => {
+    expect(isProjectOrderValid(0)).toBe(false);
+    expect(isProjectOrderValid(-1)).toBe(false);
+    expect(isProjectOrderValid(1.5)).toBe(false);
+    expect(isProjectOrderValid(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
+    expect(isProjectOrderValid(Number.NaN)).toBe(false);
   });
 });

@@ -141,6 +141,204 @@ export const DS_SCRIPT = `(function () {
     });
   });
 
+  // DS left pane DnD: task rows move between project groups, group heads reorder projects.
+  var groupsBox = document.querySelector(".ds__groups");
+  if (groupsBox) initGroupsDnd(groupsBox);
+
+  function initGroupsDnd(box) {
+    var pane = box.closest ? box.closest(".ds__pane--tasks") : null;
+    var surface = pane === null ? box : pane;
+    var status = document.getElementById("ds-groups-status");
+    var drag = null;
+
+    function setStatus(text, isError) {
+      if (!status) return;
+      status.textContent = text || "";
+      status.hidden = (text || "") === "";
+      status.classList.toggle("ds__groups-status--error", isError === true);
+    }
+    function groupOf(element) {
+      return element && element.closest ? element.closest(".ds__group") : null;
+    }
+    function projectOf(group) {
+      return group === null ? null : (group.getAttribute("data-ds-group-id") || "");
+    }
+    function taskListOf(group) {
+      return group === null ? null : group.querySelector(".ds__tasks");
+    }
+    function sections() {
+      return Array.prototype.slice.call(box.querySelectorAll(".ds__group"));
+    }
+    function clearMarks() {
+      Array.prototype.forEach.call(box.querySelectorAll(".ds__group"), function (group) {
+        group.classList.remove("ds__group--drop", "ds__group--drop-before", "ds__group--drop-after");
+      });
+    }
+    function clearDrag() {
+      if (drag !== null && drag.element) drag.element.classList.remove("dragging");
+      clearMarks();
+      drag = null;
+    }
+    function restoreTask(state) {
+      var list = taskListOf(state.originGroup);
+      if (list === null) return;
+      if (state.originNext && state.originNext.parentNode === list) list.insertBefore(state.element, state.originNext);
+      else list.appendChild(state.element);
+      refreshCounts();
+    }
+    function refreshCounts() {
+      Array.prototype.forEach.call(box.querySelectorAll(".ds__group"), function (group) {
+        var count = group.querySelector(".ds__group-count");
+        var list = taskListOf(group);
+        if (count && list) count.textContent = String(list.children.length);
+      });
+    }
+    function restoreProjects(previous) {
+      previous.forEach(function (group) { box.appendChild(group); });
+    }
+    function moveTask(state, project) {
+      var id = state.element.getAttribute("data-task-id");
+      var version = Number(state.element.getAttribute("data-task-version"));
+      fetch("/api/tasks/bulk/project", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: project === "" ? null : project, tasks: [{ id: id, version: version }] }),
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            restoreTask(state);
+            setStatus("タスクを移動できませんでした (" + response.status + ")", true);
+            return;
+          }
+          refreshCounts();
+          setStatus("", false);
+        })
+        .catch(function () {
+          restoreTask(state);
+          setStatus("タスクを移動できませんでした", true);
+        });
+    }
+    function saveProjectOrder(previous) {
+      var projects = [];
+      sections().forEach(function (group, index) {
+        var id = projectOf(group);
+        if (id !== null && id !== "") projects.push({ id: id, order: index + 1 });
+      });
+      fetch("/api/projects/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projects: projects }),
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            restoreProjects(previous);
+            setStatus("プロジェクトを並び替えできませんでした (" + response.status + ")", true);
+            return;
+          }
+          setStatus("", false);
+        })
+        .catch(function () {
+          restoreProjects(previous);
+          setStatus("プロジェクトを並び替えできませんでした", true);
+        });
+    }
+
+    Array.prototype.forEach.call(box.querySelectorAll(".ds__task-item"), function (row) {
+      row.setAttribute("draggable", "true");
+      var link = row.querySelector(".ds__task");
+      if (link) link.setAttribute("draggable", "false");
+    });
+    Array.prototype.forEach.call(box.querySelectorAll(".ds__group"), function (group) {
+      var toggle = group.querySelector("[data-ds-group-toggle]");
+      if (toggle && projectOf(group) !== "") toggle.setAttribute("draggable", "true");
+    });
+
+    surface.addEventListener("dragstart", function (event) {
+      var target = event.target;
+      if (!event.dataTransfer) return;
+      var row = target && target.closest ? target.closest(".ds__task-item") : null;
+      if (row !== null && box.contains(row)) {
+        drag = { kind: "task", element: row, id: row.getAttribute("data-task-id") || "", originGroup: groupOf(row), originNext: row.nextElementSibling };
+        row.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", drag.id);
+        return;
+      }
+      var head = target && target.closest ? target.closest(".ds__group-head") : null;
+      var group = groupOf(head);
+      if (group !== null && projectOf(group) !== "") {
+        drag = { kind: "project", element: group, id: projectOf(group) || "", previous: sections() };
+        group.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", drag.id);
+        return;
+      }
+      drag = null;
+    });
+
+    surface.addEventListener("dragover", function (event) {
+      if (drag === null) return;
+      var group = groupOf(event.target);
+      if (group === null) {
+        // Accept the drag over the pane background so the cursor never shows 🚫.
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        clearMarks();
+        return;
+      }
+      if (drag.kind === "task") {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        clearMarks();
+        group.classList.add("ds__group--drop");
+        if (projectOf(group) !== projectOf(drag.originGroup)) {
+          var list = taskListOf(group);
+          if (list !== null && drag.element.parentNode !== list) list.appendChild(drag.element);
+        }
+        return;
+      }
+      if (group === drag.element || projectOf(group) === "") return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      clearMarks();
+      var rect = group.getBoundingClientRect();
+      var before = event.clientY < rect.top + rect.height / 2;
+      group.classList.add(before ? "ds__group--drop-before" : "ds__group--drop-after");
+      if (before) box.insertBefore(drag.element, group);
+      else box.insertBefore(drag.element, group.nextSibling);
+    });
+
+    surface.addEventListener("drop", function (event) {
+      if (drag === null) return;
+      var state = drag;
+      var group = groupOf(event.target);
+      if (group === null) {
+        clearDrag();
+        return;
+      }
+      if (state.kind === "task") {
+        event.preventDefault();
+        var project = projectOf(group);
+        if (project === projectOf(state.originGroup)) restoreTask(state);
+        else moveTask(state, project === null ? "" : project);
+        clearDrag();
+        return;
+      }
+      if (group === state.element || projectOf(group) === "") {
+        clearDrag();
+        return;
+      }
+      event.preventDefault();
+      saveProjectOrder(state.previous);
+      clearDrag();
+    });
+
+    surface.addEventListener("dragend", clearDrag);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") clearDrag();
+    });
+  }
+
   // Task list context menu: status, working, project, open and delete.
   var STATUS_LABELS = { do: "進行中", done: "完了", skip: "見送り" };
   var taskList = document.querySelector(".ds__groups");
