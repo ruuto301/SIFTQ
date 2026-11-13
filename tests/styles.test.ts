@@ -167,5 +167,8 @@ describe("Matrix drag feedback styles", () => {
     expect(STYLES_CSS).toContain(".ds__tab2");
     expect(STYLES_CSS).toContain(".dsh-desc");
     expect(STYLES_CSS).toContain(".ds__task-item");
+    expect(STYLES_CSS).toContain(".ds__task-head");
+    expect(STYLES_CSS).toContain(".dsh-card");
+    expect(STYLES_CSS).toContain('.dsh-chat__send[data-state="stop"]');
   });
 });

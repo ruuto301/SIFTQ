@@ -41,8 +41,10 @@ function TaskPane({ tasks, selected, status }: TaskPaneProps) {
               class={selected?.id === task.id ? "ds__task active" : "ds__task"}
               href={`/ds?task=${encodeURIComponent(task.id)}`}
             >
-              <span class={`ds__dot ds__dot--${task.status}`} aria-hidden="true"></span>
-              <span class="ds__task-title">{task.title}</span>
+              <span class="ds__task-head">
+                <span class={`ds__dot ds__dot--${task.status}`} aria-hidden="true"></span>
+                <span class="ds__task-title">{task.title}</span>
+              </span>
               <span class="ds__task-meta">
                 <span class={`status status--${task.status}`}>{task.status}</span>
                 {task.working ? <span class="working-badge">working</span> : null}
@@ -160,7 +162,7 @@ function BrowserPane() {
           最大化
         </button>
       </div>
-      <div class="ds__tabs" id="ds-browser-tabs"></div>
+      <div class="ds__tabs-bar" id="ds-browser-tabs"></div>
       <form class="ds__browser-bar" id="ds-browser-form">
         <button type="button" class="ds__nav" id="ds-browser-back" title="戻る">
           ←

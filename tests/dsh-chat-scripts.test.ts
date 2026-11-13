@@ -25,6 +25,12 @@ describe("DSH chat script", () => {
     expect(DSH_CHAT_SCRIPT).toContain('"■"');
   });
 
+  it("labels tool cards with the call id and terminal status", () => {
+    expect(DSH_CHAT_SCRIPT).toContain("dataset.callId");
+    expect(DSH_CHAT_SCRIPT).toContain("dsh-card--done");
+    expect(DSH_CHAT_SCRIPT).toContain("dataset.name");
+  });
+
   it("sends with Ctrl+Enter and exposes the bridge", () => {
     expect(DSH_CHAT_SCRIPT).toContain("__dsBridge");
     expect(DSH_CHAT_SCRIPT).toContain("ctrlKey");

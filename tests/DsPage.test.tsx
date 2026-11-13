@@ -35,6 +35,7 @@ describe("DsPage", () => {
     expect(html).toContain('data-task-status="do"');
     expect(html).toContain('data-task-working="true"');
     expect(html).toContain('class="working-badge"');
+    expect(html).toContain('class="ds__task-head"');
   });
 
   it("renders the send button as an arrow", () => {
