@@ -40,6 +40,26 @@ describe("DS browser script", () => {
     expect(DS_SCRIPT).toContain("localStorage.setItem");
   });
 
+  it("moves tasks between project groups and reorders projects by drag and drop (BDD-TM-025)", () => {
+    for (const hook of [
+      "dragstart",
+      "dragover",
+      "drop",
+      "dragend",
+      "dataTransfer",
+      'setAttribute("draggable", "false")',
+      "ds__group--drop",
+      "preventDefault",
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+    expect(DS_SCRIPT).toContain("/api/tasks/bulk/project");
+    expect(DS_SCRIPT).toContain("/api/projects/reorder");
+    expect(DS_SCRIPT).toContain("ds-groups-status");
+    expect(DS_SCRIPT).toContain("タスクを移動できませんでした");
+    expect(DS_SCRIPT).toContain("プロジェクトを並び替えできませんでした");
+  });
+
   it("rejects non-http URLs and ignores frames from inactive tabs", () => {
     expect(DS_SCRIPT).toContain("http(s) の URL のみ開けます");
     expect(DS_SCRIPT).toContain("tabId");

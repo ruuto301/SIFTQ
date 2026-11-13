@@ -57,6 +57,7 @@ describe("DsPage", () => {
     expect(html).toContain('class="ds__group" data-ds-group-id=""');
     expect(html).toContain('data-ds-group-toggle');
     expect(html).toContain("ds__group-count");
+    expect(html).toContain('id="ds-groups-status"');
     const yoriwake = html.indexOf('data-ds-group-id="Yoriwake"');
     const unassigned = html.indexOf('data-ds-group-id=""');
     expect(yoriwake).toBeGreaterThanOrEqual(0);

@@ -51,6 +51,14 @@
     ]
   },
   "projects_list": { "errors": [{ "status": 500 }] },
+  "projects_reorder": {
+    "errors": [
+      { "status": 400, "code": "INVALID_INPUT" },
+      { "status": 400, "code": "INVALID_ORDER" },
+      { "status": 400, "code": "INVALID_PROJECT" },
+      { "status": 500 }
+    ]
+  },
   "ideas_list": { "errors": [{ "status": 500 }] },
   "ideas_create": {
     "errors": [

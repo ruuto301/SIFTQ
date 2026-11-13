@@ -52,7 +52,7 @@ describe("ProjectRepository contract", () => {
       createD1ProjectRepository(unusedD1Database),
     ];
     for (const repository of repositories) {
-      expect(Object.keys(repository).sort()).toEqual(["find", "list"]);
+      expect(Object.keys(repository).sort()).toEqual(["find", "list", "move"]);
     }
   });
 });

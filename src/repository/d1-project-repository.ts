@@ -1,9 +1,9 @@
-import type { D1Database } from "@cloudflare/workers-types";
-import { ok } from "../task";
+import type { D1Database, D1Result } from "@cloudflare/workers-types";
+import { err, ok } from "../task";
 import type { Result } from "../task";
 import { sortProjects, toProject } from "../project";
 import type { Project } from "../project";
-import type { ProjectRepository, ProjectRepositoryError } from "./project-repository";
+import type { ProjectOrderUpdate, ProjectRepository, ProjectRepositoryError } from "./project-repository";
 
 const PROJECT_COLUMNS = "id, name, path, sort_order, archived";
 
@@ -11,6 +11,7 @@ export function createD1ProjectRepository(db: D1Database): ProjectRepository {
   return {
     list: () => listProjects(db),
     find: (id) => findProject(db, id),
+    move: (updates) => moveProjects(db, updates),
   };
 }
 
@@ -33,4 +34,25 @@ async function findProject(
     .bind(id)
     .first<Record<string, unknown>>();
   return ok(row === null ? undefined : toProject(row));
+}
+
+function changes(result: D1Result): number {
+  return result.meta?.changes ?? 0;
+}
+
+async function moveProjects(
+  db: D1Database,
+  updates: readonly ProjectOrderUpdate[],
+): Promise<Result<Project[], ProjectRepositoryError>> {
+  const current = await listProjects(db);
+  if (!current.ok) return current;
+  const known = new Set(current.value.map((project) => project.id));
+  if (updates.some((update) => !known.has(update.id))) return err({ code: "INVALID_PROJECT" });
+  const results = await db.batch(
+    updates.map((update) =>
+      db.prepare("UPDATE projects SET sort_order = ? WHERE id = ?").bind(update.order, update.id),
+    ),
+  );
+  if (results.some((result) => changes(result) === 0)) return err({ code: "INVALID_PROJECT" });
+  return listProjects(db);
 }
