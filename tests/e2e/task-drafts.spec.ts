@@ -1,18 +1,18 @@
-import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, disableLocalStorage, createMatrixTask, expectTaskVisibleInList, openTaskFromList } from "./matrix-helpers";
+import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, disableLocalStorage, createTask, expectTaskVisibleInList, openTaskFromList } from "./task-helpers";
 import { authStatePath, e2eBaseUrl, expect, installHtmxRoute, test } from "./fixtures";
 
 test("creates a task and sees it in the list", async ({ page }) => {
   const taskTitle = `E2E task ${Date.now()}`;
 
   await signIn(page);
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 
   await page.getByRole("link", { name: "New task" }).click();
   await page.getByLabel("Title").fill(taskTitle);
   await descriptionEditor(page).fill("created by Playwright");
   await page.getByRole("button", { name: "Create" }).click();
 
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 
   await expectTaskVisibleInList(page, taskTitle, "do");
 });
@@ -28,7 +28,7 @@ test("creates a task when localStorage is unavailable", async ({ page }) => {
   await descriptionEditor(page).fill("created without localStorage");
   await page.getByRole("button", { name: "Create" }).click();
 
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
   await expectTaskVisibleInList(page, taskTitle, "do");
 });
 test("saves a task when localStorage is unavailable", async ({ page }) => {
@@ -36,8 +36,8 @@ test("saves a task when localStorage is unavailable", async ({ page }) => {
   const title = `${originalTitle} updated`;
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   await disableLocalStorage(page);
@@ -45,7 +45,7 @@ test("saves a task when localStorage is unavailable", async ({ page }) => {
   await descriptionEditor(page).fill("saved without localStorage");
   await page.getByRole("button", { name: "Save" }).click();
 
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
   await expectTaskVisibleInList(page, title, "do");
 });
 test("does not save new task title and description as a local draft", async ({ page }) => {
@@ -69,8 +69,8 @@ test("saves task detail title and description as a local draft after input stops
   const description = "draft description for task detail";
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   await page.evaluate(() => localStorage.clear());
@@ -87,8 +87,8 @@ test("deletes a task detail draft after a successful Save", async ({ page }) => 
   const description = "draft removed after save";
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   const draftKey = await getTaskDraftKey(page);
@@ -100,7 +100,7 @@ test("deletes a task detail draft after a successful Save", async ({ page }) => 
   await expectDraftSaved(page, title, description);
 
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), draftKey)).toBeNull();
 });
 test("clears only the current browser profile drafts on logout", async ({ browser }) => {
@@ -171,8 +171,8 @@ test("keeps a task detail draft after an input error", async ({ page }) => {
   const description = "draft retained after input error";
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   const draftKey = await getTaskDraftKey(page);
@@ -227,8 +227,8 @@ test("restores a task detail draft for its task ID", async ({ page }) => {
   const description = "restored task detail description";
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
 
@@ -251,8 +251,8 @@ test("restores the last saved task draft across multiple tabs", async ({ page })
   const lastDescription = "last tab draft";
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
 
@@ -356,8 +356,8 @@ test("ignores an invalid saved task draft", async ({ page }) => {
   const title = `E2E invalid draft ${Date.now()}`;
 
   await signIn(page);
-  await createMatrixTask(page, title);
-  await page.locator(".task-card", { hasText: title }).click();
+  await createTask(page, title);
+  await page.locator(".task-row-link", { hasText: title }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   const draftKey = await getTaskDraftKey(page);
@@ -372,8 +372,8 @@ test("continues normally when localStorage draft reading fails", async ({ page }
 
   const title = `E2E storage failure ${Date.now()}`;
   await signIn(page);
-  await createMatrixTask(page, title);
-  await page.locator(".task-card", { hasText: title }).click();
+  await createTask(page, title);
+  await page.locator(".task-row-link", { hasText: title }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   const detailUrl = page.url();

@@ -45,23 +45,6 @@ async function selectTask(page: Page, title: string) {
   throw new Error(`Task was not found in the task list: ${title}`);
 }
 
-test("cancels the matrix delete modal with Escape", async ({ page }) => {
-  await signIn(page);
-  const title = `E2E Escape matrix ${Date.now()}`;
-  await createTask(page, title);
-  await page.goto("/matrix");
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-
-  const card = page.locator(".task-card", { hasText: title });
-  await card.click({ button: "right" });
-  await page.locator('.matrix-menu [data-matrix-action="delete"]').click();
-  await expect(page.locator(".matrix-modal")).toBeVisible();
-
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".matrix-modal")).toHaveCount(0);
-  await expect(card).toBeVisible();
-});
-
 test("cancels the task list delete modal with Escape", async ({ page }) => {
   await signIn(page);
   const title = `E2E Escape bulk ${Date.now()}`;

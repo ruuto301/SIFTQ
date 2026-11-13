@@ -3,13 +3,13 @@ direction: down
 
 task: "Task（エンティティ）" {
   shape: class
-  invariant_002: "INV-TM-002: status変更後もareaを保持"
+  invariant_002: "INV-TM-002: projectはprojects.idまたは未設定"
   invariant_003: "INV-TM-003: workingはstatusと独立"
-  invariant_004: "INV-TM-004: orderはowner_id + area内で連番"
+  invariant_004: "INV-TM-004: orderはowner_id内で連番"
   +title: Title
   +description: Description
   +status: Status
-  +area: Area
+  +project: Project
   +working: boolean
   +order: number
 }
@@ -36,14 +36,17 @@ status: "Status（値オブジェクト）" {
   +value: do | done | skip
 }
 
-area: "Area（値オブジェクト）" {
+project: "Project（エンティティ）" {
   shape: class
-  invariant_007: "INV-TM-007: area は 1 / 2 / 3 / 4 のいずれか"
-  +value: 1 | 2 | 3 | 4
+  +id: string
+  +name: string
+  +path: string
+  +sort_order: number
+  +archived: boolean
 }
 
 task -> status: status
-task -> area: area
+task -> project: project
 task -> title: title
 task -> description: description
 

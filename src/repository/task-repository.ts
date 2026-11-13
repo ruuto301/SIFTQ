@@ -12,6 +12,9 @@ export interface TaskRepository {
     inputs: readonly TaskVersionInput[],
     status: TaskStatus,
   ): Promise<Result<Task[], RepositoryError>>;
+  bulkUpdateProject(
+    inputs: readonly TaskVersionInput[],
+    project: string | null,
+  ): Promise<Result<Task[], RepositoryError>>;
   bulkRemove(inputs: readonly TaskVersionInput[]): Promise<Result<null, RepositoryError>>;
-  move(tasks: readonly Task[]): Promise<Result<Task[], RepositoryError>>;
 }

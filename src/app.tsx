@@ -5,13 +5,17 @@ import { CLIENT_ASSETS, CLIENT_ASSET_PATHS } from "./client/scripts";
 import { SESSION_COOKIE_NAME, isValidSession } from "./auth";
 import { createD1TaskRepository } from "./repository/d1-task-repository";
 import type { TaskRepository } from "./repository/task-repository";
+import { createD1ProjectRepository } from "./repository/d1-project-repository";
+import type { ProjectRepository } from "./repository/project-repository";
 import { createD1IdeaRepository } from "./repository/d1-idea-repository";
 import type { IdeaRepository } from "./repository/idea-repository";
 import { createD1ImageRepository, createMemoryImageRepository } from "./repository/image-repository";
 import type { ImageRepository } from "./repository/image-repository";
 import { createMemoryTaskRepository } from "./preview/MemoryTaskRepository";
+import { createMemoryProjectRepository } from "./preview/MemoryProjectRepository";
 import { createMemoryIdeaRepository } from "./preview/MemoryIdeaRepository";
 import { PREVIEW_TASKS } from "./preview/tasks";
+import { PREVIEW_PROJECTS } from "./preview/projects";
 import { PREVIEW_IDEAS } from "./preview/ideas";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerTaskApiRoutes } from "./routes/task-api";
@@ -22,6 +26,7 @@ import type { AppEnv } from "./app-env";
 
 const app = new Hono<AppEnv>();
 const previewRepository = createMemoryTaskRepository(PREVIEW_TASKS);
+const previewProjectRepository = createMemoryProjectRepository(PREVIEW_PROJECTS);
 const previewIdeaRepository = createMemoryIdeaRepository(PREVIEW_IDEAS);
 const previewImageRepository = createMemoryImageRepository();
 
@@ -92,6 +97,13 @@ function ideaRepository(c: Context<AppEnv>): IdeaRepository {
   throw new Error("idea repository is not configured");
 }
 
+function projectRepository(c: Context<AppEnv>): ProjectRepository {
+  if (c.env.PREVIEW_MODE === "true") return previewProjectRepository;
+  if (c.env.PROJECT_REPOSITORY) return c.env.PROJECT_REPOSITORY;
+  if (c.env.DB) return createD1ProjectRepository(c.env.DB);
+  throw new Error("project repository is not configured");
+}
+
 function imageRepository(c: Context<AppEnv>): ImageRepository {
   if (c.env.PREVIEW_MODE === "true") return previewImageRepository;
   if (c.env.IMAGE_REPOSITORY) return c.env.IMAGE_REPOSITORY;
@@ -99,10 +111,10 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
   throw new Error("image repository is not configured");
 }
 
-registerTaskApiRoutes(app, repository, ideaRepository);
+registerTaskApiRoutes(app, repository, ideaRepository, projectRepository);
 registerIdeaApiRoutes(app, ideaRepository, repository);
 registerImageApiRoutes(app, imageRepository);
-registerTaskScreenRoutes(app, repository, ideaRepository);
+registerTaskScreenRoutes(app, repository, ideaRepository, projectRepository);
 
 for (const asset of CLIENT_ASSETS) {
   app.get(asset.path, (c) => c.body(asset.body, 200, { "content-type": asset.contentType }));

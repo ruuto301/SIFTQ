@@ -27,7 +27,6 @@ describe("screen registry", () => {
       "dsh-chat-scripts.ts": ["P10"],
       "ds-scripts.ts": ["P10"],
       "ds-settings-scripts.ts": ["P10"],
-      "matrix-scripts.ts": ["P01"],
       "task-list-scripts.ts": ["P02"],
       "task-form-scripts.ts": ["P03", "P04"],
       "idea-scripts.ts": ["P08"],
@@ -38,7 +37,6 @@ describe("screen registry", () => {
     expect(htmlPageIds()).toEqual({
       "/ds": "html_ds_page",
       "/login": "html_login_page",
-      "/matrix": "html_matrix_page",
       "/ideas": "html_ideas_page",
       "/ideas/:id": "html_ideas_detail",
       "/tasks": "html_tasks_page",
@@ -47,7 +45,6 @@ describe("screen registry", () => {
     });
     expect(pageEntities()).toEqual({
       "/ds": "tasks",
-      "/matrix": "tasks",
       "/ideas": "ideas",
       "/ideas/:id": "ideas",
       "/tasks": "tasks",

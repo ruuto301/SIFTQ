@@ -15,10 +15,19 @@ describe("siftq adapter", () => {
   it("parseMigrations collects columns from CREATE and ALTER", () => {
     const into: Record<string, Record<string, string>> = {};
     parseMigrations(
-      `CREATE TABLE IF NOT EXISTS tasks (\n  id TEXT PRIMARY KEY,\n  "order" INTEGER NOT NULL\n);\nALTER TABLE tasks ADD COLUMN working INTEGER NOT NULL DEFAULT 0;`,
+      `CREATE TABLE IF NOT EXISTS tasks (\n  id TEXT PRIMARY KEY,\n  "order" INTEGER NOT NULL\n);\nALTER TABLE tasks ADD COLUMN working INTEGER NOT NULL DEFAULT 0;\nALTER TABLE tasks ADD COLUMN project TEXT;`,
       into,
     );
-    expect(into["tasks"]).toEqual({ id: "TEXT", order: "INTEGER", working: "INTEGER" });
+    expect(into["tasks"]).toEqual({ id: "TEXT", order: "INTEGER", working: "INTEGER", project: "TEXT" });
+  });
+
+  it("parseMigrations removes columns dropped by ALTER", () => {
+    const into: Record<string, Record<string, string>> = {};
+    parseMigrations(
+      `CREATE TABLE tasks (\n  id TEXT PRIMARY KEY,\n  area INTEGER NOT NULL\n);\nALTER TABLE tasks DROP COLUMN area;`,
+      into,
+    );
+    expect(into["tasks"]).toEqual({ id: "TEXT" });
   });
 
   it("checkMigrations detects a missing column", () => {

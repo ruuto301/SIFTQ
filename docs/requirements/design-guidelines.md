@@ -28,7 +28,7 @@
 | トークン | 値 | 用途 |
 | --- | --- | --- |
 | bg | `#3b434d` | ページ背景 |
-| surface-sunken | `#aeb8c4` | コンテナ（Matrix の枠内、一覧の外枠） |
+| surface-sunken | `#aeb8c4` | コンテナ（一覧の外枠） |
 | surface | `#c1c9d3` | カード、パネル、行、ボタン、モーダル |
 | field | `#cfd6de` | 入力欄・編集領域（面より一段明るい） |
 | border | `#8b949e` | 面と面の境界 |
@@ -62,7 +62,7 @@
 | done | 塗りバッジ | Green tint 面 + Green 文字 |
 | skip | 枠バッジ（弱） | Grey 枠 + muted 文字 |
 | working | 緑ドット + 緑枠 + 緑文字 | Green |
-| area 1–4 | 中立チップ | Grey 枠 + muted 文字 |
+| project ラベル | 中立チップ | Blue tint 枠 + Ink 文字（未設定は Grey 枠 + muted 文字） |
 | 選択行 | checkbox + 左の緑バー + 濃いグレー面 | Green + neutral |
 | リンク | 常時下線 + 文字色継承 | 色なし |
 

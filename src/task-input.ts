@@ -1,18 +1,11 @@
-import { isTaskArea, isTaskDescriptionValid, isTaskTitleValid } from "./task";
-import type { Task } from "./task";
+import { isProjectId } from "./project";
+import { isTaskDescriptionValid, isTaskTitleValid } from "./task";
 
 export type ParsedBody = Record<string, unknown>;
 
 export function parseVersion(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) return null;
   return value;
-}
-
-function parseTaskOrder(value: unknown): number | null {
-  if (typeof value !== "string" || value === "") return null;
-  const order = Number(value);
-  if (!Number.isInteger(order) || order < 0) return null;
-  return order;
 }
 
 export function parseTaskVersion(value: unknown): number | null {
@@ -22,9 +15,12 @@ export function parseTaskVersion(value: unknown): number | null {
   return version;
 }
 
-export function parseTaskArea(value: unknown): Task["area"] | null {
-  const area = parseTaskOrder(value);
-  return area !== null && isTaskArea(area) ? area : null;
+/** Parses a project select value. Returns null for 未分類 and undefined for an invalid value. */
+export function parseTaskProject(value: unknown): string | null | undefined {
+  if (typeof value !== "string") return undefined;
+  const candidate = value.trim();
+  if (candidate === "" || candidate === "none") return null;
+  return isProjectId(candidate) ? candidate : undefined;
 }
 
 export function readTaskFields(body: ParsedBody): {

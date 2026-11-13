@@ -33,7 +33,7 @@ TRS は2つの層でできている。仕様レイヤーで「あるべき振る
 | F-01 認証状態 | 認証済み / 未認証 |
 | F-02 対象エンティティ | task / idea / image |
 | F-03 status | do / done / skip |
-| F-04 area | 1 / 2 / 3 / 4 |
+| F-04 project | 未設定 / Yoriwake / 未知 |
 | F-05 working | true / false |
 | F-06 title 長 | 空 / 1 / 256 / 257 |
 | F-07 description | 空 / 16,384 / 16,385 / URL を含む |
@@ -43,9 +43,10 @@ TRS は2つの層でできている。仕様レイヤーで「あるべき振る
 | F-11 status filter | 指定なし / is:do / is:done / is:skip / 不正 |
 | F-12 label filter | なし / label:working / working only |
 | F-13 page | 範囲内 / 0 / 負 / 非数値 / 超過 / 25 境界 |
-| F-14 画面 | matrix / list / detail / new / preview / ds |
+| F-14 画面 | list / detail / new / preview / ds |
 | F-15 pinned | true / false |
-| F-16 操作 | 作成 / 更新 / 削除 / 並べ替え / pin |
+| F-16 操作 | 作成 / 更新 / 削除 / 並べ替え / pin / project 一括変更 |
+| F-17 project filter | なし / project:<id> / project:none / 不正 |
 
 水準を増やすと組み合わせが急に増える。入力系の因子を全組み合わせで試さず、境界と代表値を選ぶ。この選定は因子表の水準欄に残し、なぜその値なのかを後から辿れるようにする。
 

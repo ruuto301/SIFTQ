@@ -137,12 +137,11 @@ function registerIdeaMoveRoute(
       title: found.value.title,
       description: found.value.description,
       status: "do",
-      area: 1,
       created_at: now,
       updated_at: now,
     });
     if (!created.ok) return problem(c, 400, created.error.code);
-    const task = { ...created.value, order: nextTaskOrder(tasks.value, 1) };
+    const task = { ...created.value, order: nextTaskOrder(tasks.value) };
     const inserted = await taskRepository(c).insert(task);
     if (!inserted.ok) return problem(c, 500, inserted.error.code);
     const removed = await repository(c).remove(found.value.id, OWNER_ID);

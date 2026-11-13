@@ -104,3 +104,23 @@ test.describe("task list bulk actions", () => {
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), draftKey)).toBeNull();
   });
 });
+
+test.describe("task list bulk project", () => {
+  test("assigns a project to selected tasks and clears it", async ({ page }) => {
+    const title = `bulk project ${Date.now()}`;
+    await signIn(page);
+    await createTask(page, title);
+    await selectTask(page, "do", title);
+
+    await page.getByText("Project", { exact: true }).click();
+    await page.locator('[data-task-project="dsh"]').click();
+    await expect(page.locator("[data-task-row]", { hasText: title })).toContainText("#dsh");
+
+    const row = page.locator("[data-task-row]", { hasText: title });
+    await row.getByRole("checkbox").check();
+    await page.getByText("Project", { exact: true }).click();
+    await page.locator('[data-task-project=""]').click();
+    await expect(page.locator("[data-task-row]", { hasText: title })).toContainText("未分類");
+  });
+});
+

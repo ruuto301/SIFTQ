@@ -1,9 +1,9 @@
-import type { TaskArea, TaskStatus } from "../task";
+import type { TaskStatus } from "../task";
 
 export const STATUS_DESCRIPTIONS: Record<TaskStatus, string> = {
-  do: "Visible on the matrix.",
-  done: "Completed. Area is preserved.",
-  skip: "Skipped. Area is preserved.",
+  do: "実行対象。",
+  done: "完了。",
+  skip: "見送り。",
 };
 
 export const STATUS_DOT_CLASSES: Record<TaskStatus, string> = {
@@ -12,9 +12,4 @@ export const STATUS_DOT_CLASSES: Record<TaskStatus, string> = {
   skip: "status-dot status-dot--skip",
 };
 
-export const AREA_DOT_CLASSES: Record<TaskArea, string> = {
-  1: "status-dot status-dot--one",
-  2: "status-dot status-dot--two",
-  3: "status-dot status-dot--three",
-  4: "status-dot status-dot--four",
-};
+export const PROJECT_NONE_LABEL = "未分類";

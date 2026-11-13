@@ -2,9 +2,9 @@ import type { Page } from "@playwright/test";
 import { expect } from "./fixtures";
 
 export async function signIn(page: Page) {
-  await page.goto("/matrix");
+  await page.goto("/tasks");
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 }
 
 export function descriptionEditor(page: Page) {
@@ -73,11 +73,12 @@ export async function disableLocalStorage(page: Page) {
   });
 }
 
-export async function createMatrixTask(page: Page, title: string) {
+export async function createTask(page: Page, title: string, project?: string) {
   await page.getByRole("link", { name: "New task" }).click();
   await page.getByLabel("Title").fill(title);
+  if (project !== undefined) await page.getByLabel("Project").selectOption(project);
   await page.getByRole("button", { name: "Create" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 }
 
 export async function gotoListPage(page: Page, status: string) {
@@ -121,11 +122,10 @@ export async function expectTaskAbsentFromList(page: Page, title: string, status
   await expect(page.getByText(title, { exact: true })).toHaveCount(0);
 }
 
-export async function dismissPopover(page: Page, label: "status" | "area") {
-  const title = label === "status" ? "Status" : "Area";
+export async function dismissPopover(page: Page, label: "status") {
   const applyLabel = `Apply ${label} to this task`;
 
-  await page.getByRole("link", { name: new RegExp(`^${title}`) }).click();
+  await page.getByRole("link", { name: /^Status/ }).click();
   const popover = page.locator(`[aria-label="${applyLabel}"]`);
   await expect(popover).toBeVisible();
 

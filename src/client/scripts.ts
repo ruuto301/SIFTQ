@@ -6,7 +6,6 @@ import {
   TASK_FORM_SHORTCUT_SCRIPT,
 } from "./browser-scripts";
 import { IDEA_DETAIL_SCRIPT, IDEAS_DND_SCRIPT } from "./idea-scripts";
-import { MATRIX_DND_SCRIPT } from "./matrix-scripts";
 import { DESCRIPTION_EDITOR_SCRIPT } from "./task-form-scripts";
 import { TASK_LIST_SELECTION_SCRIPT } from "./task-list-scripts";
 import { DSH_CHAT_SCRIPT } from "./dsh-chat-scripts";
@@ -67,12 +66,6 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/description-editor.js",
     body: DESCRIPTION_EDITOR_SCRIPT,
-    contentType: "application/javascript",
-    kind: "script",
-  },
-  {
-    path: "/matrix-dnd.js",
-    body: MATRIX_DND_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },

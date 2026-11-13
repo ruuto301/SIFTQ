@@ -51,7 +51,9 @@ describe("repository contract", () => {
       expect(stale.error.code).toBe("CONFLICT");
     }
   });
+});
 
+describe("repository delete contract", () => {
   it("removes with optimistic version locking", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 1 }));
 
@@ -69,19 +71,44 @@ describe("repository contract", () => {
 
     expect(removed).toEqual({ ok: false, error: { code: "CONFLICT" } });
   });
+});
 
-  it("moves tasks atomically with version increments", async () => {
+describe("repository project contract", () => {
+  it("updates projects atomically with version increments", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 1 }));
     await repo.insert(taskFixture({ id: "task-2", version: 1 }));
 
-    const moved = await repo.move([
-      taskFixture({ id: "task-1", area: 2, order: 0, version: 1 }),
-      taskFixture({ id: "task-2", area: 2, order: 1, version: 1 }),
-    ]);
+    const updated = await repo.bulkUpdateProject(
+      [
+        { id: "task-1", version: 1 },
+        { id: "task-2", version: 1 },
+      ],
+      "Yoriwake",
+    );
 
-    expect(moved.ok).toBe(true);
-    if (!moved.ok) return;
-    expect(moved.value.map((task: Task) => task.version)).toEqual([2, 2]);
+    expect(updated.ok).toBe(true);
+    if (!updated.ok) return;
+    expect(updated.value.map((task: Task) => task.project)).toEqual(["Yoriwake", "Yoriwake"]);
+    expect(updated.value.map((task: Task) => task.version)).toEqual([2, 2]);
+  });
+
+  it("does not partially update on a stale bulk project input", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: null, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-2", project: null, version: 2 }));
+
+    const updated = await repo.bulkUpdateProject(
+      [
+        { id: "task-1", version: 1 },
+        { id: "task-2", version: 1 },
+      ],
+      "dsh",
+    );
+
+    expect(updated).toEqual({ ok: false, error: { code: "CONFLICT" } });
+    const listed = await repo.list();
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    expect(listed.value.every((task) => task.project === null)).toBe(true);
   });
 });
 
@@ -129,7 +156,9 @@ describe("bulk repository contract", () => {
       ]),
     });
   });
+});
 
+describe("bulk delete repository contract", () => {
   it("removes multiple tasks with current versions", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
     await repo.insert(taskFixture({ id: "task-2" }));

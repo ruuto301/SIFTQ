@@ -26,42 +26,6 @@ function countTaskRows(body: string): number {
   return body.split('class="task-row"').length - 1;
 }
 
-describe("Matrix page", () => {
-  it("renders the full page and an HTMX fragment", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do", area: 1 }));
-
-    const full = await request("/matrix");
-    const fullBody = await full.text();
-    expect(full.status).toBe(200);
-    expect(fullBody).toContain("<html");
-    expect(fullBody).toContain("Matrix");
-    expect(fullBody).toContain('data-task-id="task-1"');
-
-    const fragment = await request("/matrix", {
-      headers: { "HX-Request": "true" },
-    });
-    const fragmentBody = await fragment.text();
-    expect(fragment.status).toBe(200);
-    expect(fragmentBody).not.toContain("<html");
-    expect(fragmentBody).toContain("Matrix");
-  });
-
-  it("renders four quadrants with area creation links and compact status cards", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do", area: 1 }));
-
-    const body = await (await request("/matrix")).text();
-
-    expect(body).toContain('class="area area--quadrant area--q1"');
-    expect(body).toContain('class="area area--quadrant area--q4"');
-    expect(body).toContain("axis-line--horizontal");
-    expect(body).toContain("axis-line--vertical");
-    expect(body).toContain('data-task-id="task-1"');
-    expect(body).toContain('href="/tasks/new?area=1&amp;from=matrix"');
-    expect(body).toContain('href="/tasks/task-1?from=matrix"');
-    expect(body).not.toContain("status--do");
-  });
-});
-
 describe("Task list page", () => {
   it("defaults to do and renders status filter controls", async () => {
     await repo.insert(taskFixture({ id: "do-1", status: "do" }));
@@ -82,6 +46,7 @@ describe("Task list page", () => {
     expect(body).toContain('name="q"');
     expect(body).toContain('value="is:do"');
     expect(body).toContain("Submit search");
+    expect(body).toContain('placeholder="is:do project:Yoriwake label:working"');
   });
 
   it.each(["do", "done", "skip"] as const)("filters tasks by %s status", async (status) => {
@@ -113,18 +78,31 @@ describe("Task list page", () => {
     expect(emptyBody).toContain("該当するtaskはありません。");
   });
 
-  it("renders compact issues-like rows with area and status badges", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do", area: 2 }));
+  it("renders compact issues-like rows with project and status badges", async () => {
+    await repo.insert(taskFixture({ id: "task-1", status: "do", project: "Yoriwake" }));
 
     const body = await (await request("/tasks")).text();
 
     expect(body).toContain('class="task-row"');
     expect(body).not.toContain("issue-number");
     expect(body).toContain("seed task");
-    expect(body).toContain("status area-badge");
+    expect(body).toContain("label label--project");
+    expect(body).toContain("#Yoriwake");
     expect(body).toContain("status--do");
     expect(body).toContain('data-version="1"');
     expect(body).toContain('data-task-select');
+  });
+
+});
+
+describe("Task list project label", () => {
+  it("renders 未分類 for a task without a project", async () => {
+    await repo.insert(taskFixture({ id: "task-1", status: "do", project: null }));
+
+    const body = await (await request("/tasks")).text();
+
+    expect(body).toContain("label--project-none");
+    expect(body).toContain("未分類");
   });
 });
 
@@ -154,11 +132,35 @@ describe("Task list query UI", () => {
     expect(body).toContain('href="/tasks?status=do&amp;working=only"');
   });
 
+  it("filters by project id and by unassigned", async () => {
+    await repo.insert(taskFixture({ id: "yoriwake", title: "yoriwake task", status: "do", project: "Yoriwake" }));
+    await repo.insert(taskFixture({ id: "dsh", title: "dsh task", status: "do", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "none", title: "none task", status: "do", project: null }));
+
+    const projectBody = await (await request("/tasks?q=is:do%20project:Yoriwake")).text();
+    expect(projectBody).toContain("yoriwake task");
+    expect(projectBody).not.toContain("dsh task");
+    expect(projectBody).not.toContain("none task");
+
+    const noneBody = await (await request("/tasks?q=is:do%20project:none")).text();
+    expect(noneBody).toContain("none task");
+    expect(noneBody).not.toContain("yoriwake task");
+    expect(noneBody).not.toContain("dsh task");
+  });
+
   it("keeps a valid query when navigating labels", async () => {
     const body = await (await request("/tasks?q=is:do%20label:working")).text();
 
     expect(body).toContain('href="/tasks?status=do&amp;q=is%3Ado"');
     expect(body).toContain('href="/tasks?status=do&amp;working=only&amp;q=is%3Ado%20label%3Aworking"');
+  });
+
+  it("offers project choices in the labels menu", async () => {
+    const body = await (await request("/tasks?q=is:do")).text();
+
+    expect(body).toContain("Projects");
+    expect(body).toContain('href="/tasks?status=do&amp;q=is%3Ado%20project%3AYoriwake"');
+    expect(body).toContain('href="/tasks?status=do&amp;q=is%3Ado%20project%3Anone"');
   });
 
   it("keeps a valid query in pagination links", async () => {
@@ -301,7 +303,7 @@ describe("Task list working and pagination interaction", () => {
 });
 
 describe("Task creation", () => {
-  it("redirects to the task list after creating a task by default", async () => {
+  it("redirects to the task list after creating a task", async () => {
     const response = await request("/tasks", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -310,26 +312,15 @@ describe("Task creation", () => {
     expect(response.status).toBe(201);
     expect(response.headers.get("hx-redirect")).toBe("/tasks");
     expect(await response.text()).toBe("");
-  });
-
-  it("redirects to the matrix after creating a task from the matrix", async () => {
-    const response = await request("/tasks", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ title: "Buy milk", from: "matrix" }).toString(),
-    });
-
-    expect(response.status).toBe(201);
-    expect(response.headers.get("hx-redirect")).toBe("/matrix");
 
     const listed = await repo.list();
     if (!listed.ok) throw new Error("expected task list");
     expect(listed.value).toEqual(
-      expect.arrayContaining([expect.objectContaining({ title: "Buy milk" })]),
+      expect.arrayContaining([expect.objectContaining({ title: "Buy milk", project: null })]),
     );
   });
 
-  it("creates a task with the selected status and area", async () => {
+  it("creates a task with the selected status and project", async () => {
     const response = await request("/tasks", {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -337,77 +328,83 @@ describe("Task creation", () => {
         title: "Plan",
         description: "",
         status: "done",
-        area: "4",
+        project: "dsh",
       }).toString(),
     });
     expect(response.status).toBe(201);
-    expect(response.headers.get("hx-redirect")).toBe("/tasks");
+
+    const listed = await repo.list();
+    if (!listed.ok) throw new Error("expected task list");
+    expect(listed.value).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ title: "Plan", status: "done", project: "dsh" }),
+      ]),
+    );
   });
 
-  it("renders the new task page with cancel and form-owned side metadata", async () => {
-    const body = await (await request("/tasks/new?area=3&status=done")).text();
+  it("rejects an unknown project on create", async () => {
+    const response = await request("/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ title: "Plan", description: "", project: "missing" }).toString(),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("Unknown project.");
+    const listed = await repo.list();
+    if (!listed.ok) throw new Error("expected task list");
+    expect(listed.value).toEqual([]);
+  });
+
+});
+
+describe("New task page", () => {
+  it("renders the new task page with cancel and a project select", async () => {
+    const body = await (await request("/tasks/new?project=dsh&status=done")).text();
 
     expect(body).toContain("New task");
     expect(body).toContain("Cancel");
     expect(body).toContain("Create");
     expect(body).toContain('data-task-form="new"');
     expect(body).toContain("status status--done");
-    expect(body).toContain("status area-badge");
-    expect(body).toContain('name="area" value="3" checked');
-    expect(body).toContain("Apply area to this task");
+    expect(body).toContain('name="project"');
+    expect(body).toContain('<option value="dsh" selected');
+    expect(body).toContain("未分類");
+    expect(body).not.toContain('name="area"');
+  });
+
+  it("defaults the project to 未分類 when the query omits it", async () => {
+    const body = await (await request("/tasks/new?status=do")).text();
+
+    expect(body).toContain('<option value="" selected');
+  });
+
+  it("ignores an unknown project query on the new task page", async () => {
+    const body = await (await request("/tasks/new?project=missing")).text();
+
+    expect(body).toContain('<option value="" selected');
   });
 });
 
 describe("Task creation origin tracking", () => {
-  it("renders cancel returning to origin from the task list", async () => {
-    const body = await (await request("/tasks/new?from=tasks&area=3&status=done")).text();
+  it("renders cancel returning to the task list", async () => {
+    const body = await (await request("/tasks/new?status=done")).text();
 
     expect(body).toContain('href="/tasks"');
     expect(body).toContain("New task");
     expect(body).toContain("Cancel");
   });
 
-  it("renders cancel returning to the matrix from a matrix origin", async () => {
-    const body = await (await request("/tasks/new?from=matrix&area=2&status=do")).text();
-
-    expect(body).toContain('href="/matrix"');
-    expect(body).toContain("New task");
-    expect(body).toContain("Cancel");
-  });
-
-  it("renders the matrix origin as a hidden form field", async () => {
-    const body = await (await request("/tasks/new?from=matrix")).text();
-
-    expect(body).toContain('name="from" value="matrix"');
-  });
-
-  it("renders cancel returning to the task list when origin is omitted", async () => {
-    const body = await (await request("/tasks/new?area=1")).text();
-
-    expect(body).toContain('href="/tasks"');
-  });
-
-  it("renders area creation links from the matrix with the matrix origin", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do", area: 1 }));
-
-    const body = await (await request("/matrix")).text();
-
-    expect(body).toContain('href="/tasks/new?area=1&amp;from=matrix"');
-    expect(body).toContain('href="/tasks/new?area=2&amp;from=matrix"');
-  });
-
-  it("includes status and area choices in the create form", async () => {
-    const body = await (await request("/tasks/new?from=tasks&area=3&status=do&menu=status")).text();
-
-    expect(body).toContain('<form class="detail-grid"');
-    expect(body).toContain('name="status" value="do" checked');
-    expect(body).toContain('name="area" value="3" checked');
-  });
-
-  it("renders the task list New task link with the tasks origin", async () => {
+  it("renders the task list New task link", async () => {
     const body = await (await request("/tasks")).text();
 
-    expect(body).toContain('href="/tasks/new?from=tasks"');
+    expect(body).toContain('href="/tasks/new"');
+  });
+
+  it("carries the searched project into the New task link", async () => {
+    const body = await (await request("/tasks?q=is:do%20project:Yoriwake")).text();
+
+    expect(body).toContain('href="/tasks/new?project=Yoriwake"');
   });
 });
 
@@ -420,15 +417,15 @@ describe("Task detail Save form", () => {
 
     expect(response.status).toBe(200);
     expect(body).toContain('method="post"');
-    expect(body).toContain('action="/tasks/task-1?from=tasks"');
-    expect(body).toContain('hx-post="/tasks/task-1?from=tasks"');
+    expect(body).toContain('action="/tasks/task-1"');
+    expect(body).toContain('hx-post="/tasks/task-1"');
     expect(body).toContain('id="task-version" type="hidden" name="version" value="3"');
     expect(body).toContain('data-task-form="edit"');
     expect(body).toContain('<button class="button primary" type="submit">Save</button>');
     expect(body).toContain('class="button" href="/tasks?status=do"');
   });
 
-  it("saves edits and redirects to the task list from the task-list detail form", async () => {
+  it("saves edits and redirects to the task list", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 3 }));
 
     const response = await request("/tasks/task-1?from=tasks", {
@@ -455,26 +452,6 @@ describe("Task detail Save form", () => {
       }),
     );
   });
-
-  it("returns an HTMX redirect to the matrix when saving matrix detail", async () => {
-    await repo.insert(taskFixture({ id: "task-1", version: 3 }));
-
-    const response = await request("/tasks/task-1?from=matrix", {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-        "HX-Request": "true",
-      },
-      body: new URLSearchParams({
-        title: "updated task",
-        description: "updated description",
-        version: "3",
-      }).toString(),
-    });
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("hx-redirect")).toBe("/matrix");
-  });
 });
 
 describe("Task detail Cancel destination (issue 546)", () => {
@@ -491,34 +468,15 @@ describe("Task detail Cancel destination (issue 546)", () => {
     const detailBody = await (await request(`/tasks/task-1?from=tasks&status=${status}`)).text();
     expect(detailBody).toContain(`class="button" href="${expected}"`);
   });
-
-  it("keeps Cancel on /matrix for a matrix-origin detail", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do" }));
-
-    const body = await (await request("/tasks/task-1?from=matrix&status=done")).text();
-    expect(body).toContain('class="button" href="/matrix"');
-  });
-
-  it("keeps the origin status after opening a menu", async () => {
-    await repo.insert(taskFixture({ id: "task-1", status: "do" }));
-
-    const menuBody = await (
-      await request("/tasks/task-1/status/menu?from=tasks&status=done")
-    ).text();
-    expect(menuBody).toContain('href="/tasks/task-1?from=tasks&amp;status=done"');
-  });
 });
 
 describe("Task detail and metadata menus", () => {
-  it("renders detail and status/area menu fragments", async () => {
-    await repo.insert(taskFixture({ id: "task-1", area: 1, status: "do" }));
+  it("renders detail and status menu fragments", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "Yoriwake", status: "do" }));
 
     const detail = await request("/tasks/task-1");
     expect(detail.status).toBe(200);
     expect(await detail.text()).toContain("seed task");
-
-    const matrixDetail = await request("/tasks/task-1?from=matrix");
-    expect(await matrixDetail.text()).toContain('href="/matrix"');
 
     const statusMenu = await request("/tasks/task-1/status/menu");
     const statusBody = await statusMenu.text();
@@ -528,29 +486,23 @@ describe("Task detail and metadata menus", () => {
     expect(statusBody).toContain("skip");
 
     const areaMenu = await request("/tasks/task-1/area/menu");
-    const areaBody = await areaMenu.text();
-    expect(areaMenu.status).toBe(200);
-    expect(areaBody).toContain("1");
-    expect(areaBody).toContain("4");
+    expect(areaMenu.status).toBe(404);
   });
 
   it("renders popovers with selected and suggestion groups", async () => {
-    await repo.insert(taskFixture({ id: "task-1", area: 1, status: "do" }));
+    await repo.insert(taskFixture({ id: "task-1", project: "Yoriwake", status: "do" }));
 
     const statusBody = await (await request("/tasks/task-1/status/menu")).text();
     expect(statusBody).toContain("Apply status to this task");
     expect(statusBody).toContain("Selected status");
     expect(statusBody).toContain("Suggestions");
     expect(statusBody).toContain('hx-target="#task-meta"');
-
-    const areaBody = await (await request("/tasks/task-1/area/menu")).text();
-    expect(areaBody).toContain("Apply area to this task");
-    expect(areaBody).toContain("Selected area");
+    expect(statusBody).toContain('aria-label="Project"');
   });
 
   it.each([
     ["status", "done", "/tasks/task-1/status"],
-    ["area", "4", "/tasks/task-1/area"],
+    ["project", "dsh", "/tasks/task-1/project"],
   ])("refreshes the form version after changing %s", async (_kind, value, path) => {
     await repo.insert(taskFixture({ id: "task-1", version: 3 }));
 
@@ -563,6 +515,41 @@ describe("Task detail and metadata menus", () => {
 
     expect(response.status).toBe(200);
     expect(body).toContain('id="task-version" type="hidden" name="version" value="4" hx-swap-oob="true"');
+  });
+
+  it("rejects an unknown project from the detail metadata", async () => {
+    await repo.insert(taskFixture({ id: "task-1", version: 3 }));
+
+    const response = await request("/tasks/task-1/project", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ project: "missing", version: "3" }).toString(),
+    });
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe("BDD-TM-006: DS project groups", () => {
+  it("groups the status-filtered tasks by project with 未分類 last", async () => {
+    await repo.insert(taskFixture({ id: "yoriwake-1", title: "yoriwake task", status: "do", project: "Yoriwake" }));
+    await repo.insert(taskFixture({ id: "dsh-1", title: "dsh task", status: "do", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "none-1", title: "none task", status: "do", project: null }));
+    await repo.insert(taskFixture({ id: "done-1", title: "done task", status: "done", project: "dsh" }));
+
+    const response = await request("/ds");
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('data-ds-group-id="Yoriwake"');
+    expect(body).toContain('data-ds-group-id="dsh"');
+    expect(body).toContain('data-ds-group-id=""');
+    expect(body).toContain("未分類");
+    expect(body).toContain("yoriwake task");
+    expect(body).not.toContain("done task");
+    const yoriwakeGroup = body.indexOf('data-ds-group-id="Yoriwake"');
+    const noneGroup = body.indexOf('data-ds-group-id=""');
+    expect(noneGroup).toBeGreaterThan(yoriwakeGroup);
   });
 });
 

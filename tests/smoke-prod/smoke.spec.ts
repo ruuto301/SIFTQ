@@ -46,9 +46,9 @@ test("rejects unauthenticated requests", async ({ playwright }) => {
   }
 });
 
-test("creates, reorders, and edits with an authenticated session", async ({ page }) => {
-  await page.goto("/matrix");
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+test("creates, assigns a project, and edits with an authenticated session", async ({ page }) => {
+  await page.goto("/tasks");
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 
   const title = `${runId} task`;
   await page.goto("/tasks/new");
@@ -62,20 +62,14 @@ test("creates, reorders, and edits with an authenticated session", async ({ page
   if (created === undefined) throw new Error("created task was not found in the task list");
   const id = created.id;
 
-  await page.goto("/matrix");
-  const card = page.locator(".task-card", { hasText: title });
-  await expect(card).toBeVisible();
-  const target = page.locator('.area--quadrant[data-drop-area="4"] .matrix-cards');
-  const reorder = page.waitForResponse(
-    (response) => response.url().includes("/api/tasks/reorder") && response.request().method() === "POST",
-  );
-  await card.dragTo(target);
-  expect((await reorder).status()).toBe(200);
-
-  await page.reload();
-  await expect(page.locator('.area--quadrant[data-drop-area="4"] .task-card', { hasText: title })).toBeVisible();
-
   await page.goto(`/tasks/${id}`);
+  const assigned = page.waitForResponse(
+    (response) => response.url().includes(`/tasks/${id}/project`) && response.request().method() === "POST",
+  );
+  await page.getByLabel("Project").selectOption("dsh");
+  expect((await assigned).status()).toBe(200);
+  await expect(page.getByLabel("Project")).toHaveValue("dsh");
+
   const editedTitle = `${title} edited`;
   await page.getByLabel("Title").fill(editedTitle);
   const saved = page.waitForResponse(

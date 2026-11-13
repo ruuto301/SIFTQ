@@ -43,9 +43,9 @@ function json(body: unknown): RequestInit {
 }
 
 describe("Idea to task move API", () => {
-  it("creates a task at the end of area 1 and removes the idea", async () => {
+  it("creates a task at the end of the task list and removes the idea", async () => {
     const repositories: Repositories = {
-      tasks: createMemoryTaskRepository([taskFixture({ id: "existing", area: 1, order: 5 })]),
+      tasks: createMemoryTaskRepository([taskFixture({ id: "existing", order: 5 })]),
       ideas: createMemoryIdeaRepository([
         ideaFixture({ id: "idea-1", title: "Move me", description: "memo", order: 4 }),
       ]),
@@ -57,7 +57,7 @@ describe("Idea to task move API", () => {
       title: "Move me",
       description: "memo",
       status: "do",
-      area: 1,
+      project: null,
       working: false,
       order: 6,
     });

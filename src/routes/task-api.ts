@@ -4,16 +4,15 @@ import {
   applyTaskPatch,
   createTask,
   isRecord,
-  isTaskArea,
   isTaskStatus,
-  moveTask,
-  ok,
+  nextTaskOrder,
   parseTaskPatch,
   parseTaskVersionInputs,
-  selectMovedTasks,
 } from "../task";
-import type { DomainError, Result, Task } from "../task";
+import type { Task } from "../task";
+import { isProjectId } from "../project";
 import type { TaskRepository } from "../repository/task-repository";
+import type { ProjectRepository } from "../repository/project-repository";
 import type { IdeaRepository } from "../repository/idea-repository";
 import { nextIdeaOrder } from "../idea";
 import type { Idea } from "../idea";
@@ -21,6 +20,7 @@ import { parseVersion } from "../task-input";
 
 type ApiEnv = { Bindings: Record<string, unknown> };
 type Repository<T extends ApiEnv> = (c: Context<T>) => TaskRepository;
+type ProjectRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => ProjectRepository;
 type IdeaRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => IdeaRepository;
 
 function problem<T extends ApiEnv>(c: Context<T>, status: ContentfulStatusCode, code: string) {
@@ -43,9 +43,11 @@ async function readJsonRecord<T extends ApiEnv>(c: Context<T>): Promise<Record<s
 function createTaskAtBoundary({
   title,
   description,
+  project,
 }: {
   title: string;
   description: string;
+  project: string | null;
 }) {
   const now = new Date().toISOString();
   return createTask({
@@ -53,9 +55,28 @@ function createTaskAtBoundary({
     owner_id: "local",
     title,
     description,
+    project,
     created_at: now,
     updated_at: now,
   });
+}
+
+type ApiProjectLookup =
+  | { ok: true; project: string | null }
+  | { ok: false; code: string };
+
+/** Resolves a requested project id against the project repository. */
+async function resolveApiProject<T extends ApiEnv>(
+  factory: ProjectRepositoryFactory<T>,
+  c: Context<T>,
+  value: unknown,
+): Promise<ApiProjectLookup> {
+  if (value === undefined || value === null) return { ok: true, project: null };
+  if (!isProjectId(value)) return { ok: false, code: "INVALID_PROJECT" };
+  const found = await factory(c).find(value);
+  if (!found.ok) return { ok: false, code: found.error.code };
+  if (!found.value) return { ok: false, code: "INVALID_PROJECT" };
+  return { ok: true, project: value };
 }
 
 type ApiTaskLookup =
@@ -69,12 +90,11 @@ async function findApiTask<T extends ApiEnv>(repository: Repository<T>, c: Conte
   return { ok: true, task: found.value };
 }
 
-function applyPatch(body: Record<string, unknown>, task: Task): Result<Task, DomainError> {
-  const parsed = parseTaskPatch(body);
-  return parsed.ok ? ok(applyTaskPatch(task, parsed.value)) : parsed;
-}
-
-function registerTaskCollectionRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repository<T>) {
+function registerTaskCollectionRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  repository: Repository<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
   app.get("/api/tasks", async (c) => {
     const result = await repository(c).list();
     if (!result.ok) return problem(c, 500, result.error.code);
@@ -92,9 +112,13 @@ function registerTaskCollectionRoutes<T extends ApiEnv>(app: Hono<T>, repository
     const body = await c.req.json<Record<string, unknown>>();
     const title = typeof body["title"] === "string" ? body["title"].trim() : "";
     const description = typeof body["description"] === "string" ? body["description"] : "";
-    const created = createTaskAtBoundary({ title, description });
+    const project = await resolveApiProject(projectRepository, c, body["project"]);
+    if (!project.ok) return problem(c, 400, project.code);
+    const created = createTaskAtBoundary({ title, description, project: project.project });
     if (!created.ok) return problem(c, 400, created.error.code);
-    const inserted = await repository(c).insert(created.value);
+    const listed = await repository(c).list();
+    if (!listed.ok) return problem(c, 500, listed.error.code);
+    const inserted = await repository(c).insert({ ...created.value, order: nextTaskOrder(listed.value) });
     if (!inserted.ok) return problem(c, 500, inserted.error.code);
     c.header("Location", `/api/tasks/${inserted.value.id}`);
     return c.json(inserted.value, 201);
@@ -102,7 +126,11 @@ function registerTaskCollectionRoutes<T extends ApiEnv>(app: Hono<T>, repository
 
 }
 
-function registerTaskBulkRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repository<T>) {
+function registerTaskBulkRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  repository: Repository<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
   app.patch("/api/tasks/bulk/status", async (c) => {
     const body = await readJsonRecord(c);
     if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
@@ -111,6 +139,18 @@ function registerTaskBulkRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repo
     if (!isTaskStatus(status)) return problem(c, 400, "INVALID_STATUS");
     if (!inputs.ok) return problem(c, 400, inputs.error.code);
     const result = await repository(c).bulkUpdateStatus(inputs.value, status);
+    if (!result.ok) return bulkProblem(c, result.error.code);
+    return c.json(result.value);
+  });
+
+  app.patch("/api/tasks/bulk/project", async (c) => {
+    const body = await readJsonRecord(c);
+    if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
+    const inputs = parseTaskVersionInputs(body["tasks"]);
+    if (!inputs.ok) return problem(c, 400, inputs.error.code);
+    const project = await resolveApiProject(projectRepository, c, body["project"]);
+    if (!project.ok) return problem(c, 400, project.code);
+    const result = await repository(c).bulkUpdateProject(inputs.value, project.project);
     if (!result.ok) return bulkProblem(c, result.error.code);
     return c.json(result.value);
   });
@@ -127,16 +167,26 @@ function registerTaskBulkRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repo
 
 }
 
-function registerTaskItemRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repository<T>) {
+function registerTaskItemRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  repository: Repository<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
   app.patch("/api/tasks/:id", async (c) => {
     const body = await c.req.json<Record<string, unknown>>();
     const found = await findApiTask(repository, c, c.req.param("id"));
     if (!found.ok) return problem(c, found.status, found.code);
-    const patched = applyPatch(body, found.task);
-    if (!patched.ok) return problem(c, 400, patched.error.code);
+    const parsed = parseTaskPatch(body);
+    if (!parsed.ok) return problem(c, 400, parsed.error.code);
+    if ("project" in parsed.value) {
+      const project = await resolveApiProject(projectRepository, c, parsed.value.project);
+      if (!project.ok) return problem(c, 400, project.code);
+      parsed.value.project = project.project;
+    }
+    const patched = applyTaskPatch(found.task, parsed.value);
     const version = parseVersion(body["version"]);
     if (version === null) return problem(c, 400, "INVALID_ORDER");
-    const updated = await repository(c).update({ ...patched.value, version });
+    const updated = await repository(c).update({ ...patched, version });
     if (!updated.ok) return problem(c, 409, updated.error.code);
     return c.json(updated.value);
   });
@@ -158,24 +208,13 @@ function registerTaskItemRoutes<T extends ApiEnv>(app: Hono<T>, repository: Repo
 
 }
 
-function registerTaskReorderRoute<T extends ApiEnv>(app: Hono<T>, repository: Repository<T>) {
-  app.post("/api/tasks/reorder", async (c) => {
-    const body = await c.req.json<Record<string, unknown>>();
-    const id = typeof body["id"] === "string" ? body["id"] : "";
-    const version = parseVersion(body["version"]);
-    const area = body["area"];
-    const order = body["order"];
-    if (!isTaskArea(area) || typeof order !== "number" || !Number.isInteger(order) || version === null) {
-      return problem(c, 400, "INVALID_ORDER");
-    }
-    const listed = await repository(c).list();
-    if (!listed.ok) return problem(c, 500, listed.error.code);
-    const moved = moveTask(listed.value, id, area, order);
-    if (!moved.ok) return problem(c, 400, moved.error.code);
-    const changed = selectMovedTasks(listed.value, moved.value);
-    const changedWithVersion = changed.map((task) => (task.id === id ? { ...task, version } : task));
-    const result = await repository(c).move(changedWithVersion);
-    if (!result.ok) return problem(c, 409, result.error.code);
+function registerProjectRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
+  app.get("/api/projects", async (c) => {
+    const result = await projectRepository(c).list();
+    if (!result.ok) return problem(c, 500, result.error.code);
     return c.json(result.value);
   });
 }
@@ -219,10 +258,11 @@ export function registerTaskApiRoutes<T extends ApiEnv>(
   app: Hono<T>,
   repository: Repository<T>,
   ideaRepository: IdeaRepositoryFactory<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
 ) {
-  registerTaskCollectionRoutes(app, repository);
-  registerTaskBulkRoutes(app, repository);
-  registerTaskItemRoutes(app, repository);
-  registerTaskReorderRoute(app, repository);
+  registerProjectRoutes(app, projectRepository);
+  registerTaskCollectionRoutes(app, repository, projectRepository);
+  registerTaskBulkRoutes(app, repository, projectRepository);
+  registerTaskItemRoutes(app, repository, projectRepository);
   registerTaskMoveRoute(app, repository, ideaRepository);
 }

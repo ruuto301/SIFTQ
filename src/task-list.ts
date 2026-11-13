@@ -1,4 +1,6 @@
+import { isProjectId, sortProjects } from "./project";
 import { isTaskStatus } from "./task";
+import type { Project } from "./project";
 import type { Task, TaskStatus } from "./task";
 
 export type TaskFilter = (task: Task) => boolean;
@@ -6,28 +8,66 @@ export type TaskFilter = (task: Task) => boolean;
 export type TaskListQuery = {
   status: TaskStatus;
   workingOnly: boolean;
+  project: string | null | undefined;
 };
+
+type TaskListToken =
+  | { kind: "status"; status: TaskStatus }
+  | { kind: "working" }
+  | { kind: "project"; project: string | null }
+  | { kind: "invalid" };
+
+function parseTaskListToken(token: string): TaskListToken {
+  if (token.startsWith("is:")) {
+    const candidate = token.slice(3);
+    return isTaskStatus(candidate) ? { kind: "status", status: candidate } : { kind: "invalid" };
+  }
+  if (token === "label:working") return { kind: "working" };
+  if (token.startsWith("project:")) {
+    const candidate = token.slice("project:".length);
+    if (candidate === "none") return { kind: "project", project: null };
+    return isProjectId(candidate) ? { kind: "project", project: candidate } : { kind: "invalid" };
+  }
+  return { kind: "invalid" };
+}
+
+export type TaskListQueryState = {
+  status: TaskStatus | undefined;
+  workingOnly: boolean;
+  project: string | null | undefined;
+};
+
+function applyTaskListToken(state: TaskListQueryState, token: string): boolean {
+  const parsed = parseTaskListToken(token);
+  if (parsed.kind === "status") {
+    if (state.status !== undefined) return false;
+    state.status = parsed.status;
+    return true;
+  }
+  if (parsed.kind === "working") {
+    if (state.workingOnly) return false;
+    state.workingOnly = true;
+    return true;
+  }
+  if (parsed.kind === "project") {
+    if (state.project !== undefined) return false;
+    state.project = parsed.project;
+    return true;
+  }
+  return false;
+}
 
 export function parseTaskListQuery(value: unknown): TaskListQuery | null {
   if (typeof value !== "string" || value.trim() === "") return null;
 
-  let status: TaskStatus | undefined;
-  let workingOnly = false;
+  const state: TaskListQueryState = { status: undefined, workingOnly: false, project: undefined };
   for (const token of value.trim().split(/\s+/)) {
-    if (token.startsWith("is:")) {
-      const candidate = token.slice(3);
-      if (!isTaskStatus(candidate) || status !== undefined) return null;
-      status = candidate;
-      continue;
-    }
-    if (token === "label:working" && !workingOnly) {
-      workingOnly = true;
-      continue;
-    }
-    return null;
+    if (!applyTaskListToken(state, token)) return null;
   }
 
-  return status === undefined ? null : { status, workingOnly };
+  return state.status === undefined
+    ? null
+    : { status: state.status, workingOnly: state.workingOnly, project: state.project };
 }
 
 export function is_do(task: Task): boolean {
@@ -42,6 +82,10 @@ export function is_skip(task: Task): boolean {
   return task.status === "skip";
 }
 
+export function taskProjectFilter(project: string | null): TaskFilter {
+  return (task) => task.project === project;
+}
+
 export const TASK_STATUS_FILTERS: Record<TaskStatus, TaskFilter> = {
   do: is_do,
   done: is_done,
@@ -50,6 +94,32 @@ export const TASK_STATUS_FILTERS: Record<TaskStatus, TaskFilter> = {
 
 export function filterTasks(tasks: readonly Task[], filters: readonly TaskFilter[]): Task[] {
   return tasks.filter((task) => filters.every((filter) => filter(task)));
+}
+
+export function withQueryToken(query: string, prefix: string, token: string | null): string {
+  const tokens = query
+    .trim()
+    .split(/\s+/)
+    .filter((value) => value !== "" && !value.startsWith(prefix));
+  if (token !== null) tokens.push(token);
+  return tokens.join(" ");
+}
+
+export type TaskGroup = { project: Project | null; tasks: Task[] };
+
+/** Builds the DS left-pane groups: projects by sort_order, then unassigned tasks last. */
+export function groupTasksByProject(
+  tasks: readonly Task[],
+  projects: readonly Project[],
+): TaskGroup[] {
+  const ordered = sortProjects(projects);
+  const known = new Set(ordered.map((project) => project.id));
+  const groups: TaskGroup[] = ordered.map((project) => ({
+    project,
+    tasks: tasks.filter((task) => task.project === project.id),
+  }));
+  const unassigned = tasks.filter((task) => task.project === null || !known.has(task.project));
+  return [...groups, { project: null, tasks: unassigned }];
 }
 
 export const TASK_LIST_PAGE_SIZE = 25;
@@ -85,10 +155,4 @@ export function pageNavItems(currentPage: number, totalPages: number): PageNavIt
     items.push(page);
   });
   return items;
-}
-
-export function sortForMatrix(tasks: readonly Task[]): Task[] {
-  return tasks
-    .filter((task) => task.status === "do")
-    .sort((left, right) => left.area - right.area || left.order - right.order);
 }
