@@ -230,7 +230,7 @@ function readInvariantTestIds(dir: string): string[] {
 function readMigrations(dir: string): Migrations {
   const migrations: Migrations = {};
   if (!existsSync(dir)) return migrations;
-  for (const name of readdirSync(dir)) {
+  for (const name of readdirSync(dir).sort()) {
     if (name.endsWith(".sql")) parseMigrations(readFileSync(join(dir, name), "utf8"), migrations);
   }
   return migrations;
