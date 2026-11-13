@@ -9,7 +9,7 @@ import {
   parseTaskPatch,
   parseTaskVersionInputs,
 } from "../task";
-import type { Task } from "../task";
+import type { DomainError, Result, Task, TaskVersionInput } from "../task";
 import { isProjectId } from "../project";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
@@ -22,6 +22,11 @@ type ApiEnv = { Bindings: Record<string, unknown> };
 type Repository<T extends ApiEnv> = (c: Context<T>) => TaskRepository;
 type ProjectRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => ProjectRepository;
 type IdeaRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => IdeaRepository;
+
+type TaskDeps<T extends ApiEnv> = {
+  repository: Repository<T>;
+  projectRepository: ProjectRepositoryFactory<T>;
+};
 
 function problem<T extends ApiEnv>(c: Context<T>, status: ContentfulStatusCode, code: string) {
   return c.json({ code }, status);
@@ -90,122 +95,165 @@ async function findApiTask<T extends ApiEnv>(repository: Repository<T>, c: Conte
   return { ok: true, task: found.value };
 }
 
-function registerTaskCollectionRoutes<T extends ApiEnv>(
-  app: Hono<T>,
+type ApiTaskItem =
+  | { ok: true; task: Task; version: number; body: Record<string, unknown> }
+  | { ok: false; status: ContentfulStatusCode; code: string };
+
+/** Reads the JSON body and the current task for an /api/tasks/:id request. */
+async function readApiTaskItem<T extends ApiEnv>(
   repository: Repository<T>,
-  projectRepository: ProjectRepositoryFactory<T>,
-) {
-  app.get("/api/tasks", async (c) => {
-    const result = await repository(c).list();
-    if (!result.ok) return problem(c, 500, result.error.code);
-    return c.json(result.value);
-  });
-
-  app.get("/api/tasks/:id", async (c) => {
-    const result = await repository(c).find(c.req.param("id"), "local");
-    if (!result.ok) return problem(c, 500, result.error.code);
-    if (!result.value) return problem(c, 404, "NOT_FOUND");
-    return c.json(result.value);
-  });
-
-  app.post("/api/tasks", async (c) => {
-    const body = await c.req.json<Record<string, unknown>>();
-    const title = typeof body["title"] === "string" ? body["title"].trim() : "";
-    const description = typeof body["description"] === "string" ? body["description"] : "";
-    const project = await resolveApiProject(projectRepository, c, body["project"]);
-    if (!project.ok) return problem(c, 400, project.code);
-    const created = createTaskAtBoundary({ title, description, project: project.project });
-    if (!created.ok) return problem(c, 400, created.error.code);
-    const listed = await repository(c).list();
-    if (!listed.ok) return problem(c, 500, listed.error.code);
-    const inserted = await repository(c).insert({ ...created.value, order: nextTaskOrder(listed.value) });
-    if (!inserted.ok) return problem(c, 500, inserted.error.code);
-    c.header("Location", `/api/tasks/${inserted.value.id}`);
-    return c.json(inserted.value, 201);
-  });
-
+  c: Context<T>,
+): Promise<ApiTaskItem> {
+  const body = await c.req.json<Record<string, unknown>>();
+  const version = parseVersion(body["version"]);
+  if (version === null) return { ok: false, status: 400, code: "INVALID_ORDER" };
+  const id = c.req.param("id");
+  if (id === undefined) return { ok: false, status: 404, code: "NOT_FOUND" };
+  const found = await findApiTask(repository, c, id);
+  if (!found.ok) return found;
+  return { ok: true, task: found.task, version, body };
 }
 
-function registerTaskBulkRoutes<T extends ApiEnv>(
-  app: Hono<T>,
-  repository: Repository<T>,
-  projectRepository: ProjectRepositoryFactory<T>,
-) {
-  app.patch("/api/tasks/bulk/status", async (c) => {
-    const body = await readJsonRecord(c);
-    if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
-    const status = body["status"];
-    const inputs = parseTaskVersionInputs(body["tasks"]);
-    if (!isTaskStatus(status)) return problem(c, 400, "INVALID_STATUS");
-    if (!inputs.ok) return problem(c, 400, inputs.error.code);
-    const result = await repository(c).bulkUpdateStatus(inputs.value, status);
-    if (!result.ok) return bulkProblem(c, result.error.code);
-    return c.json(result.value);
-  });
+type ApiBulkInput =
+  | { ok: true; body: Record<string, unknown>; inputs: TaskVersionInput[] }
+  | { ok: false; code: string };
 
-  app.patch("/api/tasks/bulk/project", async (c) => {
-    const body = await readJsonRecord(c);
-    if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
-    const inputs = parseTaskVersionInputs(body["tasks"]);
-    if (!inputs.ok) return problem(c, 400, inputs.error.code);
-    const project = await resolveApiProject(projectRepository, c, body["project"]);
-    if (!project.ok) return problem(c, 400, project.code);
-    const result = await repository(c).bulkUpdateProject(inputs.value, project.project);
-    if (!result.ok) return bulkProblem(c, result.error.code);
-    return c.json(result.value);
-  });
-
-  app.delete("/api/tasks/bulk", async (c) => {
-    const body = await readJsonRecord(c);
-    if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
-    const inputs = parseTaskVersionInputs(body["tasks"]);
-    if (!inputs.ok) return problem(c, 400, inputs.error.code);
-    const result = await repository(c).bulkRemove(inputs.value);
-    if (!result.ok) return bulkProblem(c, result.error.code);
-    return c.body(null, 204);
-  });
-
+async function readApiBulkInput<T extends ApiEnv>(c: Context<T>): Promise<ApiBulkInput> {
+  const body = await readJsonRecord(c);
+  if (body === null) return { ok: false, code: "INVALID_BULK_INPUT" };
+  const inputs = parseTaskVersionInputs(body["tasks"]);
+  if (!inputs.ok) return { ok: false, code: inputs.error.code };
+  return { ok: true, body, inputs: inputs.value };
 }
 
-function registerTaskItemRoutes<T extends ApiEnv>(
-  app: Hono<T>,
-  repository: Repository<T>,
-  projectRepository: ProjectRepositoryFactory<T>,
+function respondBulk<T extends ApiEnv>(
+  c: Context<T>,
+  run: () => Promise<Result<Task[], DomainError>>,
 ) {
-  app.patch("/api/tasks/:id", async (c) => {
-    const body = await c.req.json<Record<string, unknown>>();
-    const found = await findApiTask(repository, c, c.req.param("id"));
-    if (!found.ok) return problem(c, found.status, found.code);
-    const parsed = parseTaskPatch(body);
-    if (!parsed.ok) return problem(c, 400, parsed.error.code);
-    if ("project" in parsed.value) {
-      const project = await resolveApiProject(projectRepository, c, parsed.value.project);
-      if (!project.ok) return problem(c, 400, project.code);
-      parsed.value.project = project.project;
-    }
-    const patched = applyTaskPatch(found.task, parsed.value);
-    const version = parseVersion(body["version"]);
-    if (version === null) return problem(c, 400, "INVALID_ORDER");
-    const updated = await repository(c).update({ ...patched, version });
-    if (!updated.ok) return problem(c, 409, updated.error.code);
-    return c.json(updated.value);
-  });
+  return run().then((result) =>
+    result.ok ? c.json(result.value) : bulkProblem(c, result.error.code),
+  );
+}
 
-  app.delete("/api/tasks/:id", async (c) => {
-    const body = await c.req.json<Record<string, unknown>>();
-    const version = parseVersion(body["version"]);
-    if (version === null) return problem(c, 400, "INVALID_ORDER");
-    const found = await findApiTask(repository, c, c.req.param("id"));
-    if (!found.ok) return problem(c, found.status, found.code);
-    const removed = await repository(c).remove(found.task.id, "local", version);
-    if (!removed.ok) {
-      return removed.error.code === "CONFLICT"
-        ? problem(c, 409, removed.error.code)
-        : problem(c, 404, removed.error.code);
-    }
-    return c.body(null, 204);
-  });
+async function listApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const result = await deps.repository(c).list();
+  if (!result.ok) return problem(c, 500, result.error.code);
+  return c.json(result.value);
+}
 
+async function getApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const result = await deps.repository(c).find(c.req.param("id") ?? "", "local");
+  if (!result.ok) return problem(c, 500, result.error.code);
+  if (!result.value) return problem(c, 404, "NOT_FOUND");
+  return c.json(result.value);
+}
+
+async function createApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const body = await c.req.json<Record<string, unknown>>();
+  const title = typeof body["title"] === "string" ? body["title"].trim() : "";
+  const description = typeof body["description"] === "string" ? body["description"] : "";
+  const project = await resolveApiProject(deps.projectRepository, c, body["project"]);
+  if (!project.ok) return problem(c, 400, project.code);
+  const created = createTaskAtBoundary({ title, description, project: project.project });
+  if (!created.ok) return problem(c, 400, created.error.code);
+  const listed = await deps.repository(c).list();
+  if (!listed.ok) return problem(c, 500, listed.error.code);
+  const inserted = await deps.repository(c).insert({ ...created.value, order: nextTaskOrder(listed.value) });
+  if (!inserted.ok) return problem(c, 500, inserted.error.code);
+  c.header("Location", `/api/tasks/${inserted.value.id}`);
+  return c.json(inserted.value, 201);
+}
+
+async function bulkStatusApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const input = await readApiBulkInput(c);
+  if (!input.ok) return problem(c, 400, input.code);
+  const status = input.body["status"];
+  if (!isTaskStatus(status)) return problem(c, 400, "INVALID_STATUS");
+  return respondBulk(c, () => deps.repository(c).bulkUpdateStatus(input.inputs, status));
+}
+
+async function bulkProjectApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const input = await readApiBulkInput(c);
+  if (!input.ok) return problem(c, 400, input.code);
+  const project = await resolveApiProject(deps.projectRepository, c, input.body["project"]);
+  if (!project.ok) return problem(c, 400, project.code);
+  return respondBulk(c, () => deps.repository(c).bulkUpdateProject(input.inputs, project.project));
+}
+
+async function bulkDeleteApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const input = await readApiBulkInput(c);
+  if (!input.ok) return problem(c, 400, input.code);
+  const result = await deps.repository(c).bulkRemove(input.inputs);
+  if (!result.ok) return bulkProblem(c, result.error.code);
+  return c.body(null, 204);
+}
+
+async function patchApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const item = await readApiTaskItem(deps.repository, c);
+  if (!item.ok) return problem(c, item.status, item.code);
+  const parsed = parseTaskPatch(item.body);
+  if (!parsed.ok) return problem(c, 400, parsed.error.code);
+  if ("project" in parsed.value) {
+    const project = await resolveApiProject(deps.projectRepository, c, parsed.value.project);
+    if (!project.ok) return problem(c, 400, project.code);
+    parsed.value.project = project.project;
+  }
+  const patched = applyTaskPatch(item.task, parsed.value);
+  const updated = await deps.repository(c).update({ ...patched, version: item.version });
+  if (!updated.ok) return problem(c, 409, updated.error.code);
+  return c.json(updated.value);
+}
+
+async function deleteApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const item = await readApiTaskItem(deps.repository, c);
+  if (!item.ok) return problem(c, item.status, item.code);
+  const removed = await deps.repository(c).remove(item.task.id, "local", item.version);
+  if (!removed.ok) {
+    return removed.error.code === "CONFLICT"
+      ? problem(c, 409, removed.error.code)
+      : problem(c, 404, removed.error.code);
+  }
+  return c.body(null, 204);
+}
+
+async function moveApiTaskToIdea<T extends ApiEnv>(
+  c: Context<T>,
+  deps: TaskDeps<T>,
+  ideaRepository: IdeaRepositoryFactory<T>,
+) {
+  const item = await readApiTaskItem(deps.repository, c);
+  if (!item.ok) return problem(c, item.status, item.code);
+  const ideas = await ideaRepository(c).list("local");
+  if (!ideas.ok) return problem(c, 500, ideas.error.code);
+  const idea: Idea = {
+    id: crypto.randomUUID(),
+    owner_id: "local",
+    title: item.task.title,
+    description: item.task.description,
+    order: nextIdeaOrder(ideas.value, false),
+    pinned: false,
+  };
+  const inserted = await ideaRepository(c).insert(idea);
+  if (!inserted.ok) return problem(c, 500, inserted.error.code);
+  const removed = await deps.repository(c).remove(item.task.id, "local", item.version);
+  if (!removed.ok) {
+    await ideaRepository(c).remove(inserted.value.id, "local");
+    return removed.error.code === "CONFLICT"
+      ? problem(c, 409, removed.error.code)
+      : problem(c, 404, removed.error.code);
+  }
+  return c.json(inserted.value, 200);
+}
+
+function registerTaskRoutes<T extends ApiEnv>(app: Hono<T>, deps: TaskDeps<T>) {
+  app.get("/api/tasks", (c) => listApiTasks(c, deps));
+  app.get("/api/tasks/:id", (c) => getApiTask(c, deps));
+  app.post("/api/tasks", (c) => createApiTask(c, deps));
+  app.patch("/api/tasks/bulk/status", (c) => bulkStatusApiTasks(c, deps));
+  app.patch("/api/tasks/bulk/project", (c) => bulkProjectApiTasks(c, deps));
+  app.delete("/api/tasks/bulk", (c) => bulkDeleteApiTasks(c, deps));
+  app.patch("/api/tasks/:id", (c) => patchApiTask(c, deps));
+  app.delete("/api/tasks/:id", (c) => deleteApiTask(c, deps));
 }
 
 function registerProjectRoutes<T extends ApiEnv>(
@@ -219,50 +267,14 @@ function registerProjectRoutes<T extends ApiEnv>(
   });
 }
 
-function registerTaskMoveRoute<T extends ApiEnv>(
-  app: Hono<T>,
-  repository: Repository<T>,
-  ideaRepository: IdeaRepositoryFactory<T>,
-) {
-  app.post("/api/tasks/:id/move-to-idea", async (c) => {
-    const body = await readJsonRecord(c);
-    if (body === null) return problem(c, 400, "INVALID_ORDER");
-    const version = parseVersion(body["version"]);
-    if (version === null) return problem(c, 400, "INVALID_ORDER");
-    const found = await findApiTask(repository, c, c.req.param("id"));
-    if (!found.ok) return problem(c, found.status, found.code);
-    const ideas = await ideaRepository(c).list("local");
-    if (!ideas.ok) return problem(c, 500, ideas.error.code);
-    const idea: Idea = {
-      id: crypto.randomUUID(),
-      owner_id: "local",
-      title: found.task.title,
-      description: found.task.description,
-      order: nextIdeaOrder(ideas.value, false),
-      pinned: false,
-    };
-    const inserted = await ideaRepository(c).insert(idea);
-    if (!inserted.ok) return problem(c, 500, inserted.error.code);
-    const removed = await repository(c).remove(found.task.id, "local", version);
-    if (!removed.ok) {
-      await ideaRepository(c).remove(inserted.value.id, "local");
-      return removed.error.code === "CONFLICT"
-        ? problem(c, 409, removed.error.code)
-        : problem(c, 404, removed.error.code);
-    }
-    return c.json(inserted.value, 200);
-  });
-}
-
 export function registerTaskApiRoutes<T extends ApiEnv>(
   app: Hono<T>,
   repository: Repository<T>,
   ideaRepository: IdeaRepositoryFactory<T>,
   projectRepository: ProjectRepositoryFactory<T>,
 ) {
+  const deps: TaskDeps<T> = { repository, projectRepository };
   registerProjectRoutes(app, projectRepository);
-  registerTaskCollectionRoutes(app, repository, projectRepository);
-  registerTaskBulkRoutes(app, repository, projectRepository);
-  registerTaskItemRoutes(app, repository, projectRepository);
-  registerTaskMoveRoute(app, repository, ideaRepository);
+  registerTaskRoutes(app, deps);
+  app.post("/api/tasks/:id/move-to-idea", (c) => moveApiTaskToIdea(c, deps, ideaRepository));
 }

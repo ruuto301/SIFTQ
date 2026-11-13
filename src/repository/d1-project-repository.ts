@@ -16,7 +16,7 @@ export function createD1ProjectRepository(db: D1Database): ProjectRepository {
 
 async function listProjects(db: D1Database): Promise<Result<Project[], ProjectRepositoryError>> {
   const result = await db
-    .prepare(`SELECT ${PROJECT_COLUMNS} FROM projects ORDER BY sort_order ASC, id ASC`)
+    .prepare(`SELECT ${PROJECT_COLUMNS} FROM projects ORDER BY sort_order ASC, id ASC LIMIT 500`)
     .all<Record<string, unknown>>();
   const projects = result.results
     .map(toProject)

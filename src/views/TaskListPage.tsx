@@ -154,19 +154,21 @@ function projectSearchToken(project: string | null): string {
   return project === null ? "project:none" : `project:${project}`;
 }
 
+type TaskListFilterProps = {
+  status: TaskStatus;
+  workingOnly: boolean;
+  query: string | undefined;
+  projects: readonly Project[];
+  project: string | null | undefined;
+};
+
 function TaskLabelsFilter({
   status,
   workingOnly,
   query,
   projects,
   project,
-}: {
-  status: TaskStatus;
-  workingOnly: boolean;
-  query: string | undefined;
-  projects: readonly Project[];
-  project: string | null | undefined;
-}) {
+}: TaskListFilterProps) {
   const baseQuery = query ?? `is:${status}`;
   const noneQuery = withQueryToken(baseQuery, "project:", null);
   const queryParam = (value: string) => `&q=${encodeURIComponent(value)}`;
@@ -284,14 +286,7 @@ function TaskListToolbar({
   query,
   projects,
   project,
-}: {
-  hasTasks: boolean;
-  status: TaskStatus;
-  workingOnly: boolean;
-  query: string | undefined;
-  projects: readonly Project[];
-  project: string | null | undefined;
-}) {
+}: { hasTasks: boolean } & TaskListFilterProps) {
   return (
     <>
       <div class="task-list-toolbar">

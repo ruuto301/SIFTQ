@@ -2,7 +2,8 @@ import type { FC } from "hono/jsx";
 import { TASK_STATUSES } from "../task";
 import type { TaskStatus } from "../task";
 import type { Project } from "../project";
-import { PROJECT_NONE_LABEL, STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
+import { ProjectOptions } from "./ProjectOptions";
+import { STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
 
 export type NewTaskState = {
   status: TaskStatus;
@@ -46,14 +47,7 @@ export const NewTaskMeta: FC<{ state: NewTaskState; projects: readonly Project[]
         name="project"
         aria-label="Project"
       >
-        <option value="" selected={state.project === null}>
-          {PROJECT_NONE_LABEL}
-        </option>
-        {projects.map((project) => (
-          <option value={project.id} selected={state.project === project.id} key={project.id}>
-            {project.name}
-          </option>
-        ))}
+        <ProjectOptions projects={projects} selected={state.project} />
       </select>
     </aside>
   );

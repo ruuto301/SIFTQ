@@ -2,7 +2,7 @@ import type { FC } from "hono/jsx";
 import type { JSX } from "hono/jsx/jsx-runtime";
 import type { Project } from "../project";
 import type { Task, TaskStatus } from "../task";
-import { PROJECT_NONE_LABEL } from "./task-option-data";
+import { ProjectOptions } from "./ProjectOptions";
 
 export const TaskMeta: FC<{ task: Task; projects: readonly Project[]; listStatus?: TaskStatus }> = ({
   task,
@@ -51,14 +51,7 @@ export const TaskSidePanel: FC<{
         hx-target="#task-meta"
         hx-swap="innerHTML"
       >
-        <option value="" selected={task.project === null}>
-          {PROJECT_NONE_LABEL}
-        </option>
-        {projects.map((project) => (
-          <option value={project.id} selected={task.project === project.id} key={project.id}>
-            {project.name}
-          </option>
-        ))}
+        <ProjectOptions projects={projects} selected={task.project} />
       </select>
       <div class="meta-row meta-row--spaced">
         <h2>Working</h2>

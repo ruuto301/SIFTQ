@@ -89,14 +89,14 @@ export function parseTaskVersionInputs(value: unknown): Result<TaskVersionInput[
   return ok(inputs);
 }
 
-export function changeTaskStatuses(
+function changeTasks(
   tasks: readonly Task[],
-  status: TaskStatus,
+  change: (task: Task) => Result<Task, DomainError>,
   updatedAt?: string,
 ): Result<Task[], DomainError> {
   const updated: Task[] = [];
   for (const task of tasks) {
-    const changed = changeTaskStatus(task, status);
+    const changed = change(task);
     if (!changed.ok) return err(changed.error);
     const next = { ...changed.value, version: task.version + 1 };
     updated.push(updatedAt === undefined ? next : { ...next, updated_at: updatedAt });
@@ -104,19 +104,20 @@ export function changeTaskStatuses(
   return ok(updated);
 }
 
+export function changeTaskStatuses(
+  tasks: readonly Task[],
+  status: TaskStatus,
+  updatedAt?: string,
+): Result<Task[], DomainError> {
+  return changeTasks(tasks, (task) => changeTaskStatus(task, status), updatedAt);
+}
+
 export function changeTaskProjects(
   tasks: readonly Task[],
   project: string | null,
   updatedAt?: string,
 ): Result<Task[], DomainError> {
-  const updated: Task[] = [];
-  for (const task of tasks) {
-    const changed = changeTaskProject(task, project);
-    if (!changed.ok) return err(changed.error);
-    const next = { ...changed.value, version: task.version + 1 };
-    updated.push(updatedAt === undefined ? next : { ...next, updated_at: updatedAt });
-  }
-  return ok(updated);
+  return changeTasks(tasks, (task) => changeTaskProject(task, project), updatedAt);
 }
 
 export function is_working(task: Task): boolean {

@@ -1,6 +1,6 @@
-export const PROJECT_ID_MAX_LENGTH = 64;
+const PROJECT_ID_MAX_LENGTH = 64;
 
-const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 export type Project = {
   id: string;
@@ -11,7 +11,7 @@ export type Project = {
 };
 
 export function isProjectId(value: unknown): value is string {
-  return typeof value === "string" && PROJECT_ID_PATTERN.test(value);
+  return typeof value === "string" && value.length <= PROJECT_ID_MAX_LENGTH && PROJECT_ID_PATTERN.test(value);
 }
 
 export function isProjectRecord(value: unknown): value is Record<string, unknown> {

@@ -14,8 +14,9 @@ import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
 import { NAV_SCREENS } from "../screens";
-import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, isTaskStatus, is_working, nextTaskOrder } from "../task";
-import type { Task, TaskStatus } from "../task";
+import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, is_working, nextTaskOrder } from "../task";
+import type { DomainError, Result, Task, TaskStatus } from "../task";
+import type { Project } from "../project";
 import {
   TASK_STATUS_FILTERS,
   filterTasks,
@@ -33,6 +34,7 @@ import {
   parseTaskVersion,
   readTaskFields,
 } from "../task-input";
+import type { ParsedBody } from "../task-input";
 import type { AppEnv } from "../app-env";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
@@ -98,6 +100,25 @@ async function projectExists(
 ): Promise<boolean> {
   const result = await projectRepository(c).find(id);
   return result.ok && result.value !== undefined;
+}
+
+async function routeTask(c: Context<AppEnv>, repository: Repository): Promise<Task | undefined> {
+  const id = c.req.param("id");
+  return id === undefined ? undefined : findTask(c, repository, id);
+}
+
+type LoadedTask = { task: Task; projects: Project[] };
+
+/** Loads the :id task with the project list, or null when either lookup fails. */
+async function loadTaskAndProjects(
+  c: Context<AppEnv>,
+  repository: Repository,
+  projectRepository: ProjectRepositoryFactory,
+): Promise<LoadedTask | null> {
+  const task = await routeTask(c, repository);
+  const projects = await knownProjects(c, projectRepository);
+  if (task === undefined || projects === null) return null;
+  return { task, projects };
 }
 
 /** Query default project for the new task screen. Unknown ids fall back to 未分類. */
@@ -210,31 +231,26 @@ function registerTaskDetailRoutes(
   });
 
   app.get("/tasks/:id", async (c) => {
-    const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-    const projects = await knownProjects(c, projectRepository);
-    if (!task || projects === null) return c.notFound();
-    return renderPage(c, <TaskDetailPage task={task} projects={projects} listStatus={detailListStatus(c)} />);
+    const loaded = await loadTaskAndProjects(c, repository, projectRepository);
+    if (loaded === null) return c.notFound();
+    return renderPage(
+      c,
+      <TaskDetailPage task={loaded.task} projects={loaded.projects} listStatus={detailListStatus(c)} />,
+    );
   });
 
   app.get("/tasks/:id/chat", async (c) => {
-    const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-    if (!task) return c.notFound();
+    const task = await routeTask(c, repository);
+    if (task === undefined) return c.notFound();
     const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
     const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
     return renderPage(c, <DshChatPage task={task} wsUrl={wsUrl} workspace={workspace} />);
   });
 
   app.get("/tasks/:id/status/menu", async (c) => {
-    const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-    const projects = await knownProjects(c, projectRepository);
-    if (!task || projects === null) return c.notFound();
-    return c.html(<OptionMenu task={task} projects={projects} listStatus={detailListStatus(c)} />);
+    const loaded = await loadTaskAndProjects(c, repository, projectRepository);
+    if (loaded === null) return c.notFound();
+    return c.html(<OptionMenu task={loaded.task} projects={loaded.projects} listStatus={detailListStatus(c)} />);
   });
 }
 
@@ -279,11 +295,9 @@ async function handleTaskUpdate(
   repository: Repository,
   projectRepository: ProjectRepositoryFactory,
 ) {
-  const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-  const projects = await knownProjects(c, projectRepository);
-  if (!task || projects === null) return c.notFound();
+  const loaded = await loadTaskAndProjects(c, repository, projectRepository);
+  if (loaded === null) return c.notFound();
+  const { task, projects } = loaded;
   const body = await c.req.parseBody();
   const { title, description } = readTaskFields(body);
   const version = parseTaskVersion(body["version"]);
@@ -301,61 +315,52 @@ async function handleTaskUpdate(
   return c.redirect("/tasks");
 }
 
-async function handleTaskStatus(
+async function readTaskForm(
   c: Context<AppEnv>,
   repository: Repository,
-  projectRepository: ProjectRepositoryFactory,
-) {
-  const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-  if (!task) return c.notFound();
-  const body = await c.req.parseBody();
-  const status = body["status"];
-  const version = parseTaskVersion(body["version"]);
-  if (!isTaskStatus(status) || version === null) return c.text("Invalid status", 400);
-  const changed = changeTaskStatus(task, status);
-  if (!changed.ok) return c.text("Invalid status", 400);
-  return updateTaskMeta(c, repository, projectRepository, task, { ...changed.value, version }, detailListStatus(c));
+): Promise<{ task: Task; body: ParsedBody } | null> {
+  const task = await routeTask(c, repository);
+  if (task === undefined) return null;
+  return { task, body: await c.req.parseBody() };
 }
 
-async function handleTaskProjectChange(
+type MetaAction = "status" | "project" | "working";
+
+function applyMetaChange(action: MetaAction, task: Task, body: ParsedBody): Result<Task, DomainError> {
+  if (action === "status") {
+    const status = body["status"];
+    return isTaskStatus(status) ? changeTaskStatus(task, status) : err({ code: "INVALID_STATUS" });
+  }
+  if (action === "project") {
+    const project = parseTaskProject(body["project"]);
+    return project === undefined ? err({ code: "INVALID_PROJECT" }) : changeTaskProject(task, project);
+  }
+  const working = body["working"];
+  return working === "true" || working === "false"
+    ? changeTaskWorking(task, working === "true")
+    : err({ code: "INVALID_WORKING" });
+}
+
+async function handleTaskMetaChange(
   c: Context<AppEnv>,
+  action: MetaAction,
   repository: Repository,
   projectRepository: ProjectRepositoryFactory,
 ) {
-  const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-  if (!task) return c.notFound();
-  const body = await c.req.parseBody();
-  const project = parseTaskProject(body["project"]);
-  const version = parseTaskVersion(body["version"]);
-  if (project === undefined || version === null) return c.text("Invalid project", 400);
-  if (project !== null && !(await projectExists(c, projectRepository, project))) {
+  const form = await readTaskForm(c, repository);
+  if (form === null) return c.notFound();
+  const version = parseTaskVersion(form.body["version"]);
+  if (version === null) return c.text("Invalid version", 400);
+  const changed = applyMetaChange(action, form.task, form.body);
+  if (!changed.ok) return c.text(`Invalid ${action}`, 400);
+  if (
+    action === "project" &&
+    changed.value.project !== null &&
+    !(await projectExists(c, projectRepository, changed.value.project))
+  ) {
     return c.text("Invalid project", 400);
   }
-  const changed = changeTaskProject(task, project);
-  if (!changed.ok) return c.text("Invalid project", 400);
-  return updateTaskMeta(c, repository, projectRepository, task, { ...changed.value, version }, detailListStatus(c));
-}
-
-async function handleTaskWorkingChange(
-  c: Context<AppEnv>,
-  repository: Repository,
-  projectRepository: ProjectRepositoryFactory,
-) {
-  const id = c.req.param("id");
-  if (id === undefined) return c.notFound();
-  const task = await findTask(c, repository, id);
-  if (!task) return c.notFound();
-  const body = await c.req.parseBody();
-  const rawWorking = body["working"];
-  const version = parseTaskVersion(body["version"]);
-  if ((rawWorking !== "true" && rawWorking !== "false") || version === null) return c.text("Invalid working", 400);
-  const changed = changeTaskWorking(task, rawWorking === "true");
-  if (!changed.ok) return c.text("Invalid working", 400);
-  return updateTaskMeta(c, repository, projectRepository, task, { ...changed.value, version }, detailListStatus(c));
+  return updateTaskMeta(c, repository, projectRepository, form.task, { ...changed.value, version }, detailListStatus(c));
 }
 
 function registerTaskEditRoutes(
@@ -364,9 +369,9 @@ function registerTaskEditRoutes(
   projectRepository: ProjectRepositoryFactory,
 ) {
   app.post("/tasks/:id", (c) => handleTaskUpdate(c, repository, projectRepository));
-  app.post("/tasks/:id/status", (c) => handleTaskStatus(c, repository, projectRepository));
-  app.post("/tasks/:id/project", (c) => handleTaskProjectChange(c, repository, projectRepository));
-  app.post("/tasks/:id/working", (c) => handleTaskWorkingChange(c, repository, projectRepository));
+  app.post("/tasks/:id/status", (c) => handleTaskMetaChange(c, "status", repository, projectRepository));
+  app.post("/tasks/:id/project", (c) => handleTaskMetaChange(c, "project", repository, projectRepository));
+  app.post("/tasks/:id/working", (c) => handleTaskMetaChange(c, "working", repository, projectRepository));
 }
 
 function registerDsRoute(

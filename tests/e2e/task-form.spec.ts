@@ -221,7 +221,7 @@ test("does not keep a new task draft when navigating to another screen", async (
   await expectDraftNotSaved(page, title, description);
 
   await page.locator('nav.nav a[href="/ideas"]').click();
-  await expect(page.getByRole("heading", { name: "Ideas" })).toBeVisible();
+  await expect(page).toHaveURL(/\/ideas$/);
   await expect.poll(() => hasDraft(page, title, description)).toBe(false);
 
   await page.locator('nav.nav a[href="/tasks"]').click();

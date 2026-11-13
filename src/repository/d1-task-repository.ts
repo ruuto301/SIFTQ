@@ -81,25 +81,40 @@ export function createD1TaskRepository(db: D1Database): TaskRepository {
   };
 }
 
-async function bulkUpdateStatus(
+type BulkBinder = (task: Task, updatedAt: string) => readonly unknown[];
+type BulkChange = (tasks: readonly Task[], updatedAt: string) => Result<Task[], RepositoryError>;
+
+async function bulkUpdateTasks(
   db: D1Database,
   inputs: readonly TaskVersionInput[],
-  status: TaskStatus,
+  sql: string,
+  bind: BulkBinder,
+  change: BulkChange,
 ): Promise<Result<Task[], RepositoryError>> {
   const current = await findBulkTasks(db, inputs);
   if (!current.ok) return current;
 
   const updatedAt = new Date().toISOString();
   const executed = await executeBulk(db, current.value, (task) =>
-    db
-      .prepare(
-        "UPDATE tasks SET status = ?, version = version + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND version = ?",
-      )
-      .bind(status, updatedAt, task.id, OWNER_ID, task.version),
+    db.prepare(sql).bind(...bind(task, updatedAt)),
   );
   if (!executed.ok) return executed;
 
-  return changeTaskStatuses(current.value, status, updatedAt);
+  return change(current.value, updatedAt);
+}
+
+async function bulkUpdateStatus(
+  db: D1Database,
+  inputs: readonly TaskVersionInput[],
+  status: TaskStatus,
+): Promise<Result<Task[], RepositoryError>> {
+  return bulkUpdateTasks(
+    db,
+    inputs,
+    "UPDATE tasks SET status = ?, version = version + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND version = ?",
+    (task, updatedAt) => [status, updatedAt, task.id, OWNER_ID, task.version],
+    (tasks, updatedAt) => changeTaskStatuses(tasks, status, updatedAt),
+  );
 }
 
 async function bulkUpdateProject(
@@ -107,20 +122,13 @@ async function bulkUpdateProject(
   inputs: readonly TaskVersionInput[],
   project: string | null,
 ): Promise<Result<Task[], RepositoryError>> {
-  const current = await findBulkTasks(db, inputs);
-  if (!current.ok) return current;
-
-  const updatedAt = new Date().toISOString();
-  const executed = await executeBulk(db, current.value, (task) =>
-    db
-      .prepare(
-        "UPDATE tasks SET project = ?, version = version + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND version = ?",
-      )
-      .bind(project, updatedAt, task.id, OWNER_ID, task.version),
+  return bulkUpdateTasks(
+    db,
+    inputs,
+    "UPDATE tasks SET project = ?, version = version + 1, updated_at = ? WHERE id = ? AND owner_id = ? AND version = ?",
+    (task, updatedAt) => [project, updatedAt, task.id, OWNER_ID, task.version],
+    (tasks, updatedAt) => changeTaskProjects(tasks, project, updatedAt),
   );
-  if (!executed.ok) return executed;
-
-  return changeTaskProjects(current.value, project, updatedAt);
 }
 
 async function listTasks(db: D1Database): Promise<Result<Task[], RepositoryError>> {
