@@ -254,22 +254,6 @@ button.status-choice {
   background: #1b1f24;
 }
 
-.status-dot--one {
-  background: #aeb8c4;
-}
-
-.status-dot--two {
-  background: #8b949e;
-}
-
-.status-dot--three {
-  background: #6e7781;
-}
-
-.status-dot--four {
-  background: #57606a;
-}
-
 .status-dot--done {
   background: #0f4d24;
 }

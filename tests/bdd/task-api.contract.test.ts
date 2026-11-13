@@ -37,7 +37,7 @@ describe("BDD-TM-001: task creation", () => {
     expect(task.title).toBe("Buy milk");
     expect(task.description).toBe("low-fat");
     expect(task.status).toBe("do");
-    expect(task.area).toBe(1);
+    expect(task.project).toBeNull();
     expect(task.order).toBe(1);
     expect(task.version).toBe(1);
     expect(task.id).toEqual(expect.any(String));
@@ -53,9 +53,87 @@ describe("BDD-TM-001: task creation", () => {
     expect(response.status).toBe(400);
     expect(body.code).toBe("INVALID_TITLE");
   });
+
+  it("INV-TM-004: appends the new task after the current order", async () => {
+    await repo.insert(taskFixture({ id: "task-1", order: 5 }));
+
+    const response = await request("POST", "/api/tasks", { title: "Buy milk", description: "" });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.order).toBe(6);
+  });
 });
 
-describe("BDD-TM-002 / BDD-TM-003: task list", () => {
+describe("BDD-TM-002: project assignment", () => {
+  it("creates a task with a known project", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      project: "Yoriwake",
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.project).toBe("Yoriwake");
+  });
+
+  it("rejects an unknown project id", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      project: "missing",
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("rejects a malformed project id", async () => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      project: "Bad Id",
+      version: 1,
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("clears the project with an explicit null", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "dsh" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      project: null,
+      version: 1,
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(task.project).toBeNull();
+  });
+
+  it("lists the selectable projects", async () => {
+    const response = await request("GET", "/api/projects");
+    const projects: { id: string; sort_order: number }[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(projects.map((project) => project.id)).toContain("Yoriwake");
+    expect(projects.map((project) => project.id)).toEqual([
+      "Yoriwake",
+      "dsh",
+      "customer_portal",
+      "affiliate",
+      "kits",
+      "scripts",
+    ]);
+  });
+});
+
+describe("BDD-TM-003: task list", () => {
   it("returns active tasks in the list", async () => {
     await repo.insert(taskFixture({ id: "task-1", status: "do" }));
 
@@ -78,7 +156,7 @@ describe("BDD-TM-002 / BDD-TM-003: task list", () => {
   });
 });
 
-describe("BDD-TM-005 / BDD-TM-006: task update", () => {
+describe("BDD-TM-005 / BDD-TM-007: task update", () => {
   it("updates title and description", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
 
@@ -94,21 +172,37 @@ describe("BDD-TM-005 / BDD-TM-006: task update", () => {
     expect(task.description).toBe("new description");
   });
 
-  it("updates status and area", async () => {
+  it("updates status and project", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
 
     const response = await request("PATCH", "/api/tasks/task-1", {
       status: "done",
-      area: 4,
+      project: "dsh",
       version: 1,
     });
     const task: Task = await response.json();
 
     expect(response.status).toBe(200);
     expect(task.status).toBe("done");
-    expect(task.area).toBe(4);
+    expect(task.project).toBe("dsh");
   });
 
+  it("keeps the project when only the status changes", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "Yoriwake" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      status: "done",
+      version: 1,
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(task.status).toBe("done");
+    expect(task.project).toBe("Yoriwake");
+  });
+});
+
+describe("task update conflict and working", () => {
   it("returns a conflict for a stale status change", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 2 }));
 
@@ -165,61 +259,64 @@ describe("INV-TM-006: API description validation", () => {
   });
 });
 
-describe("BDD-TM-008: bulk reorder", () => {
-  it("moves a task to another area and order", async () => {
-    await repo.insert(taskFixture({ id: "task-1" }));
+describe("BDD-TM-004: bulk project update", () => {
+  it("assigns a project to the selected tasks", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: null, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-2", project: null, version: 1 }));
 
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-1",
-      area: 2,
-      order: 0,
-      version: 1,
-    });
-    const tasks: Task[] = await response.json();
-    const task = tasks.find((candidate) => candidate.id === "task-1");
-
-    expect(response.status).toBe(200);
-    expect(task?.area).toBe(2);
-    expect(task?.order).toBe(0);
-  });
-
-  it("returns every task whose version changed during reordering", async () => {
-    await repo.insert(taskFixture({ id: "task-1", area: 1, order: 0, version: 1 }));
-    await repo.insert(taskFixture({ id: "task-2", area: 1, order: 1, version: 1 }));
-
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-2",
-      area: 1,
-      order: 0,
-      version: 1,
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "Yoriwake",
+      tasks: [
+        { id: "task-1", version: 1 },
+        { id: "task-2", version: 1 },
+      ],
     });
     const tasks: Task[] = await response.json();
 
     expect(response.status).toBe(200);
     expect(tasks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "task-1", order: 1, version: 2 }),
-        expect.objectContaining({ id: "task-2", order: 0, version: 2 }),
+        expect.objectContaining({ id: "task-1", project: "Yoriwake", version: 2 }),
+        expect.objectContaining({ id: "task-2", project: "Yoriwake", version: 2 }),
       ]),
     );
   });
-});
 
-describe("BDD-TM-009: reorder conflict", () => {
-  it("returns 409 with code CONFLICT for a stale version", async () => {
-    await repo.insert(taskFixture({ id: "task-1", version: 2 }));
+  it("clears the project when null is requested", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "dsh", version: 1 }));
 
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-1",
-      area: 2,
-      order: 0,
-      version: 1,
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: null,
+      tasks: [{ id: "task-1", version: 1 }],
+    });
+    const tasks: Task[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(tasks[0]?.project).toBeNull();
+  });
+
+  it("rejects an unknown project", async () => {
+    await repo.insert(taskFixture({ id: "task-1", version: 1 }));
+
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "missing",
+      tasks: [{ id: "task-1", version: 1 }],
     });
     const body: { code?: string } = await response.json();
 
-    expect(response.status).toBe(409);
-    expect(response.headers.get("content-type")).toMatch(/^application\/json/);
-    expect(body.code).toBe("CONFLICT");
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("rejects invalid bulk inputs", async () => {
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "dsh",
+      tasks: [],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_BULK_INPUT");
   });
 });
 

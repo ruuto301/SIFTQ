@@ -70,14 +70,70 @@ export const DS_CSS = `
 .ds__status-tabs .button.small:hover { background: #f3f6fa; }
 .ds__status-tabs .button.is-active { background: #1b1f24; border-color: #1b1f24; color: #fff; }
 
-.ds__tasks {
+.ds__groups {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 12px 14px;
+  overflow: auto;
+}
+
+.ds__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ds__group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f6f8fa;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  color: #1b1f24;
+  cursor: pointer;
+}
+
+.ds__group-head:hover { background: #eef1f4; }
+
+.ds__group-caret { flex: 0 0 auto; transition: transform 120ms ease; }
+
+.ds__group[data-collapsed="true"] .ds__group-caret { transform: rotate(-90deg); }
+.ds__group[data-collapsed="true"] .ds__tasks { display: none; }
+
+.ds__group-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds__group-count {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #57606a;
+}
+
+.ds__tasks {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 0;
-  padding: 8px 12px 14px;
-  overflow: auto;
+  padding: 0;
   list-style: none;
 }
 

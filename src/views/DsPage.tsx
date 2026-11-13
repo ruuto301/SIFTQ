@@ -1,8 +1,15 @@
 import type { FC } from "hono/jsx";
 import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
+import type { Project } from "../project";
+import type { TaskGroup } from "../task-list";
+import { PROJECT_NONE_LABEL } from "../components/task-option-data";
 
-type TaskPaneProps = { tasks: Task[]; selected: Task | undefined; status: TaskStatus };
+type TaskPaneProps = {
+  groups: readonly TaskGroup[];
+  selected: Task | undefined;
+  status: TaskStatus;
+};
 type ChatPaneProps = { selected: Task | undefined; wsUrl: string; workspace: string };
 
 function StatusTabs({ active }: { active: TaskStatus }) {
@@ -22,37 +29,61 @@ function StatusTabs({ active }: { active: TaskStatus }) {
   );
 }
 
-function TaskPane({ tasks, selected, status }: TaskPaneProps) {
+function TaskItem({ task, selected }: { task: Task; selected: Task | undefined }) {
+  return (
+    <li
+      class="ds__task-item"
+      data-task-id={task.id}
+      data-task-version={task.version}
+      data-task-status={task.status}
+      data-task-working={task.working ? "true" : "false"}
+      data-task-project={task.project ?? ""}
+    >
+      <a
+        class={selected?.id === task.id ? "ds__task active" : "ds__task"}
+        href={`/ds?task=${encodeURIComponent(task.id)}`}
+      >
+        <span class="ds__task-head">
+          <span class="ds__task-title">{task.title}</span>
+        </span>
+        <span class="ds__task-meta">
+          {task.working ? <span class="working-badge">working</span> : null}
+        </span>
+      </a>
+    </li>
+  );
+}
+
+function TaskGroupSection({ group, selected }: { group: TaskGroup; selected: Task | undefined }) {
+  const projectId = group.project?.id ?? "";
+  return (
+    <section class="ds__group" data-ds-group-id={projectId}>
+      <button type="button" class="ds__group-head" data-ds-group-toggle aria-expanded="true">
+        <span class="ds__group-caret" aria-hidden="true">
+          ▾
+        </span>
+        <span class="ds__group-name">{group.project?.name ?? PROJECT_NONE_LABEL}</span>
+        <span class="ds__group-count">{group.tasks.length}</span>
+      </button>
+      <ul class="ds__tasks">
+        {group.tasks.map((task) => (
+          <TaskItem key={task.id} task={task} selected={selected} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function TaskPane({ groups, selected, status }: TaskPaneProps) {
   return (
     <aside class="ds__pane ds__pane--tasks">
       <div class="ds__pane-head">Tasks</div>
       <StatusTabs active={status} />
-      <ul class="ds__tasks">
-        {tasks.map((task) => (
-          <li
-            key={task.id}
-            class="ds__task-item"
-            data-task-id={task.id}
-            data-task-version={task.version}
-            data-task-status={task.status}
-            data-task-working={task.working ? "true" : "false"}
-          >
-            <a
-              class={selected?.id === task.id ? "ds__task active" : "ds__task"}
-              href={`/ds?task=${encodeURIComponent(task.id)}`}
-            >
-              <span class="ds__task-head">
-                <span class={`ds__dot ds__dot--${task.status}`} aria-hidden="true"></span>
-                <span class="ds__task-title">{task.title}</span>
-              </span>
-              <span class="ds__task-meta">
-                <span class={`status status--${task.status}`}>{task.status}</span>
-                {task.working ? <span class="working-badge">working</span> : null}
-              </span>
-            </a>
-          </li>
+      <div class="ds__groups">
+        {groups.map((group) => (
+          <TaskGroupSection key={group.project?.id ?? "__none__"} group={group} selected={selected} />
         ))}
-      </ul>
+      </div>
     </aside>
   );
 }
@@ -183,31 +214,40 @@ function BrowserPane() {
   );
 }
 
+export type DsProjectOption = { id: string; name: string };
+
 /**
  * DS screen: task list (left), DSH chat (center), browser (right).
  * The chat, memo, settings and browser panes are driven by client scripts.
  */
 export const DsPage: FC<{
-  tasks: Task[];
+  groups: TaskGroup[];
   selected: Task | undefined;
+  projects: readonly Project[];
   status: TaskStatus;
   wsUrl: string;
   workspace: string;
-}> = ({ tasks, selected, status, wsUrl, workspace }) => (
-  <div class="ds" id="ds-root">
-    <TaskPane tasks={tasks} selected={selected} status={status} />
+}> = ({ groups, selected, projects, status, wsUrl, workspace }) => {
+  const projectOptions: DsProjectOption[] = projects.map((project) => ({
+    id: project.id,
+    name: project.name,
+  }));
+  return (
+    <div class="ds" id="ds-root" data-ds-projects={JSON.stringify(projectOptions)}>
+      <TaskPane groups={groups} selected={selected} status={status} />
 
-    <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
+      <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
 
-    <section class="ds__pane ds__pane--chat">
-      <ChatHeader />
-      <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
-      {selected === undefined ? null : <DescPane />}
-      <SettingsPane />
-    </section>
+      <section class="ds__pane ds__pane--chat">
+        <ChatHeader />
+        <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
+        {selected === undefined ? null : <DescPane />}
+        <SettingsPane />
+      </section>
 
-    <div class="ds__resizer" data-resize="right" role="separator" aria-orientation="vertical" aria-label="ブラウザペインの幅"></div>
+      <div class="ds__resizer" data-resize="right" role="separator" aria-orientation="vertical" aria-label="ブラウザペインの幅"></div>
 
-    <BrowserPane />
-  </div>
-);
+      <BrowserPane />
+    </div>
+  );
+};

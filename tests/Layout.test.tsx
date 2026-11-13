@@ -4,7 +4,7 @@ import { Layout } from "../src/components/Layout";
 
 describe("Layout", () => {
   it("renders an html document", () => {
-    const html = renderToString(<Layout active="matrix"><span>content</span></Layout>);
+    const html = renderToString(<Layout active="tasks"><span>content</span></Layout>);
     expect(html).toContain("<html");
     expect(html).toContain('id="page"');
     expect(html).toContain('src="/htmx-conflict.js"');
@@ -14,25 +14,26 @@ describe("Layout", () => {
   });
 
   it("declares an inline SVG favicon", () => {
-    const html = renderToString(<Layout active="matrix"><span>content</span></Layout>);
+    const html = renderToString(<Layout active="tasks"><span>content</span></Layout>);
     expect(html).toContain('rel="icon"');
     expect(html).toContain('type="image/svg+xml"');
     expect(html).toContain('href="data:image/svg+xml,');
   });
 
-  it("orders the primary nav as Ideas, Matrix, Tasks", () => {
-    for (const active of ["ideas", "matrix", "tasks"] as const) {
+  it("orders the primary nav as Ideas, Tasks, DS", () => {
+    for (const active of ["ideas", "tasks", "ds"] as const) {
       const html = renderToString(<Layout active={active}><span>content</span></Layout>);
       const nav = html.slice(html.indexOf("<nav"), html.indexOf("</nav>"));
       const ideas = nav.indexOf('href="/ideas"');
-      const matrix = nav.indexOf('href="/matrix"');
       const tasks = nav.indexOf('href="/tasks"');
+      const ds = nav.indexOf('href="/ds"');
       expect(ideas).toBeGreaterThanOrEqual(0);
-      expect(matrix).toBeGreaterThanOrEqual(0);
       expect(tasks).toBeGreaterThanOrEqual(0);
-      expect(ideas).toBeLessThan(matrix);
-      expect(matrix).toBeLessThan(tasks);
+      expect(ds).toBeGreaterThanOrEqual(0);
+      expect(ideas).toBeLessThan(tasks);
+      expect(tasks).toBeLessThan(ds);
       expect(nav).toContain(`href="/${active}"`);
+      expect(nav).not.toContain('href="/matrix"');
     }
   });
 });

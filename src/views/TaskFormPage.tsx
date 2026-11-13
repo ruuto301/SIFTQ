@@ -2,6 +2,7 @@ import { DescriptionContent } from "../components/DescriptionContent";
 import { TaskMeta } from "../components/TaskMeta";
 import { NewTaskMeta } from "../components/NewTaskMeta";
 import type { NewTaskState } from "../components/NewTaskMeta";
+import type { Project } from "../project";
 import type { Task, TaskStatus } from "../task";
 
 function TitleField({ value }: { value?: string }) {
@@ -62,7 +63,15 @@ function TaskFormActions({ submitLabel, cancelHref }: { submitLabel: string; can
   );
 }
 
-export function NewTaskForm({ state, error }: { state: NewTaskState; error?: string }) {
+export function NewTaskForm({
+  state,
+  projects,
+  error,
+}: {
+  state: NewTaskState;
+  projects: readonly Project[];
+  error?: string;
+}) {
   return (
     <div class="page page--new" data-state="normal">
       <div class="page-header">
@@ -71,12 +80,11 @@ export function NewTaskForm({ state, error }: { state: NewTaskState; error?: str
       <form class="detail-grid" data-task-form="new" hx-post="/tasks" hx-target="#page" hx-swap="innerHTML">
         <div class="form-panel">
           <TitleField />
-          <input type="hidden" name="from" value={state.from} />
           {error ? <p class="error">{error}</p> : null}
           <DescriptionField />
-          <TaskFormActions submitLabel="Create" cancelHref={state.from === "matrix" ? "/matrix" : "/tasks"} />
+          <TaskFormActions submitLabel="Create" cancelHref="/tasks" />
         </div>
-        <NewTaskMeta state={state} />
+        <NewTaskMeta state={state} projects={projects} />
       </form>
     </div>
   );
@@ -84,16 +92,16 @@ export function NewTaskForm({ state, error }: { state: NewTaskState; error?: str
 
 export function TaskDetailPage({
   task,
+  projects,
   error,
-  returnTo = "tasks",
   listStatus = "do",
 }: {
   task: Task;
+  projects: readonly Project[];
   error?: string;
-  returnTo?: "matrix" | "tasks";
   listStatus?: TaskStatus;
 }) {
-  const cancelHref = returnTo === "matrix" ? "/matrix" : `/tasks?status=${listStatus}`;
+  const cancelHref = `/tasks?status=${listStatus}`;
 
   return (
     <div class="page page--detail" data-state="normal">
@@ -111,8 +119,8 @@ export function TaskDetailPage({
           class="form-panel"
           data-task-form="edit"
           method="post"
-          action={`/tasks/${task.id}?from=${returnTo}`}
-          hx-post={`/tasks/${task.id}?from=${returnTo}`}
+          action={`/tasks/${task.id}`}
+          hx-post={`/tasks/${task.id}`}
           hx-target="#page"
           hx-swap="innerHTML"
         >
@@ -122,7 +130,7 @@ export function TaskDetailPage({
           <DescriptionField>{task.description}</DescriptionField>
           <TaskFormActions submitLabel="Save" cancelHref={cancelHref} />
         </form>
-        <TaskMeta task={task} returnTo={returnTo} listStatus={listStatus} />
+        <TaskMeta task={task} projects={projects} listStatus={listStatus} />
       </div>
     </div>
   );

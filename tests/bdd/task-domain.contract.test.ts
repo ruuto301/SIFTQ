@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
-  changeTaskArea,
+  changeTaskProject,
   changeTaskStatus,
   createTask,
-  moveTask,
 } from "../../src/task";
-import { sortForMatrix } from "../../src/task-list";
 import type { Task } from "../../src/task";
+import { filterTasks, taskProjectFilter } from "../../src/task-list";
 import { taskFixture } from "../helpers/task-fixture";
 
 describe("BDD-TM-001: domain task creation", () => {
@@ -25,7 +24,7 @@ describe("BDD-TM-001: domain task creation", () => {
     expect(result.value.title).toBe("Buy milk");
     expect(result.value.description).toBe("low-fat");
     expect(result.value.status).toBe("do");
-    expect(result.value.area).toBe(1);
+    expect(result.value.project).toBeNull();
     expect(result.value.order).toBe(1);
     expect(result.value.version).toBe(1);
     expect(result.value.id).toBe("task-1");
@@ -45,14 +44,6 @@ describe("BDD-TM-001: domain task creation", () => {
     });
 
     expect(invalidTitle).toEqual({ ok: false, error: { code: "INVALID_TITLE" } });
-    expect(moveTask([], "missing", 1, 0)).toEqual({
-      ok: false,
-      error: { code: "NOT_FOUND" },
-    });
-    expect(moveTask([taskFixture()], "task-1", 1, -1)).toEqual({
-      ok: false,
-      error: { code: "INVALID_ORDER" },
-    });
   });
 
 });
@@ -81,75 +72,54 @@ describe("INV-TM-006: description validation", () => {
   });
 });
 
-describe("BDD-TM-002 / BDD-TM-003 / BDD-TM-004: matrix extraction", () => {
-  it("shows only do tasks in the matrix", () => {
-    const tasks = [
-      taskFixture({ id: "do-1", status: "do", area: 1, order: 1 }),
-      taskFixture({ id: "done-1", status: "done", area: 1, order: 2 }),
-      taskFixture({ id: "skip-1", status: "skip", area: 1, order: 3 }),
-    ];
+describe("BDD-TM-002: domain project assignment", () => {
+  it("keeps one project per task and allows clearing it", () => {
+    const task = taskFixture({ id: "task-1", project: null });
 
-    const matrix = sortForMatrix(tasks);
+    const assigned = changeTaskProject(task, "Yoriwake");
+    expect(assigned.ok).toBe(true);
+    if (!assigned.ok) return;
+    expect(assigned.value.project).toBe("Yoriwake");
 
-    expect(matrix.map((task) => task.id)).toEqual(["do-1"]);
-  });
+    const reassigned = changeTaskProject(assigned.value, "dsh");
+    expect(reassigned.ok).toBe(true);
+    if (!reassigned.ok) return;
+    expect(reassigned.value.project).toBe("dsh");
 
-  it("groups do tasks by area and preserves area order", () => {
-    const tasks = [
-      taskFixture({ id: "area-4", status: "do", area: 4, order: 0 }),
-      taskFixture({ id: "area-1", status: "do", area: 1, order: 0 }),
-      taskFixture({ id: "area-2", status: "do", area: 2, order: 0 }),
-    ];
-
-    const matrix = sortForMatrix(tasks);
-
-    expect(matrix.map((task) => task.area)).toEqual([1, 2, 4]);
+    const cleared = changeTaskProject(reassigned.value, null);
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok) return;
+    expect(cleared.value.project).toBeNull();
   });
 });
 
-describe("BDD-TM-007: status change preserves area", () => {
-  it("keeps area when a task is completed or skipped", () => {
-    const task = taskFixture({ id: "task-1", area: 3 });
+describe("BDD-TM-007: status change preserves project", () => {
+  it("keeps the project when a task is completed or skipped", () => {
+    const task = taskFixture({ id: "task-1", project: "Yoriwake" });
 
     const done = changeTaskStatus(task, "done");
     expect(done.ok).toBe(true);
     if (!done.ok) return;
-    expect(done.value.area).toBe(3);
+    expect(done.value.project).toBe("Yoriwake");
 
     const backToDo = changeTaskStatus(done.value, "do");
     expect(backToDo.ok).toBe(true);
     if (!backToDo.ok) return;
-    expect(backToDo.value.area).toBe(3);
+    expect(backToDo.value.project).toBe("Yoriwake");
   });
 });
 
-describe("BDD-TM-008: domain reorder", () => {
-  it("moves a task to another area and order", () => {
+describe("project extraction", () => {
+  it("keeps only the requested project", () => {
     const tasks: readonly Task[] = [
-      taskFixture({ id: "task-1", area: 1, order: 0 }),
-      taskFixture({ id: "task-2", area: 1, order: 1 }),
+      taskFixture({ id: "yoriwake", status: "do", project: "Yoriwake" }),
+      taskFixture({ id: "dsh", status: "do", project: "dsh" }),
+      taskFixture({ id: "none", status: "do", project: null }),
     ];
 
-    const moved = moveTask(tasks, "task-1", 2, 0);
-
-    expect(moved.ok).toBe(true);
-    if (!moved.ok) return;
-    const movedTask = moved.value.find((task) => task.id === "task-1");
-    expect(movedTask).toBeDefined();
-    expect(movedTask?.area).toBe(2);
-    expect(movedTask?.order).toBe(0);
-  });
-});
-
-describe("BDD-TM-006: domain area change", () => {
-  it("changes only the area", () => {
-    const task = taskFixture({ id: "task-1", area: 1 });
-
-    const result = changeTaskArea(task, 4);
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.area).toBe(4);
-    expect(result.value.status).toBe("do");
+    expect(filterTasks(tasks, [taskProjectFilter("Yoriwake")]).map((task) => task.id)).toEqual([
+      "yoriwake",
+    ]);
+    expect(filterTasks(tasks, [taskProjectFilter(null)]).map((task) => task.id)).toEqual(["none"]);
   });
 });

@@ -16,7 +16,11 @@ export const TaskRow: FC<{ task: Task; listStatus?: TaskStatus }> = ({ task, lis
       <span class="task-row-main">
         <span class="task-row-title">
           <strong>{task.title}</strong>
-          <span class="status area-badge">{task.area}</span>
+          <span
+            class={task.project === null ? "label label--project label--project-none" : "label label--project"}
+          >
+            {task.project === null ? "未分類" : `#${task.project}`}
+          </span>
           <span class={`status status--${task.status}`}>{task.status}</span>
           {is_working(task) ? <span class="working-badge">working</span> : null}
         </span>

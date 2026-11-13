@@ -36,7 +36,6 @@ html:has(dialog[open]) {
   outline-offset: 2px;
 }
 
-.matrix-cards,
 .description-editor,
 .ideas-composer__description,
 .idea-detail-modal .idea-detail__form,
@@ -45,7 +44,6 @@ html:has(dialog[open]) {
   scrollbar-width: thin;
 }
 
-.matrix-cards::-webkit-scrollbar,
 .description-editor::-webkit-scrollbar,
 .ideas-composer__description::-webkit-scrollbar,
 .idea-detail-modal .idea-detail__form::-webkit-scrollbar,
@@ -54,7 +52,6 @@ html:has(dialog[open]) {
   width: 8px;
 }
 
-.matrix-cards::-webkit-scrollbar-track,
 .description-editor::-webkit-scrollbar-track,
 .ideas-composer__description::-webkit-scrollbar-track,
 .idea-detail-modal .idea-detail__form::-webkit-scrollbar-track,
@@ -62,7 +59,6 @@ html:has(dialog[open]) {
   background: transparent;
 }
 
-.matrix-cards::-webkit-scrollbar-button,
 .description-editor::-webkit-scrollbar-button,
 .ideas-composer__description::-webkit-scrollbar-button,
 .idea-detail-modal .idea-detail__form::-webkit-scrollbar-button,
@@ -70,7 +66,6 @@ html:has(dialog[open]) {
   display: none;
 }
 
-.matrix-cards::-webkit-scrollbar-thumb,
 .description-editor::-webkit-scrollbar-thumb,
 .ideas-composer__description::-webkit-scrollbar-thumb,
 .idea-detail-modal .idea-detail__form::-webkit-scrollbar-thumb,
@@ -81,12 +76,10 @@ html:has(dialog[open]) {
   border-radius: 999px;
 }
 
-.matrix-cards:hover::-webkit-scrollbar-thumb,
 .description-editor:hover::-webkit-scrollbar-thumb,
 .ideas-composer__description:hover::-webkit-scrollbar-thumb,
 .idea-detail-modal .idea-detail__form:hover::-webkit-scrollbar-thumb,
 .idea-detail__description:hover::-webkit-scrollbar-thumb,
-.matrix-cards:focus-within::-webkit-scrollbar-thumb,
 .description-editor:focus-within::-webkit-scrollbar-thumb,
 .ideas-composer__description:focus-within::-webkit-scrollbar-thumb,
 .idea-detail-modal .idea-detail__form:focus-within::-webkit-scrollbar-thumb,
@@ -162,21 +155,6 @@ a {
   padding: 24px;
 }
 
-.page--matrix {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: calc(100vh - 63px);
-  max-width: none;
-  padding: 3vh 5vw;
-  row-gap: 18px;
-  width: 100%;
-}
-
-.page--matrix > * {
-  justify-self: center;
-  width: min(100%, 80vw);
-}
-
 .task-status-filter {
   display: flex;
   flex-wrap: wrap;
@@ -218,10 +196,6 @@ a {
   margin: 0;
 }
 
-.page--matrix .matrix-axis {
-  height: 100%;
-}
-
 .page-header {
   align-items: center;
   display: flex;
@@ -241,6 +215,227 @@ a {
   font-size: 13px;
 }
 
+.label {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  width: max-content;
+}
+
+.label--project {
+  background: #eef4ff;
+  border-color: #c7d3e3;
+  color: #1b1f24;
+}
+
+.label--project-none {
+  background: #f6f8fa;
+  border-color: #8b949e;
+  color: #3f4854;
+}
+
+.task-card,
+.task-row {
+  background: #c1c9d3;
+  border: 1px solid #8b949e;
+  border-radius: 8px;
+}
+
+.form-panel,
+.side-panel,
+.state-card {
+  background: #c1c9d3;
+  border: 1px solid #8b949e;
+  border-radius: 8px;
+}
+
+.task-card {
+  border-color: #1b1f24;
+  box-shadow: 0 1px 2px rgb(31 35 40 / 12%);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  min-height: 72px;
+  padding: 12px;
+}
+
+.task-card--working,
+.task-row--working {
+  border-left: 4px solid #0f4d24;
+}
+
+.task-card:hover {
+  border-color: #1f883d;
+  box-shadow: 0 0 0 2px #b7e3c3;
+}
+
+.task-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.task-title {
+  font-weight: 700;
+}
+
+.status {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  width: max-content;
+}
+
+.status--do {
+  background: transparent;
+  border-color: #1b1f24;
+  color: #1b1f24;
+}
+
+.status--done {
+  background: #b7e3c3;
+  border-color: #4ac26b;
+  color: #0f4d24;
+}
+
+.status--skip {
+  background: #f6f8fa;
+  border-color: #8b949e;
+  color: #3f4854;
+}
+
+.working-badge {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #0f4d24;
+  border-radius: 999px;
+  color: #0f4d24;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 5px;
+  padding: 3px 8px;
+  width: max-content;
+}
+
+.working-badge::before {
+  background: #0f4d24;
+  border-radius: 50%;
+  content: "";
+  height: 6px;
+  width: 6px;
+}
+
+.project-select {
+  margin-bottom: 0;
+}
+
+.project-select--none {
+  color: #3f4854;
+}
+
+.matrix-menu {
+  background: #c1c9d3;
+  border: 1px solid #8b949e;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  position: fixed;
+  z-index: 50;
+}
+
+.matrix-menu-item {
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.matrix-menu-item:hover {
+  background: #eaeef2;
+}
+
+.matrix-menu-item--delete {
+  color: #1b1f24;
+}
+
+.matrix-modal-backdrop {
+  align-items: center;
+  background: rgb(31 35 40 / 45%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 100;
+}
+
+.matrix-modal {
+  background: #c1c9d3;
+  border: 1px solid #8b949e;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgb(31 35 40 / 30%);
+  display: flex;
+  flex-direction: column;
+  height: 160px;
+  justify-content: space-between;
+  max-width: 90vw;
+  padding: 16px 20px;
+  width: 320px;
+}
+
+.matrix-modal-text {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.matrix-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.matrix-modal-button {
+  border: 1px solid #8b949e;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 34px;
+  padding: 7px 16px;
+}
+
+.matrix-modal-button--cancel {
+  background: #c1c9d3;
+}
+
+.matrix-modal-button--cancel:hover {
+  background: #eaeef2;
+}
+
+.matrix-modal-button--danger {
+  background: #1b1f24;
+  border-color: #1b1f24;
+  color: #ffffff;
+}
+
+.matrix-modal-button--danger:hover {
+  background: #1b1f24;
+}
+
 @media (width < 40rem) {
   .topbar {
     padding: 12px 16px;
@@ -258,20 +453,6 @@ a {
 
   .page {
     padding: 16px;
-  }
-
-  .page--matrix {
-    height: auto;
-    min-height: calc(100vh - 63px);
-    padding: 16px;
-  }
-
-  .page--matrix .matrix-axis {
-    height: auto;
-  }
-
-  .page--matrix > * {
-    width: 100%;
   }
 
   .page-header {

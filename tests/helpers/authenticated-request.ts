@@ -1,15 +1,20 @@
 import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
+import { createMemoryProjectRepository } from "../../src/preview/MemoryProjectRepository";
+import { PREVIEW_PROJECTS } from "../../src/preview/projects";
 import type { TaskRepository } from "../../src/repository/task-repository";
+import type { ProjectRepository } from "../../src/repository/project-repository";
 
 export const TEST_SECRET = "test-secret";
 
 export function authBindings(repo: TaskRepository): {
   TASK_REPOSITORY: TaskRepository;
+  PROJECT_REPOSITORY: ProjectRepository;
   SESSION_SECRET: string;
 } {
   return {
     TASK_REPOSITORY: repo,
+    PROJECT_REPOSITORY: createMemoryProjectRepository(PREVIEW_PROJECTS),
     SESSION_SECRET: TEST_SECRET,
   };
 }

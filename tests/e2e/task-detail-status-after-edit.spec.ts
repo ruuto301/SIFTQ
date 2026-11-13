@@ -1,26 +1,6 @@
 import type { Page } from "@playwright/test";
+import { signIn, descriptionEditor, createTask, openTaskFromList } from "./task-helpers";
 import { expect, test } from "./fixtures";
-
-async function signIn(page: Page) {
-  await page.goto("/matrix");
-}
-
-function descriptionEditor(page: Page) {
-  return page.getByRole("textbox", { name: "Description" });
-}
-
-async function createMatrixTask(page: Page, title: string) {
-  await page.getByRole("link", { name: "New task" }).click();
-  await page.getByLabel("Title").fill(title);
-  await page.getByRole("button", { name: "Create" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-}
-
-async function openDetail(page: Page, title: string) {
-  await page.goto("/matrix");
-  await page.locator(".task-card", { hasText: title }).click();
-  await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
-}
 
 async function changeStatus(page: Page, status: "done" | "skip") {
   await page.getByRole("link", { name: /^Status/ }).click();
@@ -35,12 +15,12 @@ async function changeStatus(page: Page, status: "done" | "skip") {
 test("description update then Status operation stays interactive", async ({ page }) => {
   const title = `E2E 477 description ${Date.now()}`;
   await signIn(page);
-  await createMatrixTask(page, title);
-  await openDetail(page, title);
+  await createTask(page, title);
+  await openTaskFromList(page, title, "do");
   await descriptionEditor(page).fill(`updated description ${Date.now()}`);
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await openDetail(page, title);
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+  await openTaskFromList(page, title, "do");
   await changeStatus(page, "done");
 });
 
@@ -48,23 +28,22 @@ test("title update then Status operation stays interactive", async ({ page }) =>
   const title = `E2E 477 title ${Date.now()}`;
   const updatedTitle = `${title} updated`;
   await signIn(page);
-  await createMatrixTask(page, title);
-  await openDetail(page, title);
+  await createTask(page, title);
+  await openTaskFromList(page, title, "do");
   await page.getByLabel("Title").fill(updatedTitle);
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await openDetail(page, updatedTitle);
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+  await openTaskFromList(page, updatedTitle, "do");
   await changeStatus(page, "done");
 });
 
-test("area update then Status operation stays interactive", async ({ page }) => {
-  const title = `E2E 477 area ${Date.now()}`;
+test("project update then Status operation stays interactive", async ({ page }) => {
+  const title = `E2E 477 project ${Date.now()}`;
   await signIn(page);
-  await createMatrixTask(page, title);
-  await openDetail(page, title);
-  await page.getByRole("link", { name: /^Area/ }).click();
-  await page.locator('[aria-label="Apply area to this task"] .status-choice', { hasText: "4" }).click();
-  await expect(page.locator("#task-meta .area-badge")).toHaveText("4");
+  await createTask(page, title);
+  await openTaskFromList(page, title, "do");
+  await page.getByLabel("Project").selectOption("dsh");
+  await expect(page.getByLabel("Project")).toHaveValue("dsh");
   await changeStatus(page, "skip");
 });
 
@@ -72,8 +51,8 @@ test("description selection left idle does not freeze Status", async ({ page }) 
   const title = `E2E 477 selection ${Date.now()}`;
   const description = `selected description ${Date.now()}`;
   await signIn(page);
-  await createMatrixTask(page, title);
-  await openDetail(page, title);
+  await createTask(page, title);
+  await openTaskFromList(page, title, "do");
   await descriptionEditor(page).fill(description);
 
   const editor = descriptionEditor(page);

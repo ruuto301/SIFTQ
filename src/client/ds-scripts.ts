@@ -109,9 +109,41 @@ export const DS_SCRIPT = `(function () {
   });
   applyLayout();
 
-  // Task list context menu: status, working, open and delete (same API as the Matrix).
+  // DS left pane: project groups with collapsible headers persisted in localStorage.
+  var dsRoot = document.getElementById("ds-root");
+  var projectOptions = [];
+  if (dsRoot) {
+    try { projectOptions = JSON.parse(dsRoot.getAttribute("data-ds-projects") || "[]"); } catch (e) { projectOptions = []; }
+  }
+  var GROUP_KEY = "ds-group-collapsed:v1";
+  var collapsedGroups = {};
+  try { collapsedGroups = JSON.parse(localStorage.getItem(GROUP_KEY) || "{}") || {}; } catch (e) { collapsedGroups = {}; }
+  function saveCollapsedGroups() {
+    try { localStorage.setItem(GROUP_KEY, JSON.stringify(collapsedGroups)); } catch (e) { /* ignore */ }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".ds__group"), function (group) {
+    var id = group.getAttribute("data-ds-group-id") || "__none__";
+    if (collapsedGroups[id] !== true) return;
+    group.setAttribute("data-collapsed", "true");
+    var toggle = group.querySelector("[data-ds-group-toggle]");
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ds-group-toggle]"), function (toggle) {
+    toggle.addEventListener("click", function () {
+      var group = toggle.closest(".ds__group");
+      if (!group) return;
+      var id = group.getAttribute("data-ds-group-id") || "__none__";
+      var next = group.getAttribute("data-collapsed") !== "true";
+      group.setAttribute("data-collapsed", next ? "true" : "false");
+      toggle.setAttribute("aria-expanded", next ? "false" : "true");
+      collapsedGroups[id] = next;
+      saveCollapsedGroups();
+    });
+  });
+
+  // Task list context menu: status, working, project, open and delete.
   var STATUS_LABELS = { do: "進行中", done: "完了", skip: "見送り" };
-  var taskList = document.querySelector(".ds__tasks");
+  var taskList = document.querySelector(".ds__groups");
   if (taskList) initTaskMenu(taskList);
 
   function initTaskMenu(list) {
@@ -141,13 +173,6 @@ export const DS_SCRIPT = `(function () {
       row.setAttribute("data-task-version", String(task.version));
       row.setAttribute("data-task-status", task.status);
       row.setAttribute("data-task-working", task.working === true ? "true" : "false");
-      var badge = row.querySelector(".status");
-      if (badge) {
-        badge.className = "status status--" + task.status;
-        badge.textContent = task.status;
-      }
-      var dot = row.querySelector(".ds__dot");
-      if (dot) dot.className = "ds__dot ds__dot--" + task.status;
       var workingBadge = row.querySelector(".working-badge");
       if (task.working === true && workingBadge === null) {
         var meta = row.querySelector(".ds__task-meta");
@@ -157,6 +182,11 @@ export const DS_SCRIPT = `(function () {
         if (meta) meta.appendChild(created);
       } else if (task.working !== true && workingBadge !== null) {
         workingBadge.remove();
+      }
+      var nextProject = task.project === null || task.project === undefined ? "" : task.project;
+      if (nextProject !== (row.getAttribute("data-task-project") || "")) {
+        location.reload();
+        return;
       }
       if (task.status !== currentFilter()) {
         var wasSelected = row.querySelector(".ds__task.active") !== null;
@@ -210,6 +240,33 @@ export const DS_SCRIPT = `(function () {
           location.reload();
         });
     }
+    function openProjectMenu(row, sourceBox) {
+      var current = row.getAttribute("data-task-project") || "";
+      var submenu = document.createElement("div");
+      submenu.className = "matrix-menu";
+      [{ id: "", name: "未分類" }].concat(projectOptions).forEach(function (option) {
+        var item = document.createElement("button");
+        item.type = "button";
+        item.className = "matrix-menu-item";
+        item.setAttribute("data-ds-project", option.id);
+        item.textContent = (option.id === current ? "● " : "　") + option.name;
+        submenu.appendChild(item);
+      });
+      submenu.addEventListener("click", function (event) {
+        var item = event.target.closest ? event.target.closest("[data-ds-project]") : null;
+        if (item === null) return;
+        var target = menuRow;
+        if (target === null) return;
+        var value = item.getAttribute("data-ds-project");
+        patchTask(target, { project: value === "" ? null : value });
+      });
+      document.body.appendChild(submenu);
+      var rect = sourceBox.getBoundingClientRect();
+      var subRect = submenu.getBoundingClientRect();
+      submenu.style.left = Math.max(8, Math.min(rect.right + 4, window.innerWidth - subRect.width - 8)) + "px";
+      submenu.style.top = Math.max(8, Math.min(rect.top, window.innerHeight - subRect.height - 8)) + "px";
+      menu = submenu;
+    }
     function openMenu(row, x, y) {
       closeMenu();
       menuRow = row;
@@ -221,6 +278,7 @@ export const DS_SCRIPT = `(function () {
         addItem(box, (value === status ? "● " : "　") + STATUS_LABELS[value], "status:" + value, false);
       });
       addItem(box, working ? "作業中を解除" : "作業中にする", "working", false);
+      addItem(box, "プロジェクト", "project", false);
       addItem(box, "タスク詳細を開く", "open", false);
       addItem(box, "削除", "delete", true);
       box.addEventListener("click", function (event) {
@@ -236,6 +294,10 @@ export const DS_SCRIPT = `(function () {
         }
         if (action === "delete") {
           deleteTask(target);
+          return;
+        }
+        if (action === "project") {
+          openProjectMenu(target, box);
           return;
         }
         if (action === "working") {

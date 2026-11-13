@@ -1,8 +1,7 @@
+import { isProjectId } from "./project";
+
 export const TASK_STATUSES = ["do", "done", "skip"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
-
-export const TASK_AREAS = [1, 2, 3, 4] as const;
-export type TaskArea = (typeof TASK_AREAS)[number];
 
 export const TASK_TITLE_MAX_CODE_POINTS = 256;
 export const TASK_DESCRIPTION_MAX_CODE_POINTS = 16_384;
@@ -14,7 +13,7 @@ export type Task = {
   description: string;
   status: TaskStatus;
   working: boolean;
-  area: TaskArea;
+  project: string | null;
   order: number;
   version: number;
   created_at: string;
@@ -25,7 +24,7 @@ export type DomainErrorCode =
   | "INVALID_TITLE"
   | "INVALID_DESCRIPTION"
   | "INVALID_STATUS"
-  | "INVALID_AREA"
+  | "INVALID_PROJECT"
   | "INVALID_WORKING"
   | "INVALID_ORDER"
   | "INVALID_BULK_INPUT"
@@ -46,6 +45,10 @@ export function err<T, E>(error: E): Result<T, E> {
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === "string" && TASK_STATUSES.some((status) => status === value);
+}
+
+export function isTaskProject(value: unknown): value is string | null {
+  return value === null || isProjectId(value);
 }
 
 export type TaskVersionInput = {
@@ -86,14 +89,14 @@ export function parseTaskVersionInputs(value: unknown): Result<TaskVersionInput[
   return ok(inputs);
 }
 
-export function changeTaskStatuses(
+function changeTasks(
   tasks: readonly Task[],
-  status: TaskStatus,
+  change: (task: Task) => Result<Task, DomainError>,
   updatedAt?: string,
 ): Result<Task[], DomainError> {
   const updated: Task[] = [];
   for (const task of tasks) {
-    const changed = changeTaskStatus(task, status);
+    const changed = change(task);
     if (!changed.ok) return err(changed.error);
     const next = { ...changed.value, version: task.version + 1 };
     updated.push(updatedAt === undefined ? next : { ...next, updated_at: updatedAt });
@@ -101,12 +104,24 @@ export function changeTaskStatuses(
   return ok(updated);
 }
 
-export function is_working(task: Task): boolean {
-  return task.working;
+export function changeTaskStatuses(
+  tasks: readonly Task[],
+  status: TaskStatus,
+  updatedAt?: string,
+): Result<Task[], DomainError> {
+  return changeTasks(tasks, (task) => changeTaskStatus(task, status), updatedAt);
 }
 
-export function isTaskArea(value: unknown): value is TaskArea {
-  return typeof value === "number" && TASK_AREAS.some((area) => area === value);
+export function changeTaskProjects(
+  tasks: readonly Task[],
+  project: string | null,
+  updatedAt?: string,
+): Result<Task[], DomainError> {
+  return changeTasks(tasks, (task) => changeTaskProject(task, project), updatedAt);
+}
+
+export function is_working(task: Task): boolean {
+  return task.working;
 }
 
 export function titleCodePointLength(title: string): number {
@@ -132,7 +147,7 @@ export type CreateTaskInput = {
   title: string;
   description: string;
   status?: TaskStatus;
-  area?: TaskArea;
+  project?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -152,7 +167,7 @@ export function createTask(input: CreateTaskInput): Result<Task, DomainError> {
     description: input.description,
     status: input.status ?? "do",
     working: false,
-    area: input.area ?? 1,
+    project: input.project ?? null,
     order: 1,
     version: 1,
     created_at: input.created_at,
@@ -164,8 +179,8 @@ export function changeTaskStatus(task: Task, status: TaskStatus): Result<Task, D
   return ok({ ...task, status });
 }
 
-export function changeTaskArea(task: Task, area: TaskArea): Result<Task, DomainError> {
-  return ok({ ...task, area });
+export function changeTaskProject(task: Task, project: string | null): Result<Task, DomainError> {
+  return ok({ ...task, project });
 }
 
 export function changeTaskWorking(task: Task, working: boolean): Result<Task, DomainError> {
@@ -176,7 +191,7 @@ export type TaskPatch = {
   title?: string;
   description?: string;
   status?: TaskStatus;
-  area?: TaskArea;
+  project?: string | null;
   working?: boolean;
 };
 
@@ -196,9 +211,9 @@ export function parseTaskPatch(body: Record<string, unknown>): Result<TaskPatch,
     if (!isTaskStatus(body["status"])) return err({ code: "INVALID_STATUS" });
     patch.status = body["status"];
   }
-  if ("area" in body) {
-    if (!isTaskArea(body["area"])) return err({ code: "INVALID_AREA" });
-    patch.area = body["area"];
+  if ("project" in body) {
+    if (!isTaskProject(body["project"])) return err({ code: "INVALID_PROJECT" });
+    patch.project = body["project"];
   }
   if ("working" in body) {
     if (typeof body["working"] !== "boolean") return err({ code: "INVALID_WORKING" });
@@ -212,60 +227,6 @@ export function applyTaskPatch(task: Task, patch: TaskPatch): Task {
   return { ...task, ...patch };
 }
 
-export function nextTaskOrder(tasks: readonly Task[], area: TaskArea): number {
-  return tasks.filter((task) => task.area === area).reduce((maximum, task) => Math.max(maximum, task.order), 0) + 1;
-}
-
-export function selectMovedTasks(before: readonly Task[], after: readonly Task[]): Task[] {
-  const previous = new Map(before.map((task) => [task.id, task]));
-  return after.filter((task) => {
-    const origin = previous.get(task.id);
-    return origin !== undefined && (origin.area !== task.area || origin.order !== task.order);
-  });
-}
-
-export function moveTask(
-  tasks: readonly Task[],
-  id: string,
-  area: TaskArea,
-  order: number,
-): Result<Task[], DomainError> {
-  const target = tasks.find((task) => task.id === id);
-  if (!target) {
-    return err({ code: "NOT_FOUND" });
-  }
-  if (!Number.isInteger(order) || order < 0) {
-    return err({ code: "INVALID_ORDER" });
-  }
-
-  const sourceArea = target.area;
-  const rest = tasks.filter((task) => task.id !== id).map((task) => ({ ...task }));
-  const destination = rest
-    .filter((task) => task.area === area)
-    .sort((left, right) => left.order - right.order);
-  const clampedOrder = Math.min(order, destination.length);
-
-  for (const task of destination) {
-    if (task.order >= clampedOrder) {
-      task.order += 1;
-    }
-  }
-
-  const moved = { ...target, area, order: clampedOrder };
-  const normalizedDestination = [...destination, moved]
-    .sort((left, right) => left.order - right.order)
-    .map((task, index) => ({ ...task, order: index }));
-
-  const remaining = rest.filter((task) => task.area !== area);
-  if (sourceArea === area) {
-    return ok([...remaining, ...normalizedDestination]);
-  }
-
-  const normalizedSource = remaining
-    .filter((task) => task.area === sourceArea)
-    .sort((left, right) => left.order - right.order)
-    .map((task, index) => ({ ...task, order: index }));
-  const untouched = remaining.filter((task) => task.area !== sourceArea);
-
-  return ok([...untouched, ...normalizedSource, ...normalizedDestination]);
+export function nextTaskOrder(tasks: readonly Task[]): number {
+  return tasks.reduce((maximum, task) => Math.max(maximum, task.order), 0) + 1;
 }

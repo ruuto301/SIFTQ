@@ -20,16 +20,6 @@
         "done",
         "skip"
       ]
-    },
-    "area": {
-      "kind": "quadrant",
-      "logical": "number",
-      "values": [
-        1,
-        2,
-        3,
-        4
-      ]
     }
   },
   "entities": {
@@ -63,23 +53,22 @@
             "INV-TM-001"
           ]
         },
-        "area": {
-          "domain": "area",
-          "note": "1 / 2 / 3 / 4",
-          "rules": [
-            "INV-TM-002",
-            "INV-TM-007"
-          ]
-        },
         "working": {
           "domain": "boolean",
           "rules": [
             "INV-TM-003"
           ]
         },
+        "project": {
+          "domain": "string",
+          "note": "projects.id または未設定（NULL）",
+          "rules": [
+            "INV-TM-002"
+          ]
+        },
         "order": {
           "domain": "number",
-          "note": "pinned / unpinned各グループ内の表示順"
+          "note": "owner_id 内の表示順"
         },
         "version": {
           "domain": "number"
@@ -94,6 +83,27 @@
       "rules": [
         "INV-TM-004"
       ]
+    },
+    "projects": {
+      "description": "タスクの分類先。sort_order の昇順で表示する。",
+      "attributes": {
+        "id": {
+          "domain": "string",
+          "pk": true
+        },
+        "name": {
+          "domain": "string"
+        },
+        "path": {
+          "domain": "string"
+        },
+        "sort_order": {
+          "domain": "number"
+        },
+        "archived": {
+          "domain": "boolean"
+        }
+      }
     },
     "ideas": {
       "description": "タスクとは独立したアイデア。カード一覧で表示する。",
@@ -140,25 +150,11 @@
         "github-login"
       ]
     },
-    "P01": {
-      "name": "Matrix",
-      "entities": [
-        "tasks"
-      ],
-      "onLoad": "html_matrix_page",
-      "references": [
-        "tasks_list"
-      ],
-      "actions": [
-        "dnd",
-        "context-menu",
-        "move-to-idea"
-      ]
-    },
     "P02": {
       "name": "Task list",
       "entities": [
-        "tasks"
+        "tasks",
+        "projects"
       ],
       "onLoad": "html_tasks_page",
       "references": [
@@ -167,13 +163,15 @@
       "actions": [
         "filter",
         "bulk",
+        "project",
         "delete"
       ]
     },
     "P03": {
       "name": "Task detail",
       "entities": [
-        "tasks"
+        "tasks",
+        "projects"
       ],
       "onLoad": "html_task_page",
       "references": [
@@ -181,13 +179,15 @@
       ],
       "actions": [
         "edit",
-        "save"
+        "save",
+        "select-project"
       ]
     },
     "P04": {
       "name": "New task",
       "entities": [
-        "tasks"
+        "tasks",
+        "projects"
       ],
       "onLoad": "html_new_task_page",
       "references": [
@@ -195,6 +195,7 @@
       ],
       "actions": [
         "create",
+        "select-project",
         "cancel"
       ]
     },
@@ -205,25 +206,6 @@
       ],
       "actions": [
         "select-status"
-      ]
-    },
-    "P06": {
-      "name": "Area popover",
-      "entities": [
-        "tasks"
-      ],
-      "actions": [
-        "select-area"
-      ]
-    },
-    "P07": {
-      "name": "Delete confirmation dialog",
-      "entities": [
-        "tasks"
-      ],
-      "actions": [
-        "confirm-delete",
-        "cancel"
       ]
     },
     "P08": {
@@ -474,6 +456,10 @@
           "code": "INVALID_TITLE"
         },
         {
+          "status": 400,
+          "code": "INVALID_PROJECT"
+        },
+        {
           "status": 500
         }
       ]
@@ -493,6 +479,32 @@
         {
           "status": 400,
           "code": "INVALID_STATUS"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        }
+      ]
+    },
+    "tasks_bulk_project": {
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/api/tasks/bulk/project",
+      "operation": "bulk-project",
+      "success": 200,
+      "entity": "tasks",
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_BULK_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PROJECT"
         },
         {
           "status": 404,
@@ -548,7 +560,7 @@
         },
         {
           "status": 400,
-          "code": "INVALID_AREA"
+          "code": "INVALID_PROJECT"
         },
         {
           "status": 400,
@@ -590,21 +602,15 @@
         }
       ]
     },
-    "tasks_reorder": {
+    "projects_list": {
       "kind": "api",
-      "method": "POST",
-      "path": "/api/tasks/reorder",
-      "operation": "reorder",
+      "method": "GET",
+      "path": "/api/projects",
+      "operation": "list",
       "success": 200,
-      "entity": "tasks",
       "errors": [
         {
-          "status": 400,
-          "code": "INVALID_ORDER"
-        },
-        {
-          "status": 409,
-          "code": "CONFLICT"
+          "status": 500
         }
       ]
     },
@@ -629,14 +635,6 @@
           "code": "CONFLICT"
         }
       ]
-    },
-    "html_matrix_page": {
-      "kind": "html",
-      "method": "GET",
-      "path": "/matrix",
-      "operation": "load",
-      "success": 200,
-      "entity": "tasks"
     },
     "html_ideas_page": {
       "kind": "html",
@@ -728,11 +726,11 @@
         }
       ]
     },
-    "html_tasks_area": {
+    "html_tasks_project": {
       "kind": "html",
       "method": "POST",
-      "path": "/tasks/{id}/area",
-      "operation": "area",
+      "path": "/tasks/{id}/project",
+      "operation": "project",
       "success": 200,
       "entity": "tasks",
       "errors": [
@@ -783,12 +781,6 @@
       "to": "P08"
     },
     {
-      "from": "P01",
-      "on": "ログアウト",
-      "to": "P00",
-      "call": "html_logout"
-    },
-    {
       "from": "P02",
       "on": "ログアウト",
       "to": "P00",
@@ -813,21 +805,6 @@
       "call": "html_logout"
     },
     {
-      "from": "P01",
-      "on": "Tasks 押下",
-      "to": "P02"
-    },
-    {
-      "from": "P01",
-      "on": "Ideas 押下",
-      "to": "P08"
-    },
-    {
-      "from": "P02",
-      "on": "Matrix 押下",
-      "to": "P01"
-    },
-    {
       "from": "P02",
       "on": "Ideas 押下",
       "to": "P08"
@@ -836,16 +813,6 @@
       "from": "P08",
       "on": "Tasks 押下",
       "to": "P02"
-    },
-    {
-      "from": "P08",
-      "on": "Matrix 押下",
-      "to": "P01"
-    },
-    {
-      "from": "P01",
-      "on": "New task / area 空白押下",
-      "to": "P04"
     },
     {
       "from": "P02",
@@ -861,17 +828,7 @@
     {
       "from": "P04",
       "on": "Cancel 押下",
-      "to": "P01"
-    },
-    {
-      "from": "P04",
-      "on": "Cancel 押下",
       "to": "P02"
-    },
-    {
-      "from": "P01",
-      "on": "task card 押下",
-      "to": "P03"
     },
     {
       "from": "P02",
@@ -896,14 +853,15 @@
       "call": "html_tasks_working"
     },
     {
-      "from": "P04",
-      "on": "Status 押下",
-      "to": "P05"
+      "from": "P03",
+      "on": "Project 選択",
+      "to": "P03",
+      "call": "html_tasks_project"
     },
     {
       "from": "P04",
-      "on": "Area 押下",
-      "to": "P06"
+      "on": "Status 押下",
+      "to": "P05"
     },
     {
       "from": "P05",
@@ -917,25 +875,9 @@
       "to": "P04"
     },
     {
-      "from": "P06",
-      "on": "area 選択",
-      "to": "P04",
-      "call": "html_tasks_area"
-    },
-    {
-      "from": "P06",
-      "on": "外側押下",
-      "to": "P04"
-    },
-    {
       "from": "P03",
       "on": "Status 押下",
       "to": "P05"
-    },
-    {
-      "from": "P03",
-      "on": "Area 押下",
-      "to": "P06"
     },
     {
       "from": "P05",
@@ -947,51 +889,18 @@
       "from": "P05",
       "on": "外側押下",
       "to": "P03"
-    },
-    {
-      "from": "P06",
-      "on": "area 選択",
-      "to": "P03",
-      "call": "html_tasks_area"
-    },
-    {
-      "from": "P06",
-      "on": "外側押下",
-      "to": "P03"
-    },
-    {
-      "from": "P05",
-      "on": "Area 押下",
-      "to": "P06"
-    },
-    {
-      "from": "P06",
-      "on": "Status 押下",
-      "to": "P05"
-    },
-    {
-      "from": "P01",
-      "on": "ドラッグ&ドロップ",
-      "to": "P01",
-      "call": "tasks_reorder"
-    },
-    {
-      "from": "P01",
-      "on": "メニュー status 選択",
-      "to": "P01",
-      "call": "tasks_patch"
-    },
-    {
-      "from": "P01",
-      "on": "メニュー working 切替",
-      "to": "P01",
-      "call": "tasks_patch"
     },
     {
       "from": "P02",
       "on": "bulk status 変更",
       "to": "P02",
       "call": "tasks_bulk_status"
+    },
+    {
+      "from": "P02",
+      "on": "bulk project 変更",
+      "to": "P02",
+      "call": "tasks_bulk_project"
     },
     {
       "from": "P02",
@@ -1028,28 +937,6 @@
       "on": "Idea 削除",
       "to": "P08",
       "call": "ideas_delete"
-    },
-    {
-      "from": "P01",
-      "on": "delete 選択",
-      "to": "P07"
-    },
-    {
-      "from": "P07",
-      "on": "キャンセル",
-      "to": "P01"
-    },
-    {
-      "from": "P07",
-      "on": "削除",
-      "to": "P01",
-      "call": "tasks_delete"
-    },
-    {
-      "from": "P01",
-      "on": "メニュー Ideasに移動",
-      "to": "P01",
-      "call": "tasks_id_move_to_idea"
     },
     {
       "from": "P08",
@@ -1102,27 +989,6 @@
       "api": "ideas_delete"
     },
     {
-      "screen": "P01",
-      "trigger": "POST",
-      "view": "screen:P01",
-      "gateway": "matrix-scripts.ts",
-      "api": "tasks_reorder"
-    },
-    {
-      "screen": "P01",
-      "trigger": "POST",
-      "view": "screen:P01",
-      "gateway": "matrix-scripts.ts",
-      "api": "tasks_patch"
-    },
-    {
-      "screen": "P01",
-      "trigger": "POST",
-      "view": "screen:P01",
-      "gateway": "matrix-scripts.ts",
-      "api": "tasks_delete"
-    },
-    {
       "screen": "P03",
       "trigger": "POST",
       "view": "screen:P03",
@@ -1141,14 +1007,21 @@
       "trigger": "POST",
       "view": "screen:P02",
       "gateway": "task-list-scripts.ts",
-      "api": "tasks_bulk_delete"
+      "api": "tasks_bulk_status"
     },
     {
       "screen": "P02",
       "trigger": "POST",
       "view": "screen:P02",
       "gateway": "task-list-scripts.ts",
-      "api": "tasks_bulk_status"
+      "api": "tasks_bulk_project"
+    },
+    {
+      "screen": "P02",
+      "trigger": "POST",
+      "view": "screen:P02",
+      "gateway": "task-list-scripts.ts",
+      "api": "tasks_bulk_delete"
     }
   ],
   "flows": {
@@ -1164,15 +1037,10 @@
           }
         },
         {
-          "name": "重要度・緊急度で area を決める",
+          "name": "プロジェクトを決める",
           "entity": "tasks",
           "changes": {
-            "area": [
-              1,
-              2,
-              3,
-              4
-            ]
+            "project": "プロジェクトIDまたは未設定"
           }
         },
         {
@@ -1201,7 +1069,6 @@
           "entity": "tasks",
           "changes": {
             "status": "do",
-            "area": 1,
             "working": false
           }
         }

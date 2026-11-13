@@ -1,15 +1,17 @@
 import { TASK_STATUSES } from "../task";
-import type { Task, TaskArea, TaskStatus } from "../task";
+import type { Task, TaskStatus } from "../task";
+
+const SEED_PROJECTS: readonly (string | null)[] = ["Yoriwake", "dsh", "customer_portal", null];
 
 const SEED_TASKS: readonly Task[] = [
   {
     id: "preview-task",
     owner_id: "local",
-    title: "Matrix のタスクカードを見直す",
+    title: "タスク一覧のカードを見直す",
     description: "タスクの内容を確認しやすいカード表現を検討する。",
     status: "do",
     working: true,
-    area: 1,
+    project: "Yoriwake",
     order: 0,
     version: 1,
     created_at: "2026-08-29T00:00:00.000Z",
@@ -22,7 +24,7 @@ const SEED_TASKS: readonly Task[] = [
     description: "",
     status: "do",
     working: false,
-    area: 2,
+    project: "dsh",
     order: 0,
     version: 1,
     created_at: "2026-08-29T00:00:00.000Z",
@@ -35,7 +37,7 @@ const SEED_TASKS: readonly Task[] = [
     description: "",
     status: "done",
     working: true,
-    area: 3,
+    project: "customer_portal",
     order: 0,
     version: 1,
     created_at: "2026-08-29T00:00:00.000Z",
@@ -48,7 +50,7 @@ const SEED_TASKS: readonly Task[] = [
     description: "",
     status: "skip",
     working: false,
-    area: 4,
+    project: null,
     order: 0,
     version: 1,
     created_at: "2026-08-29T00:00:00.000Z",
@@ -60,17 +62,8 @@ const BULK_STATUSES: readonly TaskStatus[] = TASK_STATUSES;
 const BULK_PER_STATUS = 60;
 const BULK_BASE_TIME = Date.UTC(2026, 6, 1, 0, 0, 0);
 
-function bulkArea(index: number): TaskArea {
-  switch (index % 4) {
-    case 0:
-      return 1;
-    case 1:
-      return 2;
-    case 2:
-      return 3;
-    default:
-      return 4;
-  }
+function bulkProject(index: number): string | null {
+  return SEED_PROJECTS[index % SEED_PROJECTS.length] ?? null;
 }
 
 function bulkTasks(status: TaskStatus): Task[] {
@@ -83,7 +76,7 @@ function bulkTasks(status: TaskStatus): Task[] {
       description: "",
       status,
       working: status === "do" && index % 2 === 0,
-      area: bulkArea(index),
+      project: bulkProject(index),
       order: index,
       version: 1,
       created_at: timestamp,

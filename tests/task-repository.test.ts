@@ -122,7 +122,7 @@ function expectInsertExecution(execution: Execution | undefined, task: Task): vo
     task.description,
     task.status,
     0,
-    task.area,
+    task.project,
     task.order,
     task.version,
     task.created_at,
@@ -148,7 +148,7 @@ const unusedD1Database = {
   },
 } satisfies D1Database;
 
-const repositoryMethods = ["bulkRemove", "bulkUpdateStatus", "find", "insert", "list", "move", "remove", "update"];
+const repositoryMethods = ["bulkRemove", "bulkUpdateProject", "bulkUpdateStatus", "find", "insert", "list", "remove", "update"];
 
 describe("TaskRepository contract", () => {
   it("inserts and reads a task through the in-memory double", async () => {
@@ -199,7 +199,7 @@ describe("TaskRepository contract", () => {
     expect(database.executions[0]?.query).toContain("UPDATE tasks SET title");
   });
 
-  it("returns conflicts from failed D1 updates and atomic moves", async () => {
+  it("returns conflicts from failed D1 updates", async () => {
     const updateDatabase = new RecordingD1Database([0]);
     const updateRepository = createD1TaskRepository(updateDatabase);
     const task = taskFixture({ id: "task-1", version: 1 });
@@ -207,17 +207,17 @@ describe("TaskRepository contract", () => {
     const updated = await updateRepository.update(task);
 
     expect(updated).toEqual({ ok: false, error: { code: "CONFLICT" } });
+  });
 
-    const moveDatabase = new RecordingD1Database([1, 0]);
-    const moveRepository = createD1TaskRepository(moveDatabase);
-    const moved = await moveRepository.move([
-      taskFixture({ id: "task-1", version: 1, area: 1 }),
-      taskFixture({ id: "task-2", version: 1, area: 2 }),
-    ]);
+  it("writes the project column on update", async () => {
+    const database = new RecordingD1Database([1]);
+    const repository = createD1TaskRepository(database);
 
-    expect(moved).toEqual({ ok: false, error: { code: "CONFLICT" } });
-    expect(moveDatabase.executions).toHaveLength(2);
-    expect(moveDatabase.executions.every(({ query }) => query.includes("UPDATE tasks SET area"))).toBe(true);
+    const updated = await repository.update(taskFixture({ id: "task-1", project: "dsh", version: 1 }));
+
+    expect(updated.ok).toBe(true);
+    expect(database.executions[0]?.query).toContain("project = ?");
+    expect(database.executions[0]?.values).toContain("dsh");
   });
 });
 

@@ -1,11 +1,12 @@
 import type { FC } from "hono/jsx";
-import { TASK_AREAS, TASK_STATUSES } from "../task";
-import type { Task, TaskArea, TaskStatus } from "../task";
+import { TASK_STATUSES } from "../task";
+import type { Task, TaskStatus } from "../task";
+import type { Project } from "../project";
 import { TaskSidePanel } from "./TaskMeta";
-import { AREA_DOT_CLASSES, STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
+import { STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
 
 type Choice = {
-  value: string | number;
+  value: TaskStatus;
   selected: boolean;
   description: string;
   dotClass: string;
@@ -20,45 +21,22 @@ function statusChoice(task: Task, value: TaskStatus): Choice {
   };
 }
 
-function areaChoice(task: Task, value: TaskArea): Choice {
-  return {
-    value,
-    selected: value === task.area,
-    description: "Matrix quadrant.",
-    dotClass: AREA_DOT_CLASSES[value],
-  };
-}
-
-function buildChoices(task: Task, open: "status" | "area"): Choice[] {
-  return open === "status"
-    ? TASK_STATUSES.map((value) => statusChoice(task, value))
-    : TASK_AREAS.map((value) => areaChoice(task, value));
-}
-
-function returnStatusSuffix(returnTo: "matrix" | "tasks", listStatus: TaskStatus): string {
-  return returnTo === "matrix" ? "" : `&status=${listStatus}`;
+function statusSuffix(listStatus: TaskStatus): string {
+  return `&status=${listStatus}`;
 }
 
 const ChoiceLink: FC<{
   task: Task;
-  open: "status" | "area";
   choice: Choice;
-  returnTo: "matrix" | "tasks";
   listStatus: TaskStatus;
-}> = ({
-  task,
-  open,
-  choice,
-  returnTo,
-  listStatus,
-}) => {
-  const statusSuffix = returnStatusSuffix(returnTo, listStatus);
+}> = ({ task, choice, listStatus }) => {
+  const suffix = statusSuffix(listStatus);
   return (
     <a
       class={`status-choice${choice.selected ? " selected" : ""}`}
-      href={`/tasks/${task.id}?from=${returnTo}${statusSuffix}`}
-      hx-post={`/tasks/${task.id}/${open}?from=${returnTo}${statusSuffix}`}
-      hx-vals={JSON.stringify({ [open]: choice.value, version: task.version })}
+      href={`/tasks/${task.id}?from=tasks${suffix}`}
+      hx-post={`/tasks/${task.id}/status?from=tasks${suffix}`}
+      hx-vals={JSON.stringify({ status: choice.value, version: task.version })}
       hx-target="#task-meta"
       hx-swap="innerHTML"
     >
@@ -75,37 +53,22 @@ const ChoiceLink: FC<{
 
 export const OptionMenu: FC<{
   task: Task;
-  open: "status" | "area";
-  returnTo?: "matrix" | "tasks";
+  projects: readonly Project[];
   listStatus?: TaskStatus;
-}> = ({ task, open, returnTo = "tasks", listStatus = "do" }) => {
-  const choices = buildChoices(task, open);
-  const title = open === "status" ? "Apply status to this task" : "Apply area to this task";
-  const selectedTitle = open === "status" ? "Selected status" : "Selected area";
+}> = ({ task, projects, listStatus = "do" }) => {
+  const choices = TASK_STATUSES.map((status) => statusChoice(task, status));
   const selected = choices.filter((choice) => choice.selected);
   const suggestions = choices.filter((choice) => !choice.selected);
-  const cancelHref = `/tasks/${task.id}?from=${returnTo}${returnStatusSuffix(returnTo, listStatus)}`;
+  const cancelHref = `/tasks/${task.id}?from=tasks${statusSuffix(listStatus)}`;
   const renderChoice = (choice: Choice) => (
-    <ChoiceLink
-      key={String(choice.value)}
-      task={task}
-      open={open}
-      choice={choice}
-      returnTo={returnTo}
-      listStatus={listStatus}
-    />
+    <ChoiceLink key={choice.value} task={task} choice={choice} listStatus={listStatus} />
   );
 
   return (
-    <TaskSidePanel
-      task={task}
-      className="side-panel side-panel--popover-open"
-      returnTo={returnTo}
-      listStatus={listStatus}
-    >
-      <section class="popover" aria-label={title}>
-        <h3>{title}</h3>
-        <div class="status-group-title">{selectedTitle}</div>
+    <TaskSidePanel task={task} projects={projects} className="side-panel side-panel--popover-open" listStatus={listStatus}>
+      <section class="popover" aria-label="Apply status to this task">
+        <h3>Apply status to this task</h3>
+        <div class="status-group-title">Selected status</div>
         {selected.map(renderChoice)}
         <div class="status-group-title">Suggestions</div>
         {suggestions.map(renderChoice)}

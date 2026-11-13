@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, expectTaskVisibleInList, openTaskFromList, dismissPopover } from "./matrix-helpers";
+import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, expectTaskVisibleInList, openTaskFromList, dismissPopover } from "./task-helpers";
 import { expect, test } from "./fixtures";
 
 test("creates a task from the task list and returns to the task list", async ({ page }) => {
@@ -39,13 +39,13 @@ test("filters the task list by status and retains it after reload", async ({ pag
   await expect(page).toHaveURL(/\/tasks\?status=done$/);
   await expectTaskVisibleInList(page, `E2E filter done ${suffix}`, "done");
 
-  await page.goto("/matrix");
+  await page.goto("/ideas");
   await page.locator('nav.nav a[href="/tasks"]').click();
   await expect(page).toHaveURL(/\/tasks$/);
   await expect(page.locator('a[href="/tasks?status=do"][aria-current="true"]')).toBeVisible();
   await expectTaskVisibleInList(page, `E2E filter do ${suffix}`, "do");
 });
-test("keeps new-task inputs while changing Status and Area", async ({ page }) => {
+test("keeps new-task inputs while changing Status and Project", async ({ page }) => {
   const title = `Retained title ${Date.now()}`;
   await signIn(page);
 
@@ -58,8 +58,7 @@ test("keeps new-task inputs while changing Status and Area", async ({ page }) =>
   await expect(page.getByLabel("Title")).toHaveValue(title);
   await expect(descriptionEditor(page)).toHaveText("Retained description");
 
-  await page.locator("#new-task-meta details").nth(1).locator("summary").click();
-  await page.locator('input[name="area"][value="4"]').check();
+  await page.getByLabel("Project").selectOption("dsh");
   await expect(page.getByLabel("Title")).toHaveValue(title);
   await expect(descriptionEditor(page)).toHaveText("Retained description");
 
@@ -68,7 +67,7 @@ test("keeps new-task inputs while changing Status and Area", async ({ page }) =>
   await expectTaskVisibleInList(page, title, "done");
   await page.getByText(title, { exact: true }).click();
   await expect(page.locator("#task-meta .status--done")).toHaveText("done");
-  await expect(page.locator("#task-meta .area-badge")).toHaveText("4");
+  await expect(page.getByLabel("Project")).toHaveValue("dsh");
 });
 test("dismisses new task Status popover when clicking outside", async ({ page }) => {
   await signIn(page);
@@ -83,22 +82,7 @@ test("dismisses new task Status popover when clicking outside", async ({ page })
   await expect(statusDetails).not.toHaveAttribute("open");
   await expect(popover).toBeHidden();
 });
-test("dismisses new task Area popover when clicking outside", async ({ page }) => {
-  await signIn(page);
-  await page.goto("/tasks/new");
-
-  const areaDetails = page.locator("#new-task-meta details").nth(1);
-  await areaDetails.locator("summary").click();
-  const popover = page.locator('[aria-label="Apply area to this task"]');
-  await expect(popover).toBeVisible();
-
-  await page.getByLabel("Title").click();
-  await expect(areaDetails).not.toHaveAttribute("open");
-  await expect(popover).toBeHidden();
-});
-test("closes new task Status and Area popovers with Cancel without changing selection", async ({
-  page,
-}) => {
+test("closes new task Status popover with Cancel without changing selection", async ({ page }) => {
   await signIn(page);
   await page.goto("/tasks/new");
 
@@ -109,12 +93,6 @@ test("closes new task Status and Area popovers with Cancel without changing sele
     .click();
   await expect(statusDetails).not.toHaveAttribute("open");
   await expect(page.locator('input[name="status"][value="do"]')).toBeChecked();
-
-  const areaDetails = page.locator("#new-task-meta details").nth(1);
-  await areaDetails.locator("summary").click();
-  await page.locator('[aria-label="Apply area to this task"] [data-popover-cancel]').click();
-  await expect(areaDetails).not.toHaveAttribute("open");
-  await expect(page.locator('input[name="area"][value="1"]')).toBeChecked();
 });
 test("closes new task popover when selecting a choice", async ({ page }) => {
   await signIn(page);
@@ -125,11 +103,11 @@ test("closes new task popover when selecting a choice", async ({ page }) => {
   await page.locator('input[name="status"][value="done"]').check();
   await expect(statusDetails).not.toHaveAttribute("open");
 });
-test("dismisses task detail Status and Area popovers when clicking outside", async ({ page }) => {
+test("dismisses task detail Status popover when clicking outside", async ({ page }) => {
   await signIn(page);
 
   const title = `E2E popover task ${Date.now()}`;
-  await page.goto("/tasks/new?status=do&area=2");
+  await page.goto("/tasks/new?status=do&project=dsh");
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
@@ -137,12 +115,10 @@ test("dismisses task detail Status and Area popovers when clicking outside", asy
 
   await dismissPopover(page, "status");
   await expect(page.locator("#task-meta .status--do")).toHaveText("do");
-
-  await dismissPopover(page, "area");
-  await expect(page.locator("#task-meta .area-badge")).toHaveText("2");
+  await expect(page.getByLabel("Project")).toHaveValue("dsh");
 });
 
-async function saveAfterMetaChange(page: Page, kind: "status" | "area", value: string) {
+async function saveAfterMetaChange(page: Page, kind: "status" | "project", value: string) {
   const title = `E2E ${kind} save ${Date.now()}`;
   const description = `E2E ${kind} draft`;
 
@@ -162,8 +138,12 @@ async function saveAfterMetaChange(page: Page, kind: "status" | "area", value: s
 
   const version = page.locator("#task-version");
   const beforeMetaChange = await version.inputValue();
-  await page.getByRole("link", { name: new RegExp(`^${kind === "status" ? "Status" : "Area"}`) }).click();
-  await page.locator(`[aria-label="Apply ${kind} to this task"] .status-choice`, { hasText: value }).click();
+  if (kind === "status") {
+    await page.getByRole("link", { name: /^Status/ }).click();
+    await page.locator('[aria-label="Apply status to this task"] .status-choice', { hasText: value }).click();
+  } else {
+    await page.getByLabel("Project").selectOption(value);
+  }
   await expect(version).not.toHaveValue(beforeMetaChange);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), draftKey)).toContain(draftTitle);
   await page.getByRole("button", { name: "Save" }).click();
@@ -181,16 +161,16 @@ test("saves after changing task status", async ({ page }) => {
 
   await saveAfterMetaChange(page, "status", "done");
 });
-test("saves after changing task area", async ({ page }) => {
+test("saves after changing task project", async ({ page }) => {
   await signIn(page);
 
-  await saveAfterMetaChange(page, "area", "4");
+  await saveAfterMetaChange(page, "project", "dsh");
 });
 test("persists an edit and displays a conflict from a stale editor", async ({ page }) => {
   await signIn(page);
 
   const title = `E2E concurrent task ${Date.now()}`;
-  await page.goto("/tasks/new?status=do&area=2");
+  await page.goto("/tasks/new?status=do&project=dsh");
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
@@ -216,30 +196,6 @@ test("persists an edit and displays a conflict from a stale editor", async ({ pa
   await expect(staleEditor.getByRole("link", { name: "Load latest" })).toBeVisible();
   await expect.poll(() => hasDraft(staleEditor, staleTitle, staleDescription)).toBe(true);
 });
-test("does not keep a new task draft when cancelling from the matrix", async ({ page }) => {
-  const title = `E2E cancel draft ${Date.now()}`;
-  const description = "draft retained after cancel";
-
-  await signIn(page);
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-
-  await page.getByRole("link", { name: "New task" }).click();
-  await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();
-  await page.getByLabel("Title").waitFor();
-  await waitForPageSettle(page);
-  await page.clock.install();
-  await page.getByLabel("Title").fill(title);
-  await descriptionEditor(page).fill(description);
-  await expectDraftNotSaved(page, title, description);
-
-  await page.getByRole("link", { name: "Cancel", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await expect.poll(() => hasDraft(page, title, description)).toBe(false);
-
-  await page.getByRole("link", { name: "New task" }).click();
-  await expect(page.getByLabel("Title")).toHaveValue("");
-  await expect(descriptionEditor(page)).toHaveText("");
-});
 test("cancels a new task from the task list and returns to the task list", async ({ page }) => {
   await signIn(page);
   await page.goto("/tasks");
@@ -264,10 +220,11 @@ test("does not keep a new task draft when navigating to another screen", async (
   await descriptionEditor(page).fill(description);
   await expectDraftNotSaved(page, title, description);
 
-  await page.locator('nav.nav a[href="/matrix"]').click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await page.locator('nav.nav a[href="/ideas"]').click();
+  await expect(page).toHaveURL(/\/ideas$/);
   await expect.poll(() => hasDraft(page, title, description)).toBe(false);
 
+  await page.locator('nav.nav a[href="/tasks"]').click();
   await page.getByRole("link", { name: "New task" }).click();
   await expect(page.getByLabel("Title")).toHaveValue("");
   await expect(descriptionEditor(page)).toHaveText("");

@@ -15,7 +15,6 @@ import {
   POPOVER_DISMISS_SCRIPT,
   TASK_FORM_SHORTCUT_SCRIPT,
 } from "../src/client/browser-scripts";
-import { MATRIX_DND_SCRIPT } from "../src/client/matrix-scripts";
 import { DESCRIPTION_EDITOR_SCRIPT } from "../src/client/task-form-scripts";
 import { TASK_LIST_SELECTION_SCRIPT } from "../src/client/task-list-scripts";
 
@@ -26,7 +25,6 @@ const scripts = [
   ["escape cancel", ESCAPE_CANCEL_SCRIPT],
   ["description editor", DESCRIPTION_EDITOR_SCRIPT],
   ["task list selection", TASK_LIST_SELECTION_SCRIPT],
-  ["Matrix drag and drop", MATRIX_DND_SCRIPT],
 ] as const;
 
 describe("browser scripts", () => {

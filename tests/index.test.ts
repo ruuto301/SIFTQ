@@ -4,11 +4,11 @@ import { TEST_SECRET, authBindings, authenticatedRequest } from "./helpers/authe
 import { createMemoryTaskRepository } from "./helpers/memory-task-repository";
 
 describe("smoke", () => {
-  it("renders the Matrix route", async () => {
+  it("redirects the removed Matrix route to the task list", async () => {
     const response = await authenticatedRequest("/matrix", createMemoryTaskRepository());
 
-    expect(response.status).toBe(200);
-    expect(await response.text()).toContain("Matrix");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe("/tasks");
   });
 
   it("accepts the internal transport token on the task API", async () => {
@@ -55,13 +55,13 @@ describe("smoke", () => {
     expect(body).toContain('data-task-form="edit"');
   });
 
-  it("serves the matrix area navigation handler without authentication", async () => {
-    const response = await app.request("/matrix-dnd.js");
+  it("serves the task list selection handler without authentication", async () => {
+    const response = await app.request("/task-list-selection.js");
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/javascript");
     const body = await response.text();
-    expect(body).toContain('closest(".area--quadrant[data-drop-area]")');
-    expect(body).toContain('window.location.assign("/tasks/new?area=" + encodeURIComponent(area) + "&from=matrix")');
+    expect(body).toContain("/api/tasks/bulk/project");
+    expect(body).toContain("/api/tasks/bulk/status");
   });
 });
