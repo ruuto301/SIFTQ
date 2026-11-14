@@ -120,7 +120,7 @@
   - 入力欄の下に追加先 project の `select` を表示する。選択肢は project の一覧に `未分類` を加えたもので、`未分類` は最後に置く。
   - 追加先の既定値は選択中 task の project とし、task 未選択のときは `未分類` とする。タブまたは task を切り替えると既定値へ戻る。
   - `Enter`、`Ctrl + Enter`（Mac は `⌘ + Enter`）または `追加` で task を作成する。status は選択中のタブ、project は追加先 `select` の値とし、`未分類` は project 未設定として送る。
-  - 作成した task は該当 project グループの末尾へ追加し、そのグループを展開して強調表示し、件数を更新する。ページ全体は再読み込みしない。
+  - 作成した task は該当 project グループの先頭へ追加し、その行を強調表示して件数を更新する。グループが折りたたまれている場合は折りたたんだままにする。ページ全体は再読み込みしない。
   - 入力欄が空のときは `追加` を無効にする。変換確定の `Enter` / `Ctrl + Enter` では送信しない。`Escape` は入力を消す。
   - task 名が 256 文字を超える場合と作成に失敗した場合は、入力内容を保持したままエラーを表示する。
   - task は project ごとにグループ化し、`projects.sort_order` の昇順で並べる。project 未設定の task は最後の `未分類` グループに表示する。
@@ -144,7 +144,8 @@
   - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
   - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
   - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
-  - `説明` タブは task の description を表示する。DSH はこの description を共有テキストとして読み書きする。
+  - `description` タブは task の description を表示する。DSH はこの description を共有テキストとして読み書きする。
+  - `description` タブは初期表示から task の description を描画する。DSH transport が使える場合は `desc.get` の応答を優先し、使えない場合も task の description を表示する。description が空のときはプレースホルダを表示する。
   - `設定` タブは選択中 profile の設定を表示し、保存する。
   - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
   - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。
