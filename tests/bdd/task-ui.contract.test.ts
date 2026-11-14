@@ -171,18 +171,18 @@ describe("Task list status tabs", () => {
 
   it("filters by project id and by unassigned", async () => {
     await repo.insert(taskFixture({ id: "yoriwake", title: "yoriwake task", status: "do", project: "Yoriwake" }));
-    await repo.insert(taskFixture({ id: "dsh", title: "dsh task", status: "do", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "affiliate", title: "affiliate task", status: "do", project: "affiliate" }));
     await repo.insert(taskFixture({ id: "none", title: "none task", status: "do", project: null }));
 
     const projectBody = await (await request("/tasks?q=is:do%20project:Yoriwake")).text();
     expect(projectBody).toContain("yoriwake task");
-    expect(projectBody).not.toContain("dsh task");
+    expect(projectBody).not.toContain("affiliate task");
     expect(projectBody).not.toContain("none task");
 
     const noneBody = await (await request("/tasks?q=is:do%20project:none")).text();
     expect(noneBody).toContain("none task");
     expect(noneBody).not.toContain("yoriwake task");
-    expect(noneBody).not.toContain("dsh task");
+    expect(noneBody).not.toContain("affiliate task");
   });
 
   it("keeps a valid query when navigating labels", async () => {
@@ -365,7 +365,7 @@ describe("Task creation", () => {
         title: "Plan",
         description: "",
         status: "done",
-        project: "dsh",
+        project: "affiliate",
       }).toString(),
     });
     expect(response.status).toBe(201);
@@ -374,7 +374,7 @@ describe("Task creation", () => {
     if (!listed.ok) throw new Error("expected task list");
     expect(listed.value).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ title: "Plan", status: "done", project: "dsh" }),
+        expect.objectContaining({ title: "Plan", status: "done", project: "affiliate" }),
       ]),
     );
   });
@@ -397,7 +397,7 @@ describe("Task creation", () => {
 
 describe("New task page", () => {
   it("renders the new task page with cancel and a project select", async () => {
-    const body = await (await request("/tasks/new?project=dsh&status=done")).text();
+    const body = await (await request("/tasks/new?project=affiliate&status=done")).text();
 
     expect(body).toContain("New task");
     expect(body).toContain("Cancel");
@@ -405,7 +405,7 @@ describe("New task page", () => {
     expect(body).toContain('data-task-form="new"');
     expect(body).toContain("status status--done");
     expect(body).toContain('name="project"');
-    expect(body).toContain('<option value="dsh" selected');
+    expect(body).toContain('<option value="affiliate" selected');
     expect(body).toContain("未分類");
     expect(body).not.toContain('name="area"');
   });
@@ -539,7 +539,7 @@ describe("Task detail and metadata menus", () => {
 
   it.each([
     ["status", "done", "/tasks/task-1/status"],
-    ["project", "dsh", "/tasks/task-1/project"],
+    ["project", "affiliate", "/tasks/task-1/project"],
   ])("refreshes the form version after changing %s", async (_kind, value, path) => {
     await repo.insert(taskFixture({ id: "task-1", version: 3 }));
 
@@ -570,16 +570,16 @@ describe("Task detail and metadata menus", () => {
 describe("BDD-TM-006: DS project groups", () => {
   it("groups the status-filtered tasks by project with 未分類 last", async () => {
     await repo.insert(taskFixture({ id: "yoriwake-1", title: "yoriwake task", status: "do", project: "Yoriwake" }));
-    await repo.insert(taskFixture({ id: "dsh-1", title: "dsh task", status: "do", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "affiliate-1", title: "affiliate task", status: "do", project: "affiliate" }));
     await repo.insert(taskFixture({ id: "none-1", title: "none task", status: "do", project: null }));
-    await repo.insert(taskFixture({ id: "done-1", title: "done task", status: "done", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "done-1", title: "done task", status: "done", project: "affiliate" }));
 
     const response = await request("/ds");
     const body = await response.text();
 
     expect(response.status).toBe(200);
     expect(body).toContain('data-ds-group-id="Yoriwake"');
-    expect(body).toContain('data-ds-group-id="dsh"');
+    expect(body).toContain('data-ds-group-id="affiliate"');
     expect(body).toContain('data-ds-group-id=""');
     expect(body).toContain("未分類");
     expect(body).toContain("yoriwake task");

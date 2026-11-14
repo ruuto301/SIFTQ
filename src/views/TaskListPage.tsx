@@ -341,13 +341,31 @@ function TaskListToolbar({
   );
 }
 
-function TaskListRows({ tasks, status }: { tasks: readonly Task[]; status: TaskStatus }) {
+function TaskListRows({
+  tasks,
+  projects,
+  status,
+}: {
+  tasks: readonly Task[];
+  projects: readonly Project[];
+  status: TaskStatus;
+}) {
+  // The row shows the display name, which can differ from the id (for example 生活 / life).
+  const names = new Map(projects.map((project) => [project.id, project.name]));
   return (
     <div class="list" aria-label="Task list">
       {tasks.length === 0 ? (
         <p class="task-list-empty">該当するtaskはありません。</p>
       ) : (
-        tasks.map((task) => <TaskRow key={task.id} task={task} listStatus={status} />)
+        tasks.map((task) => {
+          const name = task.project === null ? undefined : names.get(task.project);
+          // `projectName` is omitted rather than passed as undefined (exactOptionalPropertyTypes).
+          return name === undefined ? (
+            <TaskRow key={task.id} task={task} listStatus={status} />
+          ) : (
+            <TaskRow key={task.id} task={task} listStatus={status} projectName={name} />
+          );
+        })
       )}
     </div>
   );
@@ -393,7 +411,7 @@ export function TaskListPage({
           projects={projects}
           project={project}
         />
-        <TaskListRows tasks={tasks} status={status} />
+        <TaskListRows tasks={tasks} projects={projects} status={status} />
       </div>
       <PageNav
         status={status}

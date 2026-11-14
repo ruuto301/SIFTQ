@@ -16,6 +16,15 @@ describe("TaskRow", () => {
     expect(html).toContain('data-version="1"');
   });
 
+  it("prefers the project display name over the id (BDD-TM-034)", () => {
+    const html = renderToString(
+      <TaskRow task={taskFixture({ project: "life" })} projectName="生活" />,
+    );
+
+    expect(html).toContain("#生活");
+    expect(html).not.toContain("#life");
+  });
+
   it("shows 未分類 for an unassigned task", () => {
     const html = renderToString(<TaskRow task={taskFixture({ project: null })} />);
 

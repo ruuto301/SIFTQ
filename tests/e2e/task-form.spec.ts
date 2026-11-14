@@ -58,7 +58,7 @@ test("keeps new-task inputs while changing Status and Project", async ({ page })
   await expect(page.getByLabel("Title")).toHaveValue(title);
   await expect(descriptionEditor(page)).toHaveText("Retained description");
 
-  await page.getByLabel("Project").selectOption("dsh");
+  await page.getByLabel("Project").selectOption("affiliate");
   await expect(page.getByLabel("Title")).toHaveValue(title);
   await expect(descriptionEditor(page)).toHaveText("Retained description");
 
@@ -67,7 +67,7 @@ test("keeps new-task inputs while changing Status and Project", async ({ page })
   await expectTaskVisibleInList(page, title, "done");
   await page.getByText(title, { exact: true }).click();
   await expect(page.locator("#task-meta .status--done")).toHaveText("done");
-  await expect(page.getByLabel("Project")).toHaveValue("dsh");
+  await expect(page.getByLabel("Project")).toHaveValue("affiliate");
 });
 test("dismisses new task Status popover when clicking outside", async ({ page }) => {
   await signIn(page);
@@ -107,7 +107,7 @@ test("dismisses task detail Status popover when clicking outside", async ({ page
   await signIn(page);
 
   const title = `E2E popover task ${Date.now()}`;
-  await page.goto("/tasks/new?status=do&project=dsh");
+  await page.goto("/tasks/new?status=do&project=affiliate");
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
@@ -115,7 +115,7 @@ test("dismisses task detail Status popover when clicking outside", async ({ page
 
   await dismissPopover(page, "status");
   await expect(page.locator("#task-meta .status--do")).toHaveText("do");
-  await expect(page.getByLabel("Project")).toHaveValue("dsh");
+  await expect(page.getByLabel("Project")).toHaveValue("affiliate");
 });
 
 async function saveAfterMetaChange(page: Page, kind: "status" | "project", value: string) {
@@ -164,13 +164,13 @@ test("saves after changing task status", async ({ page }) => {
 test("saves after changing task project", async ({ page }) => {
   await signIn(page);
 
-  await saveAfterMetaChange(page, "project", "dsh");
+  await saveAfterMetaChange(page, "project", "affiliate");
 });
 test("persists an edit and displays a conflict from a stale editor", async ({ page }) => {
   await signIn(page);
 
   const title = `E2E concurrent task ${Date.now()}`;
-  await page.goto("/tasks/new?status=do&project=dsh");
+  await page.goto("/tasks/new?status=do&project=affiliate");
   await page.getByLabel("Title").fill(title);
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
