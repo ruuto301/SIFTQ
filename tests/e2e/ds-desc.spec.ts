@@ -22,7 +22,7 @@ async function openTaskInDs(page: Page, title: string) {
   await expect(tab).toHaveClass(/active/);
 }
 
-test("labels the description tab instead of 説明 (BDD-TM-031)", async ({ page }) => {
+test("labels the description tab instead of 説明 (BDD-TM-032)", async ({ page }) => {
   await page.goto("/ds");
 
   const tabs = page.getByRole("tab");
@@ -31,7 +31,7 @@ test("labels the description tab instead of 説明 (BDD-TM-031)", async ({ page 
   await expect(page.getByRole("tab", { name: "説明" })).toHaveCount(0);
 });
 
-test("renders the stored description without waiting for the transport (BDD-TM-031)", async ({ page }) => {
+test("renders the stored description without waiting for the transport (BDD-TM-032)", async ({ page }) => {
   const title = `desc task ${Date.now()}`;
   const description = "手順は https://example.com/docs を参照する。\n- 1 つ目\n- 2 つ目";
   await createTaskWithDescription(page, title, description);
@@ -43,7 +43,7 @@ test("renders the stored description without waiting for the transport (BDD-TM-0
   await expect(view).toContainText("2 つ目");
 });
 
-test("keeps the placeholder when the task has no description (BDD-TM-031)", async ({ page }) => {
+test("keeps the placeholder when the task has no description (BDD-TM-032)", async ({ page }) => {
   const title = `no desc task ${Date.now()}`;
   await createTaskWithDescription(page, title, "");
   await openTaskInDs(page, title);

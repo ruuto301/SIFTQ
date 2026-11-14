@@ -42,6 +42,8 @@ describe("DS browser script", () => {
       "ds__task-item",
       "is-new",
       "scrollIntoView",
+      'position: "first"',
+      "list.insertBefore(row, list.firstElementChild)",
       "compositionstart",
       "Escape",
       "requestSubmit",

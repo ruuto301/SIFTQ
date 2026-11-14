@@ -174,14 +174,6 @@ export const DS_SCRIPT = `(function () {
       }
       return null;
     }
-    function expandGroup(section) {
-      if (section.getAttribute("data-collapsed") !== "true") return;
-      section.setAttribute("data-collapsed", "false");
-      var toggle = section.querySelector("[data-ds-group-toggle]");
-      if (toggle) toggle.setAttribute("aria-expanded", "true");
-      collapsedGroups[section.getAttribute("data-ds-group-id") || "__none__"] = false;
-      saveCollapsedGroups();
-    }
     function buildTaskRow(task) {
       var project = task.project === null || task.project === undefined ? "" : String(task.project);
       var item = document.createElement("li");
@@ -219,14 +211,14 @@ export const DS_SCRIPT = `(function () {
       if (section === null) return false;
       var list = section.querySelector(".ds__tasks");
       if (list === null) return false;
-      expandGroup(section);
+      var collapsed = section.getAttribute("data-collapsed") === "true";
       var row = buildTaskRow(task);
-      list.appendChild(row);
+      list.insertBefore(row, list.firstElementChild);
       var count = section.querySelector(".ds__group-count");
       if (count !== null) count.textContent = String(list.querySelectorAll(".ds__task-item").length);
       var link = row.firstElementChild;
       if (link !== null) link.classList.add("is-new");
-      row.scrollIntoView({ block: "nearest" });
+      if (!collapsed) row.scrollIntoView({ block: "nearest" });
       setTimeout(function () {
         if (link !== null) link.classList.remove("is-new");
       }, NEW_HIGHLIGHT_MS);
@@ -261,6 +253,7 @@ export const DS_SCRIPT = `(function () {
           description: "",
           status: activeStatus(),
           project: newProject.value === "" ? null : newProject.value,
+          position: "first",
         }),
       })
         .then(function (response) {

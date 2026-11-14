@@ -70,6 +70,24 @@ function readOrderUpdates(value: unknown, isValidOrder: (order: number) => boole
   return { ok: true, updates };
 }
 
+/** Reads the requested insert position; `first` puts the new task at the top of the list. */
+function readCreatePosition(value: unknown): "first" | "last" | null {
+  if (value === undefined || value === "last") return "last";
+  return value === "first" ? "first" : null;
+}
+
+/** Shifts every existing task down by one so a new task can take the first position. */
+async function shiftTasksForFirstPlace<T extends ApiEnv>(
+  c: Context<T>,
+  deps: TaskDeps<T>,
+  tasks: readonly Task[],
+) {
+  const updates = tasks
+    .map((task) => ({ id: task.id, order: task.order + 1 }))
+    .sort((left, right) => right.order - left.order);
+  return deps.repository(c).move(updates);
+}
+
 function createTaskAtBoundary({
   title,
   description,
@@ -184,6 +202,8 @@ async function createApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>)
   if (status !== undefined && !isTaskStatus(status)) return problem(c, 400, "INVALID_STATUS");
   const project = await resolveApiProject(deps.projectRepository, c, body["project"]);
   if (!project.ok) return problem(c, 400, project.code);
+  const position = readCreatePosition(body["position"]);
+  if (position === null) return problem(c, 400, "INVALID_INPUT");
   const created = createTaskAtBoundary({
     title,
     description,
@@ -193,7 +213,14 @@ async function createApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>)
   if (!created.ok) return problem(c, 400, created.error.code);
   const listed = await deps.repository(c).list();
   if (!listed.ok) return problem(c, 500, listed.error.code);
-  const inserted = await deps.repository(c).insert({ ...created.value, order: nextTaskOrder(listed.value) });
+  if (position === "first" && listed.value.length > 0) {
+    const shifted = await shiftTasksForFirstPlace(c, deps, listed.value);
+    if (!shifted.ok) return problem(c, 500, shifted.error.code);
+  }
+  const inserted = await deps.repository(c).insert({
+    ...created.value,
+    order: position === "first" ? 1 : nextTaskOrder(listed.value),
+  });
   if (!inserted.ok) return problem(c, 500, inserted.error.code);
   c.header("Location", `/api/tasks/${inserted.value.id}`);
   return c.json(inserted.value, 201);

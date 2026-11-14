@@ -37,9 +37,13 @@ test("adds a task from the DS composer to the selected project (BDD-TM-028)", as
   expect(body.title).toBe(title);
   expect(body.status).toBe("do");
   expect(body.project).toBe(project === "" ? null : project);
+  expect(body.position).toBe("first");
 
   const row = group(page, project).locator(".ds__task-item").filter({ hasText: title });
   await expect(row).toHaveCount(1);
+  await expect(group(page, project).locator(".ds__task-item").first()).toContainText(title);
+  await page.reload();
+  await expect(group(page, project).locator(".ds__task-item").first()).toContainText(title);
   await expect(page.locator("#ds-new-project")).toHaveValue(project);
   expect(await groupCount(page, project)).toBe(before + 1);
   await expect(page.locator("#ds-new-title")).toHaveValue("");
@@ -100,7 +104,7 @@ test("keeps the task text and reports a failure (BDD-TM-028)", async ({ page }) 
   await expect(page.locator(".ds__task-item").filter({ hasText: title })).toHaveCount(0);
 });
 
-test("expands a collapsed group when a task is added to it (BDD-TM-028)", async ({ page }) => {
+test("keeps a collapsed group collapsed when a task is added to it (BDD-TM-031)", async ({ page }) => {
   const title = `collapsed composer task ${Date.now()}`;
   await page.goto("/tasks");
   await createTask(page, title, "customer_portal");
@@ -109,12 +113,14 @@ test("expands a collapsed group when a task is added to it (BDD-TM-028)", async 
   const target = group(page, "customer_portal");
   await target.locator(".ds__group-head").click();
   await expect(target).toHaveAttribute("data-collapsed", "true");
+  const before = await groupCount(page, "customer_portal");
 
   const added = `collapsed added ${Date.now()}`;
   await page.selectOption("#ds-new-project", "customer_portal");
   await page.fill("#ds-new-title", added);
   await page.click("#ds-new-add");
 
-  await expect(target).toHaveAttribute("data-collapsed", "false");
   await expect(target.locator(".ds__task-item").filter({ hasText: added })).toHaveCount(1);
+  await expect(target).toHaveAttribute("data-collapsed", "true");
+  expect(await groupCount(page, "customer_portal")).toBe(before + 1);
 });
