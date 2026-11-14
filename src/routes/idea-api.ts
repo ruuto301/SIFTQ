@@ -1,5 +1,4 @@
 import type { Context, Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   applyIdeaPatch,
   isIdeaDescriptionValid,
@@ -11,6 +10,7 @@ import {
 } from "../idea";
 import { createIdea, moveIdeaToTask } from "../idea-tasks";
 import type { DomainError, Result, Task } from "../task";
+import { errorStatus, findOwned, problem, readJsonRecord } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { IdeaOrderUpdate, IdeaRepository, IdeaRepositoryError } from "../repository/idea-repository";
 
@@ -23,25 +23,6 @@ type TaskSideEffects = {
 };
 type TaskSideEffectFactory = (c: Context<AppEnv>) => TaskSideEffects;
 
-function problem(c: Context<AppEnv>, status: ContentfulStatusCode, code: string) {
-  return c.json({ code }, status);
-}
-
-async function readJsonRecord(c: Context<AppEnv>): Promise<Record<string, unknown> | null> {
-  try {
-    const value = await c.req.json<unknown>();
-    return isIdeaRecord(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function errorStatus(code: string): ContentfulStatusCode {
-  if (code === "NOT_FOUND") return 404;
-  if (code === "CONFLICT") return 409;
-  return 400;
-}
-
 function readOrder(value: unknown): number | null {
   return typeof value === "number" && isIdeaOrderValid(value) ? value : null;
 }
@@ -49,9 +30,7 @@ function readOrder(value: unknown): number | null {
 type IdeaLookup = { ok: true; value: Idea } | { ok: false; error: IdeaRepositoryError };
 
 async function findIdea(c: Context<AppEnv>, repository: Repository, id: string): Promise<IdeaLookup> {
-  const result = await repository(c).find(id, OWNER_ID);
-  if (!result.ok) return result;
-  return result.value === undefined ? { ok: false, error: { code: "NOT_FOUND" } } : { ok: true, value: result.value };
+  return findOwned(repository(c).find(id, OWNER_ID), { code: "NOT_FOUND" });
 }
 
 export function registerIdeaApiRoutes(
@@ -66,7 +45,7 @@ export function registerIdeaApiRoutes(
   });
 
   app.post("/api/ideas", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     if (body === null) return problem(c, 400, "INVALID_INPUT");
     const title = typeof body["title"] === "string" ? body["title"].trim() : "";
     const description = typeof body["description"] === "string" ? body["description"] : "";
@@ -81,7 +60,7 @@ export function registerIdeaApiRoutes(
   });
 
   app.post("/api/ideas/reorder", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     const rawIdeas = body?.["ideas"];
     if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) return problem(c, 400, "INVALID_INPUT");
     const updates: IdeaOrderUpdate[] = [];
@@ -97,7 +76,7 @@ export function registerIdeaApiRoutes(
   });
 
   app.patch("/api/ideas/:id", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     if (body === null) return problem(c, 400, "INVALID_INPUT");
     const found = await findIdea(c, repository, c.req.param("id"));
     if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);

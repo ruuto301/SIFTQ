@@ -184,6 +184,19 @@ export function extractClientCalls(source: string): { method: string; path: stri
   return lines.flatMap((line, index) => extractLineCalls(line, lines, index));
 }
 
+/** Keeps api ids unique when two methods share a path the id scheme cannot tell apart. */
+function uniqueApiId(api: Record<string, ApiOperation>, baseId: string, method: string): string {
+  if (api[baseId] === undefined) return baseId;
+  const suffixed = `${baseId}_${method.toLowerCase()}`;
+  let candidate = suffixed;
+  let index = 2;
+  while (api[candidate] !== undefined) {
+    candidate = `${suffixed}_${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
 export function buildAuto(routes: Route[], calls: ClientCall[], meta: Record<string, { errors?: ApiError[] }>): PartialModel {
   const api: Record<string, ApiOperation> = {};
   const lookup = new Map<string, string>();
@@ -191,10 +204,11 @@ export function buildAuto(routes: Route[], calls: ClientCall[], meta: Record<str
     if (route.path === "/" || route.path.includes("/menu")) continue;
     const mapped = routeToApi(route);
     if (mapped === null) continue;
-    const errors = meta[mapped.id]?.errors;
+    const id = uniqueApiId(api, mapped.id, mapped.operation.method);
+    const errors = meta[id]?.errors;
     if (errors !== undefined) mapped.operation.errors = errors;
-    api[mapped.id] = mapped.operation;
-    lookup.set(`${mapped.operation.method} ${mapped.operation.path}`, mapped.id);
+    api[id] = mapped.operation;
+    lookup.set(`${mapped.operation.method} ${mapped.operation.path}`, id);
   }
   const screenCalls: ScreenCall[] = [];
   const seen = new Set<string>();

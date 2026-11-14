@@ -15,11 +15,6 @@
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
-    "path": "src/client/idea-scripts.ts",
-    "reason": "Ideasのブラウザ操作はIdea E2Eが実際の画面挙動を検証するため。",
-    "removal": "ブラウザスクリプト単位のテストを追加したとき。"
-  },
-  {
     "path": "src/client/task-form-scripts.ts",
     "reason": "Taskフォーム用のブラウザスクリプトで、既存のUI/E2Eテストが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
@@ -32,56 +27,6 @@
   {
     "path": "src/components/task-option-data.ts",
     "reason": "既存コンポーネントから抽出した静的表示データで、既存UIテストが検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/mcp/schema.ts",
-    "reason": "MCP ツールの入力検証は tests/mcp.test.ts と tests/mcp-oauth.test.ts が検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/mcp/tools-ideas.ts",
-    "reason": "Idea 系 MCP ツールは tests/mcp.test.ts が検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/mcp/tools-projects.ts",
-    "reason": "Project 系 MCP ツールは tests/mcp.test.ts が検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/mcp/tools-tasks.ts",
-    "reason": "Task 系 MCP ツールは tests/mcp.test.ts が検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/mcp/types.ts",
-    "reason": "MCP ツールの結果整形は tests/mcp.test.ts が検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/preview/MemoryIdeaRepository.ts",
-    "reason": "preview用repositoryはIdea API契約テストとpreview E2Eが検証するため。",
-    "removal": "repository単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/preview/ideas.ts",
-    "reason": "preview固定データはpreview画面契約テストが検証するため。",
-    "removal": "previewデータ単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/repository/d1-idea-repository.ts",
-    "reason": "D1 repositoryはIdea API契約テストとローカルD1 E2Eが検証するため。",
-    "removal": "D1 repository単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/repository/idea-repository.ts",
-    "reason": "repository interfaceはmemory/D1実装とIdea API契約テストが利用するため。",
-    "removal": "interface単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/repository/oauth-repository.ts",
-    "reason": "OAuth リポジトリの契約は tests/d1-oauth-repository.test.ts と tests/MemoryOAuthRepository.test.ts が検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
@@ -105,23 +50,8 @@
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
-    "path": "src/styles/ds.ts",
-    "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/styles/dsh-chat.ts",
-    "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
     "path": "src/styles/login.ts",
     "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
-    "removal": "ファイル単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/styles/settings.ts",
-    "reason": "集約したSTYLES_CSSのstyles.test.tsが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
@@ -145,21 +75,6 @@
     "removal": "ファイル単位のテストを追加したとき。"
   },
   {
-    "path": "src/views/IdeaDetailFields.tsx",
-    "reason": "Idea detail fieldsはIdeas/detail両viewとIdea E2Eが検証するため。",
-    "removal": "view部品単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/views/IdeaDetailPage.tsx",
-    "reason": "Idea detail viewはIdea E2Eとpreview画面契約テストが検証するため。",
-    "removal": "view単位のテストを追加したとき。"
-  },
-  {
-    "path": "src/views/IdeasPage.tsx",
-    "reason": "Ideas list viewはIdea E2Eとpreview画面契約テストが検証するため。",
-    "removal": "view単位のテストを追加したとき。"
-  },
-  {
     "path": "src/views/TaskFormPage.tsx",
     "reason": "既存viewから抽出したTask form画面で、既存UI契約テストが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
@@ -173,5 +88,130 @@
     "path": "src/views/navigation.tsx",
     "reason": "既存viewから抽出したnavigationで、既存UI契約テストが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/client/idea-scripts.ts",
+    "reason": "Ideasのブラウザ操作はIdea E2Eが実際の画面挙動を検証するため。",
+    "removal": "ブラウザスクリプト単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/preview/MemoryIdeaRepository.ts",
+    "reason": "preview用repositoryはIdea API契約テストとpreview E2Eが検証するため。",
+    "removal": "repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/preview/ideas.ts",
+    "reason": "preview固定データはpreview画面契約テストが検証するため。",
+    "removal": "previewデータ単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/d1-idea-repository.ts",
+    "reason": "D1 repositoryはIdea API契約テストとローカルD1 E2Eが検証するため。",
+    "removal": "D1 repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/idea-repository.ts",
+    "reason": "repository interfaceはmemory/D1実装とIdea API契約テストが利用するため。",
+    "removal": "interface単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/views/IdeaDetailPage.tsx",
+    "reason": "Idea detail viewはIdea E2Eとpreview画面契約テストが検証するため。",
+    "removal": "view単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/views/IdeasPage.tsx",
+    "reason": "Ideas list viewはIdea E2Eとpreview画面契約テストが検証するため。",
+    "removal": "view単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/views/IdeaDetailFields.tsx",
+    "reason": "Idea detail fieldsはIdeas/detail両viewとIdea E2Eが検証するため。",
+    "removal": "view部品単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/styles/ds.ts",
+    "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/styles/dsh-chat.ts",
+    "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/schema.ts",
+    "reason": "MCP ツールの入力検証は tests/mcp.test.ts と tests/mcp-oauth.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/types.ts",
+    "reason": "MCP ツールの結果整形は tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-tasks.ts",
+    "reason": "Task 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-projects.ts",
+    "reason": "Project 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-ideas.ts",
+    "reason": "Idea 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/oauth-repository.ts",
+    "reason": "OAuth リポジトリの契約は tests/d1-oauth-repository.test.ts と tests/MemoryOAuthRepository.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/client/mk-scripts.ts",
+    "reason": "MKのブラウザ操作はMK契約テストとE2Eが実際の画面挙動を検証するため。",
+    "removal": "ブラウザスクリプト単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/preview/MemoryMkRepository.ts",
+    "reason": "preview用repositoryはMK契約テストが検証するため。",
+    "removal": "repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/d1-mk-repository.ts",
+    "reason": "D1 repositoryはMK契約テストと同じ変換規則で検証するため。",
+    "removal": "D1 repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/mk-repository.ts",
+    "reason": "repository interfaceはmemory/D1実装とMK契約テストが利用するため。",
+    "removal": "interface単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/mk-api.ts",
+    "reason": "MK APIはMK契約テストがHTTP境界の挙動を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/mk-screens.tsx",
+    "reason": "MK画面はMK契約テストが描画結果を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/views/MkPage.tsx",
+    "reason": "MK一覧viewはMK契約テストとE2Eが検証するため。",
+    "removal": "view単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/styles/settings.ts",
+    "reason": "集約したSTYLES_CSSのstyles.test.tsが検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/api-helpers.ts",
+    "reason": "API の共通ヘルパーで、idea-api / mk-api の契約テストが検証するため。",
+    "removal": "ヘルパー単位のテストを追加したとき。"
   }
 ]

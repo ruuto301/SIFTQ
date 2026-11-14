@@ -1,4 +1,4 @@
-export type ActiveKey = "ideas" | "tasks" | "ds" | "settings";
+export type ActiveKey = "ideas" | "mk" | "tasks" | "ds" | "settings";
 
 type Nav = {
   label: string;
@@ -23,7 +23,7 @@ export const SCREENS: readonly Screen[] = [
     entity: "tasks",
     presentationId: "P02",
     clientFiles: ["task-list-scripts.ts"],
-    nav: { label: "Tasks", order: 1, activeKey: "tasks" },
+    nav: { label: "Tasks", order: 2, activeKey: "tasks" },
   },
   {
     path: "/tasks/:id",
@@ -44,7 +44,14 @@ export const SCREENS: readonly Screen[] = [
     entity: "tasks",
     presentationId: "P10",
     clientFiles: ["dsh-chat-scripts.ts", "ds-scripts.ts", "ds-settings-scripts.ts"],
-    nav: { label: "DS", order: 2, activeKey: "ds" },
+    nav: { label: "DS", order: 3, activeKey: "ds" },
+  },
+  {
+    path: "/mk",
+    pageId: "html_mk_page",
+    presentationId: "P13",
+    clientFiles: ["mk-scripts.ts"],
+    nav: { label: "MK", order: 1, activeKey: "mk" },
   },
   {
     path: "/settings",

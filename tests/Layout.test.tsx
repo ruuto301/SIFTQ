@@ -20,17 +20,20 @@ describe("Layout", () => {
     expect(html).toContain('href="data:image/svg+xml,');
   });
 
-  it("orders the primary nav as Ideas, Tasks, DS", () => {
-    for (const active of ["ideas", "tasks", "ds"] as const) {
+  it("orders the primary nav as Ideas, MK, Tasks, DS", () => {
+    for (const active of ["ideas", "mk", "tasks", "ds"] as const) {
       const html = renderToString(<Layout active={active}><span>content</span></Layout>);
       const nav = html.slice(html.indexOf("<nav"), html.indexOf("</nav>"));
       const ideas = nav.indexOf('href="/ideas"');
+      const mk = nav.indexOf('href="/mk"');
       const tasks = nav.indexOf('href="/tasks"');
       const ds = nav.indexOf('href="/ds"');
       expect(ideas).toBeGreaterThanOrEqual(0);
+      expect(mk).toBeGreaterThanOrEqual(0);
       expect(tasks).toBeGreaterThanOrEqual(0);
       expect(ds).toBeGreaterThanOrEqual(0);
-      expect(ideas).toBeLessThan(tasks);
+      expect(ideas).toBeLessThan(mk);
+      expect(mk).toBeLessThan(tasks);
       expect(tasks).toBeLessThan(ds);
       expect(nav).toContain(`href="/${active}"`);
       expect(nav).not.toContain('href="/matrix"');

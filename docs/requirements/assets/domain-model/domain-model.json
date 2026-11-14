@@ -414,6 +414,140 @@
       "operation": "mcp",
       "success": 302
     },
+    "mk_notes": {
+      "kind": "api",
+      "method": "GET",
+      "path": "/api/mk/notes",
+      "operation": "notes",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_FILTER"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_COLOR"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
+    "mk_notes_post": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/mk/notes",
+      "operation": "notes",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TITLE"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_BODY"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_COLOR"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PINNED"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
+    "mk_notes_bulk": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/mk/notes/bulk",
+      "operation": "notes-bulk",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_BULK_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_COLOR"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PINNED"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "mk_notes_id": {
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/api/mk/notes/{id}",
+      "operation": "notes-id",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TITLE"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_BODY"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_COLOR"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PINNED"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "mk_notes_id_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/mk/notes/{id}",
+      "operation": "notes-id-delete",
+      "success": 204,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "html_mk_page": {
+      "kind": "html",
+      "method": "GET",
+      "path": "/mk",
+      "operation": "load",
+      "success": 200
+    },
     "tasks_list": {
       "kind": "api",
       "method": "GET",
@@ -1125,6 +1259,34 @@
       "view": "screen:P08",
       "gateway": "idea-scripts.ts",
       "api": "ideas_delete"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_notes_post"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_notes_id"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_notes_id_delete"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_notes_bulk"
     },
     {
       "screen": "P03",

@@ -18,7 +18,7 @@ test("shows Settings after DS in the navigation and lists the projects", async (
   await signIn(page);
 
   const nav = page.getByRole("navigation", { name: "Primary" });
-  await expect(nav.getByRole("link")).toHaveText(["Ideas", "Tasks", "DS", "Settings"]);
+  await expect(nav.getByRole("link")).toHaveText(["Ideas", "MK", "Tasks", "DS", "Settings"]);
 
   await openSettings(page);
   for (const name of ["Yoriwake", "affiliate", "customer_portal", "生活"]) {
