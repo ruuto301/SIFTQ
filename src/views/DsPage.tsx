@@ -4,9 +4,11 @@ import type { Task, TaskStatus } from "../task";
 import type { Project } from "../project";
 import type { TaskGroup } from "../task-list";
 import { PROJECT_NONE_LABEL } from "../components/task-option-data";
+import { ProjectOptions } from "../components/ProjectOptions";
 
 type TaskPaneProps = {
   groups: readonly TaskGroup[];
+  projects: readonly Project[];
   selected: Task | undefined;
   status: TaskStatus;
 };
@@ -74,11 +76,56 @@ function TaskGroupSection({ group, selected }: { group: TaskGroup; selected: Tas
   );
 }
 
-function TaskPane({ groups, selected, status }: TaskPaneProps) {
+/**
+ * Task composer above the group list. The project default is the selected task,
+ * so adding a task keeps it in the group the user is looking at.
+ */
+function TaskComposer({
+  projects,
+  selected,
+  status,
+}: {
+  projects: readonly Project[];
+  selected: Task | undefined;
+  status: TaskStatus;
+}) {
+  return (
+    <form class="ds__new" id="ds-new-task" autocomplete="off">
+      <div class="ds__new-row">
+        <label class="ds__new-label ds__new-label--hidden" for="ds-new-title">
+          新しいタスク
+        </label>
+        <input
+          class="ds__new-input"
+          id="ds-new-title"
+          type="text"
+          maxlength={256}
+          placeholder={`タスクを追加（${status}）`}
+          aria-describedby="ds-new-error"
+        />
+        <button type="submit" class="ds__new-add" id="ds-new-add" disabled>
+          追加
+        </button>
+      </div>
+      <div class="ds__new-row">
+        <label class="ds__new-label" for="ds-new-project">
+          追加先
+        </label>
+        <select class="ds__new-project" id="ds-new-project">
+          <ProjectOptions projects={projects} selected={selected?.project ?? null} noneLast />
+        </select>
+      </div>
+    </form>
+  );
+}
+
+function TaskPane({ groups, projects, selected, status }: TaskPaneProps) {
   return (
     <aside class="ds__pane ds__pane--tasks">
       <div class="ds__pane-head">Tasks</div>
       <StatusTabs active={status} />
+      <TaskComposer projects={projects} selected={selected} status={status} />
+      <div class="ds__new-error" id="ds-new-error" role="alert" hidden></div>
       <div class="ds__groups-status" id="ds-groups-status" role="status" hidden></div>
       <div class="ds__groups">
         {groups.map((group) => (
@@ -235,7 +282,7 @@ export const DsPage: FC<{
   }));
   return (
     <div class="ds" id="ds-root" data-ds-projects={JSON.stringify(projectOptions)}>
-      <TaskPane groups={groups} selected={selected} status={status} />
+      <TaskPane groups={groups} projects={projects} selected={selected} status={status} />
 
       <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
 

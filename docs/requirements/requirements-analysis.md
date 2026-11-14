@@ -36,6 +36,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-010 | ユーザーは、DS でタスクの分類先と project の並び順をドラッグ&ドロップで変更したい。 | screens.md |
 | REQ-TM-011 | ユーザーは、DS の project 内でタスクの表示順を変えたい。 | screens.md |
 | REQ-TM-012 | ユーザーは、DS のチャットで選択中タスクのタイトルを確認したい。 | screens.md |
+| REQ-TM-013 | ユーザーは、DS の左ペインからタスクを追加したい。 | screens.md |
 
 ## 仕様
 
@@ -62,6 +63,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-019 | REQ-TM-010 | DS の左ペインは task を project 間でドラッグ&ドロップして project を変更でき、project 見出しをドラッグ&ドロップして `sort_order` を並び替えられる。`未分類` は並び替えの対象外とし、失敗時は元の表示へ戻す。 | BDD-TM-025 |
 | SPEC-TM-020 | REQ-TM-011 | DS の project グループ内の task は `order` の昇順（同値は id 順）で並び、ドラッグ&ドロップした位置の順序を `order` として保存する。失敗時は元の表示へ戻す。 | BDD-TM-026 |
 | SPEC-TM-021 | REQ-TM-012 | DS の中央ペインはタブ行の直下に選択中 task の title をラベルなしで表示する。未選択時は表示せず、長い title は省略せず折り返して全文を表示する。 | BDD-TM-027 |
+| SPEC-TM-022 | REQ-TM-013 | DS 左ペインの status タブ直下で task を作成できる。status は選択中タブ、project は追加先 select（既定は選択中 task、`未分類` も選べる）とし、作成した task は該当 project グループへ追加して件数を更新する。失敗時は入力内容を保持してエラーを表示する。 | BDD-TM-028 |
 
 ## BDD 候補
 
@@ -90,6 +92,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-025 | SPEC-TM-019 | DS で task を別の project グループへドラッグ&ドロップすると project が変わり、project 見出しをドラッグ&ドロップすると並び順が変わる。 | 正常 |
 | BDD-TM-026 | SPEC-TM-020 | project グループ内で task をドラッグ&ドロップすると表示順が変わり、再読み込み後も維持される。 | 正常 |
 | BDD-TM-027 | SPEC-TM-021 | DS で task を選択すると、タブ行とメッセージ欄の間にその task の title が表示される。 | 正常 |
+| BDD-TM-028 | SPEC-TM-022 | DS 左ペインで task を追加すると、選択中 status と追加先 project で作成され、その project グループに表示される。 | 正常 |
 
 ## 未決事項
 

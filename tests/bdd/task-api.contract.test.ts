@@ -82,6 +82,42 @@ describe("BDD-TM-001: task creation", () => {
   });
 });
 
+describe("BDD-TM-028: task creation from the DS composer", () => {
+  it("creates a task with the requested status and project", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      status: "skip",
+      project: "Yoriwake",
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.status).toBe("skip");
+    expect(task.project).toBe("Yoriwake");
+  });
+
+  it("keeps the default status do when status is omitted", async () => {
+    const response = await request("POST", "/api/tasks", { title: "Buy milk", description: "" });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.status).toBe("do");
+  });
+
+  it("rejects an unknown status", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      status: "later",
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_STATUS");
+  });
+});
+
 describe("BDD-TM-002: project assignment", () => {
   it("creates a task with a known project", async () => {
     const response = await request("POST", "/api/tasks", {

@@ -23,4 +23,11 @@ describe("ProjectOptions", () => {
     expect(html).toContain('<option value="dsh" selected');
     expect(html).not.toContain('<option value="" selected');
   });
+
+  it("moves 未分類 to the end for the DS composer", () => {
+    const html = renderToString(<ProjectOptions projects={PROJECTS} selected={null} noneLast />);
+
+    expect(html).toContain('<option value="" selected');
+    expect(html.indexOf("未分類")).toBeGreaterThan(html.indexOf("dsh"));
+  });
 });
