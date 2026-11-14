@@ -132,7 +132,24 @@ describe("Task list working and free text query", () => {
 
     expect(body).toContain('data-task-id="working"');
     expect(body).not.toContain('data-task-id="idle"');
-    expect(body).toContain('href="/tasks?status=do&amp;working=on"');
+    expect(body).toContain(
+      `href="/tasks?status=do&amp;working=on&amp;q=${encodeURIComponent("is:do working:on")}"`,
+    );
+  });
+
+});
+
+describe("Task list status tabs", () => {
+  it("keeps the other filters when switching status tabs", async () => {
+    const query = "is:do project:Yoriwake working:on 見積もり";
+    const body = await (await request(`/tasks?q=${encodeURIComponent(query)}`)).text();
+
+    expect(body).toContain(
+      `href="/tasks?status=done&amp;working=on&amp;q=${encodeURIComponent("is:done project:Yoriwake working:on 見積もり")}"`,
+    );
+    expect(body).toContain(
+      `href="/tasks?status=skip&amp;working=on&amp;q=${encodeURIComponent("is:skip project:Yoriwake working:on 見積もり")}"`,
+    );
   });
 
   it("filters by working:off and by free text", async () => {

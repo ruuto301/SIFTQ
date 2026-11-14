@@ -1,7 +1,7 @@
 import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
 import type { Project } from "../project";
-import { pageNavItems, withQueryToken } from "../task-list";
+import { pageNavItems, replaceQueryToken, withQueryToken } from "../task-list";
 import type { TaskWorkingFilter } from "../task-list";
 import { TaskRow } from "../components/TaskRow";
 import { NewTaskLink } from "./navigation";
@@ -11,7 +11,15 @@ const TASK_STATUS_OPTIONS: { status: TaskStatus; label: string }[] = TASK_STATUS
   label: status,
 }));
 
-function TaskStatusFilter({ status, working }: { status: TaskStatus; working: TaskWorkingFilter | undefined }) {
+function TaskStatusFilter({
+  status,
+  working,
+  query,
+}: {
+  status: TaskStatus;
+  working: TaskWorkingFilter | undefined;
+  query: string | undefined;
+}) {
   const workingParam = working === undefined ? "" : `&working=${working}`;
   return (
     <>
@@ -20,16 +28,22 @@ function TaskStatusFilter({ status, working }: { status: TaskStatus; working: Ta
         aria-label="Filter tasks by status"
         data-task-status-tabs
       >
-        {TASK_STATUS_OPTIONS.map((option) => (
-          <a
-            key={option.status}
-            class={option.status === status ? "button small is-active" : "button small"}
-            aria-current={option.status === status ? "true" : undefined}
-            href={`/tasks?status=${option.status}${workingParam}`}
-          >
-            {option.label}
-          </a>
-        ))}
+        {TASK_STATUS_OPTIONS.map((option) => {
+          const nextQuery =
+            query === undefined ? undefined : replaceQueryToken(query, "is:", `is:${option.status}`);
+          const queryParam =
+            nextQuery === undefined ? "" : `&q=${encodeURIComponent(nextQuery)}`;
+          return (
+            <a
+              key={option.status}
+              class={option.status === status ? "button small is-active" : "button small"}
+              aria-current={option.status === status ? "true" : undefined}
+              href={`/tasks?status=${option.status}${workingParam}${queryParam}`}
+            >
+              {option.label}
+            </a>
+          );
+        })}
       </nav>
       <p
         class="task-selection-summary task-selection-summary--toolbar"
@@ -298,7 +312,7 @@ function TaskListToolbar({
             disabled={!hasTasks}
           />
         </label>
-        <TaskStatusFilter status={status} working={working} />
+        <TaskStatusFilter status={status} working={working} query={query} />
         <div class="task-bulk-actions">
           <div data-task-bulk-actions>
             <TaskBulkStatusMenu />

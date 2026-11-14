@@ -30,6 +30,7 @@ import {
   paginateTasks,
   parseTaskListQuery,
   parsePageParam,
+  replaceQueryToken,
   sortTasksByOrder,
   taskProjectFilter,
   taskTextFilter,
@@ -197,6 +198,13 @@ describe("BDD-TM-003: task list filters", () => {
     expect(withQueryToken("is:do project:Yoriwake", "project:", null)).toBe("is:do");
     expect(withQueryToken("is:do", "working:", "working:on")).toBe("is:do working:on");
     expect(withQueryToken("is:do working:on", "working:", null)).toBe("is:do");
+  });
+
+  it("replaces a token in place with replaceQueryToken", () => {
+    expect(replaceQueryToken("is:do project:Yoriwake working:on 見積もり", "is:", "is:done")).toBe(
+      "is:done project:Yoriwake working:on 見積もり",
+    );
+    expect(replaceQueryToken("project:Yoriwake", "is:", "is:skip")).toBe("project:Yoriwake is:skip");
   });
 });
 

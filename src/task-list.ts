@@ -118,6 +118,17 @@ export function filterTasks(tasks: readonly Task[], filters: readonly TaskFilter
   return tasks.filter((task) => filters.every((filter) => filter(task)));
 }
 
+export function replaceQueryToken(query: string, prefix: string, token: string): string {
+  const tokens = query
+    .trim()
+    .split(/\s+/)
+    .filter((value) => value !== "");
+  const index = tokens.findIndex((value) => value.startsWith(prefix));
+  if (index === -1) tokens.push(token);
+  else tokens[index] = token;
+  return tokens.join(" ");
+}
+
 export function withQueryToken(query: string, prefix: string, token: string | null): string {
   const tokens = query
     .trim()
