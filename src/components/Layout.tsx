@@ -37,6 +37,7 @@ export const Layout: FC<{ active: ActiveKey; children?: JSX.Element }> = ({
               {screen.label}
             </a>
           ))}
+          <a href="/connections">Connections</a>
         </nav>
         <form action="/logout" method="post" class="logout">
           <button type="submit" class="button">Logout</button>

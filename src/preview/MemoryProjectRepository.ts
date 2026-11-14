@@ -21,6 +21,18 @@ export function createMemoryProjectRepository(
     return ok(projects.get(id));
   }
 
+  async function insert(project: Project): Promise<Result<Project, ProjectRepositoryError>> {
+    if (projects.has(project.id)) return err({ code: "CONFLICT" });
+    projects.set(project.id, project);
+    return ok(project);
+  }
+
+  async function update(project: Project): Promise<Result<Project, ProjectRepositoryError>> {
+    if (!projects.has(project.id)) return err({ code: "NOT_FOUND" });
+    projects.set(project.id, project);
+    return ok(project);
+  }
+
   async function move(
     updates: readonly ProjectOrderUpdate[],
   ): Promise<Result<Project[], ProjectRepositoryError>> {
@@ -34,5 +46,5 @@ export function createMemoryProjectRepository(
     return list();
   }
 
-  return { list, find, move };
+  return { list, find, insert, update, move };
 }

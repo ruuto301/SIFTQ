@@ -11,6 +11,8 @@ export function createD1ProjectRepository(db: D1Database): ProjectRepository {
   return {
     list: () => listProjects(db),
     find: (id) => findProject(db, id),
+    insert: (project) => insertProject(db, project),
+    update: (project) => updateProject(db, project),
     move: (updates) => moveProjects(db, updates),
   };
 }
@@ -38,6 +40,22 @@ async function findProject(
 
 function changes(result: D1Result): number {
   return result.meta?.changes ?? 0;
+}
+
+async function insertProject(db: D1Database, project: Project): Promise<Result<Project, ProjectRepositoryError>> {
+  const result = await db
+    .prepare("INSERT OR IGNORE INTO projects (id, name, path, sort_order, archived) VALUES (?, ?, ?, ?, ?)")
+    .bind(project.id, project.name, project.path, project.sort_order, project.archived ? 1 : 0)
+    .run();
+  return changes(result) === 0 ? err({ code: "CONFLICT" }) : ok(project);
+}
+
+async function updateProject(db: D1Database, project: Project): Promise<Result<Project, ProjectRepositoryError>> {
+  const result = await db
+    .prepare("UPDATE projects SET name = ?, path = ?, sort_order = ?, archived = ? WHERE id = ?")
+    .bind(project.name, project.path, project.sort_order, project.archived ? 1 : 0, project.id)
+    .run();
+  return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(project);
 }
 
 async function moveProjects(

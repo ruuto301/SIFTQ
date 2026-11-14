@@ -70,3 +70,26 @@ describe("MemoryProjectRepository", () => {
     expect(listed.value.map((project) => project.id)).toEqual(["a", "m", "z"]);
   });
 });
+
+describe("MemoryProjectRepository writes", () => {
+  it("inserts a new project and rejects a duplicated id", async () => {
+    const repository = createMemoryProjectRepository(PROJECTS);
+    const created: Project = { id: "b", name: "B", path: null, sort_order: 4, archived: false };
+
+    expect(await repository.insert(created)).toEqual({ ok: true, value: created });
+    expect(await repository.insert(created)).toEqual({ ok: false, error: { code: "CONFLICT" } });
+    expect(await repository.find("b")).toEqual({ ok: true, value: created });
+  });
+
+  it("updates a stored project and reports an unknown id", async () => {
+    const repository = createMemoryProjectRepository(PROJECTS);
+    const archived: Project = { id: "a", name: "A", path: "/workspace/a", sort_order: 1, archived: true };
+
+    expect(await repository.update(archived)).toEqual({ ok: true, value: archived });
+    expect(await repository.find("a")).toEqual({ ok: true, value: archived });
+    expect(await repository.update({ ...archived, id: "missing" })).toEqual({
+      ok: false,
+      error: { code: "NOT_FOUND" },
+    });
+  });
+});

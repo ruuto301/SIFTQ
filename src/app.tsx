@@ -22,6 +22,8 @@ import { registerTaskApiRoutes } from "./routes/task-api";
 import { registerIdeaApiRoutes } from "./routes/idea-api";
 import { registerImageApiRoutes } from "./routes/image-api";
 import { registerTaskScreenRoutes } from "./routes/task-screens";
+import { mcpUnauthorized, registerMcpRoutes } from "./routes/mcp";
+import { registerOAuthRoutes, verifyMcpToken } from "./oauth";
 import type { AppEnv } from "./app-env";
 
 const app = new Hono<AppEnv>();
@@ -34,6 +36,11 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/auth/github",
   "/auth/github/callback",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-authorization-server",
+  "/oauth/register",
+  "/oauth/token",
+  "/oauth/revoke",
   ...CLIENT_ASSET_PATHS,
 ]);
 
@@ -74,6 +81,11 @@ function unauthorizedResponse(c: Context<AppEnv>): Response {
 app.use("*", async (c, next) => {
   if (isPublicPath(c.req.path)) return next();
   if (hasInternalToken(c)) return next();
+  if (c.req.path === "/mcp") {
+    // MCP clients authenticate with an OAuth access token issued to a delegated client.
+    if ((await verifyMcpToken(c.env, c.req.header("authorization"))) !== null) return next();
+    return mcpUnauthorized(c);
+  }
   const secret = sessionSecret(c);
   if (secret === null) return c.text("Authentication is not configured", 503);
   const session = getCookie(c, SESSION_COOKIE_NAME);
@@ -115,6 +127,8 @@ registerTaskApiRoutes(app, repository, ideaRepository, projectRepository);
 registerIdeaApiRoutes(app, ideaRepository, repository);
 registerImageApiRoutes(app, imageRepository);
 registerTaskScreenRoutes(app, repository, ideaRepository, projectRepository);
+registerOAuthRoutes(app);
+registerMcpRoutes(app, repository, projectRepository, ideaRepository);
 
 for (const asset of CLIENT_ASSETS) {
   app.get(asset.path, (c) => c.body(asset.body, 200, { "content-type": asset.contentType }));

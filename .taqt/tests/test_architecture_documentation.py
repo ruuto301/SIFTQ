@@ -35,6 +35,8 @@ INTERFACE_FILES = {
     ROOT / "src/preview/MemoryTaskRepository.ts",
     ROOT / "src/routes/task-api.ts",
     ROOT / "src/routes/task-screens.tsx",
+    ROOT / "src/routes/mcp.ts",
+    ROOT / "src/mcp/types.ts",
     ROOT / "src/app-env.ts",
 }
 

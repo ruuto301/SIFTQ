@@ -33,15 +33,11 @@ export type DomainErrorCode =
 
 export type DomainError = { code: DomainErrorCode };
 
-export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
+import { err, ok } from "./result";
+import type { Result } from "./result";
 
-export function ok<T, E>(value: T): Result<T, E> {
-  return { ok: true, value };
-}
-
-export function err<T, E>(error: E): Result<T, E> {
-  return { ok: false, error };
-}
+export type { Result } from "./result";
+export { err, ok } from "./result";
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
   return typeof value === "string" && TASK_STATUSES.some((status) => status === value);

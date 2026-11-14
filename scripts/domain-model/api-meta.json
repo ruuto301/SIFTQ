@@ -58,6 +58,20 @@
     ]
   },
   "projects_list": { "errors": [{ "status": 500 }] },
+  "projects_create": {
+    "errors": [
+      { "status": 400, "code": "INVALID_INPUT" },
+      { "status": 409, "code": "CONFLICT" },
+      { "status": 500 }
+    ]
+  },
+  "projects_patch": {
+    "errors": [
+      { "status": 400, "code": "INVALID_INPUT" },
+      { "status": 404, "code": "NOT_FOUND" },
+      { "status": 500 }
+    ]
+  },
   "projects_reorder": {
     "errors": [
       { "status": 400, "code": "INVALID_INPUT" },

@@ -185,6 +185,13 @@
         }
       ]
     },
+    "html_mcp": {
+      "kind": "html",
+      "method": "POST",
+      "path": "/mcp",
+      "operation": "mcp",
+      "success": 302
+    },
     "tasks_list": {
       "kind": "api",
       "method": "GET",
@@ -403,6 +410,46 @@
       "operation": "list",
       "success": 200,
       "errors": [
+        {
+          "status": 500
+        }
+      ]
+    },
+    "projects_create": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/projects",
+      "operation": "create",
+      "success": 201,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
+    "projects_patch": {
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/api/projects/{id}",
+      "operation": "patch",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
         {
           "status": 500
         }
