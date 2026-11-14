@@ -1,4 +1,4 @@
-export type ActiveKey = "ideas" | "mk" | "tasks" | "ds";
+export type ActiveKey = "ideas" | "mk" | "tasks" | "ds" | "settings";
 
 type Nav = {
   label: string;
@@ -52,6 +52,12 @@ export const SCREENS: readonly Screen[] = [
     presentationId: "P13",
     clientFiles: ["mk-scripts.ts"],
     nav: { label: "MK", order: 1, activeKey: "mk" },
+  },
+  {
+    path: "/settings",
+    pageId: "html_settings_page",
+    clientFiles: ["settings-scripts.ts"],
+    nav: { label: "Settings", order: 3, activeKey: "settings" },
   },
   {
     path: "/ideas",

@@ -6,6 +6,7 @@ import { IDEAS_CSS } from "./styles/idea";
 import { MK_CSS } from "./styles/mk";
 import { TASK_FORM_CSS } from "./styles/task-form";
 import { TASK_LIST_CSS, TASK_LIST_RESPONSIVE_CSS } from "./styles/task-list";
+import { SETTINGS_CSS } from "./styles/settings";
 
 export const STYLES_CSS =
   BASE_CSS +
@@ -18,4 +19,5 @@ export const STYLES_CSS =
   TASK_LIST_RESPONSIVE_CSS +
   LOGIN_CSS +
   DSH_CHAT_CSS +
-  DS_CSS;
+  DS_CSS +
+  SETTINGS_CSS;

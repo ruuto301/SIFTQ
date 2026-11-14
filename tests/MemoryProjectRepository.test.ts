@@ -3,9 +3,9 @@ import { createMemoryProjectRepository } from "../src/preview/MemoryProjectRepos
 import type { Project } from "../src/project";
 
 const PROJECTS: readonly Project[] = [
-  { id: "z", name: "Z", path: null, sort_order: 3, archived: true },
-  { id: "a", name: "A", path: "/workspace/a", sort_order: 1, archived: false },
-  { id: "m", name: "M", path: null, sort_order: 2, archived: false },
+  { id: "z", name: "Z", sort_order: 3 },
+  { id: "a", name: "A", sort_order: 1 },
+  { id: "m", name: "M", sort_order: 2 },
 ];
 
 describe("MemoryProjectRepository", () => {
@@ -74,7 +74,7 @@ describe("MemoryProjectRepository", () => {
 describe("MemoryProjectRepository writes", () => {
   it("inserts a new project and rejects a duplicated id", async () => {
     const repository = createMemoryProjectRepository(PROJECTS);
-    const created: Project = { id: "b", name: "B", path: null, sort_order: 4, archived: false };
+    const created: Project = { id: "b", name: "B", sort_order: 4 };
 
     expect(await repository.insert(created)).toEqual({ ok: true, value: created });
     expect(await repository.insert(created)).toEqual({ ok: false, error: { code: "CONFLICT" } });
@@ -83,11 +83,22 @@ describe("MemoryProjectRepository writes", () => {
 
   it("updates a stored project and reports an unknown id", async () => {
     const repository = createMemoryProjectRepository(PROJECTS);
-    const archived: Project = { id: "a", name: "A", path: "/workspace/a", sort_order: 1, archived: true };
+    const renamed: Project = { id: "a", name: "A2", sort_order: 1 };
 
-    expect(await repository.update(archived)).toEqual({ ok: true, value: archived });
-    expect(await repository.find("a")).toEqual({ ok: true, value: archived });
-    expect(await repository.update({ ...archived, id: "missing" })).toEqual({
+    expect(await repository.update(renamed)).toEqual({ ok: true, value: renamed });
+    expect(await repository.find("a")).toEqual({ ok: true, value: renamed });
+    expect(await repository.update({ ...renamed, id: "missing" })).toEqual({
+      ok: false,
+      error: { code: "NOT_FOUND" },
+    });
+  });
+
+  it("removes a stored project and reports an unknown id", async () => {
+    const repository = createMemoryProjectRepository(PROJECTS);
+
+    expect(await repository.remove("m")).toEqual({ ok: true, value: null });
+    expect(await repository.find("m")).toEqual({ ok: true, value: undefined });
+    expect(await repository.remove("missing")).toEqual({
       ok: false,
       error: { code: "NOT_FOUND" },
     });

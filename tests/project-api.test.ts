@@ -2,27 +2,36 @@ import { describe, expect, it } from "vite-plus/test";
 import app from "../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../src/auth";
 import { createMemoryProjectRepository } from "../src/preview/MemoryProjectRepository";
+import { createMemoryTaskRepository } from "../src/preview/MemoryTaskRepository";
 import type { Project } from "../src/project";
 import type { ProjectRepository } from "../src/repository/project-repository";
+import type { TaskRepository } from "../src/repository/task-repository";
+import { taskFixture } from "./helpers/task-fixture";
 
 const SECRET = "project-api-test-secret";
 
 const SEED: readonly Project[] = [
-  { id: "alpha", name: "Alpha", path: "/workspace/alpha", sort_order: 1, archived: false },
-  { id: "beta", name: "Beta", path: null, sort_order: 2, archived: false },
+  { id: "alpha", name: "Alpha", sort_order: 1 },
+  { id: "beta", name: "Beta", sort_order: 2 },
 ];
 
 function seeded(): ProjectRepository {
   return createMemoryProjectRepository(SEED);
 }
 
-async function request(path: string, init: RequestInit, projects: ProjectRepository) {
+async function request(
+  path: string,
+  init: RequestInit,
+  projects: ProjectRepository,
+  tasks: TaskRepository = createMemoryTaskRepository(),
+) {
   const cookie = await createSession(SECRET, Date.now() + 60_000);
   const headers = new Headers(init.headers);
   headers.set("Cookie", `${SESSION_COOKIE_NAME}=${cookie}`);
   return app.request(path, { ...init, headers }, {
     SESSION_SECRET: SECRET,
     PROJECT_REPOSITORY: projects,
+    TASK_REPOSITORY: tasks,
   });
 }
 
@@ -39,50 +48,21 @@ describe("project create API", () => {
   it("creates a project with the next sort order and returns its location", async () => {
     const projects = seeded();
 
-    const response = await request(
-      "/api/projects",
-      json("POST", { id: "gamma", name: "Gamma", path: "/workspace/gamma" }),
-      projects,
-    );
+    const response = await request("/api/projects", json("POST", { id: "gamma", name: "Gamma" }), projects);
 
     expect(response.status).toBe(201);
     expect(response.headers.get("Location")).toBe("/api/projects/gamma");
-    expect(await response.json()).toEqual({
-      id: "gamma",
-      name: "Gamma",
-      path: "/workspace/gamma",
-      sort_order: 3,
-      archived: false,
-    });
+    expect(await response.json()).toEqual({ id: "gamma", name: "Gamma", sort_order: 3 });
     expect(await listedIds(projects)).toEqual(["alpha", "beta", "gamma"]);
   });
 
-  it("defaults path to null, archived to false, and trims the name", async () => {
+  it("trims the name", async () => {
     const projects = seeded();
 
     const response = await request("/api/projects", json("POST", { id: "gamma", name: "  Gamma  " }), projects);
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({
-      id: "gamma",
-      name: "Gamma",
-      path: null,
-      sort_order: 3,
-      archived: false,
-    });
-  });
-
-  it("stores an explicitly archived project", async () => {
-    const projects = seeded();
-
-    const response = await request(
-      "/api/projects",
-      json("POST", { id: "gamma", name: "Gamma", archived: true }),
-      projects,
-    );
-
-    expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ id: "gamma", archived: true, sort_order: 3 });
+    expect(await response.json()).toEqual({ id: "gamma", name: "Gamma", sort_order: 3 });
   });
 
   it("rejects a duplicated id without changing the list", async () => {
@@ -97,15 +77,14 @@ describe("project create API", () => {
 });
 
 describe("project create API validation", () => {
-  it("rejects an invalid id, name, path, and archived value", async () => {
+  it("rejects an invalid id and name", async () => {
     const projects = seeded();
     const bodies: Record<string, unknown>[] = [
       { id: "Bad Id", name: "Gamma" },
       { name: "Gamma" },
       { id: "gamma", name: "   " },
-      { id: "gamma", name: "Gamma", path: "a".repeat(1025) },
-      { id: "gamma", name: "Gamma", path: 3 },
-      { id: "gamma", name: "Gamma", archived: "yes" },
+      { id: "gamma", name: 3 },
+      { id: "gamma", name: "a".repeat(33) },
     ];
 
     for (const body of bodies) {
@@ -127,39 +106,14 @@ describe("project create API validation", () => {
 });
 
 describe("project update API", () => {
-  it("updates the name and keeps the other fields", async () => {
+  it("renames the project and keeps the id and order", async () => {
     const projects = seeded();
 
     const response = await request("/api/projects/alpha", json("PATCH", { name: "  Alpha 2  " }), projects);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      id: "alpha",
-      name: "Alpha 2",
-      path: "/workspace/alpha",
-      sort_order: 1,
-      archived: false,
-    });
-  });
-
-  it("archives a project", async () => {
-    const projects = seeded();
-
-    const response = await request("/api/projects/beta", json("PATCH", { archived: true }), projects);
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ id: "beta", archived: true });
-    const found = await projects.find("beta");
-    expect(found).toEqual({ ok: true, value: { ...SEED[1], archived: true } });
-  });
-
-  it("clears the path with an explicit null", async () => {
-    const projects = seeded();
-
-    const response = await request("/api/projects/alpha", json("PATCH", { path: null }), projects);
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ id: "alpha", path: null });
+    expect(await response.json()).toEqual({ id: "alpha", name: "Alpha 2", sort_order: 1 });
+    expect(await listedIds(projects)).toEqual(["alpha", "beta"]);
   });
 
   it("returns not found for an unknown project", async () => {
@@ -171,14 +125,9 @@ describe("project update API", () => {
     expect(await response.json()).toEqual({ code: "NOT_FOUND" });
   });
 
-  it("rejects an invalid name, path, and archived value", async () => {
+  it("rejects an invalid name", async () => {
     const projects = seeded();
-    const bodies: Record<string, unknown>[] = [
-      { name: "" },
-      { name: 3 },
-      { path: "a".repeat(1025) },
-      { archived: 1 },
-    ];
+    const bodies: Record<string, unknown>[] = [{ name: "" }, { name: 3 }, { name: "a".repeat(33) }];
 
     for (const body of bodies) {
       const response = await request("/api/projects/alpha", json("PATCH", body), projects);
@@ -196,5 +145,48 @@ describe("project update API", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ code: "INVALID_INPUT" });
+  });
+});
+
+describe("project delete API", () => {
+  it("moves the project tasks to 未分類 and then deletes the project", async () => {
+    const projects = seeded();
+    const tasks = createMemoryTaskRepository([
+      taskFixture({ id: "task-1", project: "alpha" }),
+      taskFixture({ id: "task-2", project: "alpha" }),
+      taskFixture({ id: "task-3", project: "beta" }),
+    ]);
+
+    const response = await request("/api/projects/alpha", { method: "DELETE" }, projects, tasks);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ id: "alpha", moved: 2 });
+    expect(await listedIds(projects)).toEqual(["beta"]);
+    const listed = await tasks.list();
+    if (!listed.ok) throw new Error("expected task list");
+    expect(listed.value.map((task) => [task.id, task.project])).toEqual([
+      ["task-1", null],
+      ["task-2", null],
+      ["task-3", "beta"],
+    ]);
+  });
+
+  it("deletes a project without tasks and reports zero moved", async () => {
+    const projects = seeded();
+
+    const response = await request("/api/projects/beta", { method: "DELETE" }, projects);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ id: "beta", moved: 0 });
+    expect(await listedIds(projects)).toEqual(["alpha"]);
+  });
+
+  it("returns not found for an unknown project", async () => {
+    const projects = seeded();
+
+    const response = await request("/api/projects/missing", { method: "DELETE" }, projects);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ code: "NOT_FOUND" });
   });
 });

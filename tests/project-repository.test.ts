@@ -5,8 +5,8 @@ import { createD1ProjectRepository } from "../src/repository/d1-project-reposito
 import type { Project } from "../src/project";
 
 const PROJECTS: readonly Project[] = [
-  { id: "b", name: "B", path: null, sort_order: 2, archived: false },
-  { id: "a", name: "A", path: "/workspace/a", sort_order: 1, archived: false },
+  { id: "b", name: "B", sort_order: 2 },
+  { id: "a", name: "A", sort_order: 1 },
 ];
 
 const unusedD1Database = {
@@ -52,7 +52,14 @@ describe("ProjectRepository contract", () => {
       createD1ProjectRepository(unusedD1Database),
     ];
     for (const repository of repositories) {
-      expect(Object.keys(repository).sort()).toEqual(["find", "insert", "list", "move", "update"]);
+      expect(Object.keys(repository).sort()).toEqual([
+        "find",
+        "insert",
+        "list",
+        "move",
+        "remove",
+        "update",
+      ]);
     }
   });
 });

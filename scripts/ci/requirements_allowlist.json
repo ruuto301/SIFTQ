@@ -203,5 +203,10 @@
     "path": "src/views/MkPage.tsx",
     "reason": "MK一覧viewはMK契約テストとE2Eが検証するため。",
     "removal": "view単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/styles/settings.ts",
+    "reason": "集約したSTYLES_CSSのstyles.test.tsが検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
   }
 ]

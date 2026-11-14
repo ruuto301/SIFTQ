@@ -79,6 +79,7 @@ export function createD1TaskRepository(db: D1Database): TaskRepository {
     bulkUpdateStatus: (inputs, status) => bulkUpdateStatus(db, inputs, status),
     bulkUpdateProject: (inputs, project) => bulkUpdateProject(db, inputs, project),
     bulkRemove: (inputs) => bulkRemove(db, inputs),
+    clearProject: (projectId) => clearProject(db, projectId),
   };
 }
 
@@ -130,6 +131,18 @@ async function bulkUpdateProject(
     (task, updatedAt) => [project, updatedAt, task.id, OWNER_ID, task.version],
     (tasks, updatedAt) => changeTaskProjects(tasks, project, updatedAt),
   );
+}
+
+async function clearProject(
+  db: D1Database,
+  projectId: string,
+): Promise<Result<number, RepositoryError>> {
+  const result = await db
+    .prepare("UPDATE tasks SET project = NULL WHERE project = ? AND owner_id = ?")
+    .bind(projectId, OWNER_ID)
+    .run();
+  if (!result.success) return err({ code: "NOT_FOUND" });
+  return ok(result.meta.changes ?? 0);
 }
 
 async function listTasks(db: D1Database): Promise<Result<Task[], RepositoryError>> {

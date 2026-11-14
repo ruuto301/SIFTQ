@@ -20,6 +20,7 @@
 | P10 | DS | project ごとに区切ったタスク一覧と DSH の chat、description、設定、browser を 1 画面で扱う |
 | P11 | Connections | 連携した MCP クライアント（OAuth）の一覧と失効 |
 | P12 | Consent | MCP クライアントへ権限を委任する同意画面 |
+| P13 | Settings | project の一覧・追加・改名・削除・並べ替えを行う画面 |
 
 ## 画面詳細
 
@@ -163,6 +164,16 @@
 
   - `GET /oauth/authorize` の検証が通ると、クライアント名と要求スコープ（`read` / `write`）を表示する。`write` は削除を含む旨を明記する。
   - `許可` で認可コードを発行して `redirect_uri` へ 302 する。`拒否` は `error=access_denied` を返す。
+
+### P13 Settings
+
+- ナビは `Ideas`、`Tasks`、`DS`、`Settings` の順で表示し、`Settings` から開く。
+- Projects 節に project を `sort_order` 昇順で一覧表示する。各行は表示名、id、その project のタスク件数、`↑`、`↓`、`名前を編集`、`削除` を表示する。
+- 一覧の下に `未分類` の件数を固定で表示する。未分類は削除できない。
+- 新しい project は名前を入力して `追加` で作成する。id は名前から自動生成し、使えない場合はランダムな id にする。
+- `名前を編集` は行内の入力欄で変更する。`Enter` で保存し、`Escape` で取り消す。
+- `↑` `↓` で並び順を入れ替える。並びは task list と DS のグループに反映される。
+- `削除` は確認ダイアログを表示する。その project にタスクがあるときは「N 件のタスクは未分類になります」を併記し、確定するとタスクは未分類へ移ってから project を削除する。
 
 ## MCP
 
