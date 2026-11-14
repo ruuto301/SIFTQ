@@ -123,6 +123,7 @@ a {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

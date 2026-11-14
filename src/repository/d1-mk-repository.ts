@@ -2,15 +2,12 @@ import type { D1Database, D1Result } from "@cloudflare/workers-types";
 import { changeMkNoteColor, changeMkNotePinned, isMkColor } from "../mk";
 import type { MkColor, MkNote, MkNoteQuery } from "../mk";
 import { err, ok } from "../task";
+import { isRecord } from "../task";
 import type { Result } from "../task";
 import type { MkRepository, MkRepositoryError } from "./mk-repository";
 
 const MK_COLUMNS = "id, owner_id, title, body, color, pinned, created_at, updated_at";
 const MK_SELECT = `SELECT ${MK_COLUMNS} FROM mk_notes`;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 export function toMkNote(value: unknown): MkNote | undefined {
   if (!isRecord(value)) return undefined;

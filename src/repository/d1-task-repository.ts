@@ -1,5 +1,5 @@
 import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types";
-import { changeTaskProjects, changeTaskStatuses, err, isTaskProject, isTaskStatus, ok } from "../task";
+import { changeTaskProjects, changeTaskStatuses, err, isTaskProject, isTaskStatus, ok, isRecord } from "../task";
 import type { Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import { validateBulkTasks } from "./repository-validation";
 import type { RepositoryError, TaskOrderInput, TaskRepository } from "./task-repository";
@@ -22,10 +22,6 @@ export const TASK_COLUMN_NAMES = [
 
 const TASK_COLUMNS = TASK_COLUMN_NAMES.join(", ");
 const TASK_PLACEHOLDERS = TASK_COLUMN_NAMES.map(() => "?").join(", ");
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 export function toTask(value: unknown): Task | undefined {
   if (!isRecord(value)) return undefined;

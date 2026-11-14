@@ -1,7 +1,7 @@
 import type { Context, Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { applyMkNotePatch, createMkNote, isMkBodyValid, isMkColor, isMkFilter, isMkRecord, isMkTitleValid, parseMkNotePatch } from "../mk";
 import type { MkError, MkNote, MkNoteQuery } from "../mk";
+import { errorStatus, findOwned, problem, readJsonRecord } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
 import { err, ok } from "../task";
@@ -11,23 +11,6 @@ const OWNER_ID = "local";
 const MK_BULK_MAX_ITEMS = 50;
 
 type Repository = (c: Context<AppEnv>) => MkRepository;
-
-function problem(c: Context<AppEnv>, status: ContentfulStatusCode, code: string) {
-  return c.json({ code }, status);
-}
-
-async function readJsonRecord(c: Context<AppEnv>): Promise<Record<string, unknown> | null> {
-  try {
-    const value = await c.req.json<unknown>();
-    return isMkRecord(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function errorStatus(code: string): ContentfulStatusCode {
-  return code === "NOT_FOUND" ? 404 : 400;
-}
 
 function readQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
   const query: MkNoteQuery = {};
@@ -49,9 +32,7 @@ function readQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
 type MkLookup = { ok: true; value: MkNote } | { ok: false; error: MkError };
 
 async function findMkNote(c: Context<AppEnv>, repository: Repository, id: string): Promise<MkLookup> {
-  const result = await repository(c).find(id, OWNER_ID);
-  if (!result.ok) return result;
-  return result.value === undefined ? { ok: false, error: { code: "NOT_FOUND" } } : { ok: true, value: result.value };
+  return findOwned(repository(c).find(id, OWNER_ID), { code: "NOT_FOUND" });
 }
 
 async function listMkNotes(c: Context<AppEnv>, repository: Repository) {
@@ -63,7 +44,7 @@ async function listMkNotes(c: Context<AppEnv>, repository: Repository) {
 }
 
 async function createMkNoteAtBoundary(c: Context<AppEnv>, repository: Repository) {
-  const body = await readJsonRecord(c);
+  const body = await readJsonRecord(c, isMkRecord);
   if (body === null) return problem(c, 400, "INVALID_INPUT");
   const title = typeof body["title"] === "string" ? body["title"].trim() : "";
   const noteBody = typeof body["body"] === "string" ? body["body"] : "";
@@ -89,7 +70,7 @@ async function createMkNoteAtBoundary(c: Context<AppEnv>, repository: Repository
 }
 
 async function patchMkNote(c: Context<AppEnv>, repository: Repository) {
-  const body = await readJsonRecord(c);
+  const body = await readJsonRecord(c, isMkRecord);
   if (body === null) return problem(c, 400, "INVALID_INPUT");
   const id = c.req.param("id");
   if (id === undefined) return problem(c, 404, "NOT_FOUND");
@@ -120,22 +101,24 @@ function readBulkIds(value: unknown): string[] | null {
   return ids.size === value.length ? [...ids] : null;
 }
 
-async function bulkColor(c: Context<AppEnv>, repository: Repository, ids: readonly string[], value: unknown) {
-  if (!isMkColor(value)) return problem(c, 400, "INVALID_COLOR");
-  const updated = await repository(c).bulkUpdateColor(ids, OWNER_ID, value);
+async function respondBulk(c: Context<AppEnv>, result: ReturnType<MkRepository["bulkUpdateColor"]>) {
+  const updated = await result;
   if (!updated.ok) return problem(c, errorStatus(updated.error.code), updated.error.code);
   return c.json(updated.value);
+}
+
+async function bulkColor(c: Context<AppEnv>, repository: Repository, ids: readonly string[], value: unknown) {
+  if (!isMkColor(value)) return problem(c, 400, "INVALID_COLOR");
+  return respondBulk(c, repository(c).bulkUpdateColor(ids, OWNER_ID, value));
 }
 
 async function bulkPin(c: Context<AppEnv>, repository: Repository, ids: readonly string[], value: unknown) {
   if (typeof value !== "boolean") return problem(c, 400, "INVALID_PINNED");
-  const updated = await repository(c).bulkPin(ids, OWNER_ID, value);
-  if (!updated.ok) return problem(c, errorStatus(updated.error.code), updated.error.code);
-  return c.json(updated.value);
+  return respondBulk(c, repository(c).bulkPin(ids, OWNER_ID, value));
 }
 
 async function bulkMkNotes(c: Context<AppEnv>, repository: Repository) {
-  const body = await readJsonRecord(c);
+  const body = await readJsonRecord(c, isMkRecord);
   if (body === null) return problem(c, 400, "INVALID_BULK_INPUT");
   const ids = readBulkIds(body["ids"]);
   if (ids === null) return problem(c, 400, "INVALID_BULK_INPUT");
