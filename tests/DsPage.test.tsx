@@ -7,8 +7,8 @@ import type { Task } from "../src/task";
 import { taskFixture } from "./helpers/task-fixture";
 
 const PROJECTS: readonly Project[] = [
-  { id: "Yoriwake", name: "Yoriwake", path: null, sort_order: 1, archived: false },
-  { id: "dsh", name: "dsh", path: null, sort_order: 2, archived: false },
+  { id: "Yoriwake", name: "Yoriwake", sort_order: 1 },
+  { id: "dsh", name: "dsh", sort_order: 2 },
 ];
 
 const base = { status: "do", wsUrl: "ws://127.0.0.1:8799", workspace: "/mnt/c/projects" } as const;

@@ -159,7 +159,7 @@ const unusedD1Database = {
   },
 } satisfies D1Database;
 
-const repositoryMethods = ["bulkRemove", "bulkUpdateProject", "bulkUpdateStatus", "find", "insert", "list", "move", "remove", "update"];
+const repositoryMethods = ["bulkRemove", "bulkUpdateProject", "bulkUpdateStatus", "clearProject", "find", "insert", "list", "move", "remove", "update"];
 
 describe("TaskRepository contract", () => {
   it("inserts and reads a task through the in-memory double", async () => {

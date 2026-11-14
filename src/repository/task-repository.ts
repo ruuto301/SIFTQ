@@ -23,4 +23,6 @@ export interface TaskRepository {
     project: string | null,
   ): Promise<Result<Task[], RepositoryError>>;
   bulkRemove(inputs: readonly TaskVersionInput[]): Promise<Result<null, RepositoryError>>;
+  /** Moves every task of a project to 未分類. Returns the number of moved tasks. */
+  clearProject(projectId: string): Promise<Result<number, RepositoryError>>;
 }

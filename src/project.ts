@@ -5,20 +5,17 @@ const PROJECT_ID_MAX_LENGTH = 64;
 
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
-const PROJECT_NAME_MAX_CODE_POINTS = 100;
+const PROJECT_NAME_MAX_CODE_POINTS = 32;
 
-const PROJECT_PATH_MAX_CODE_POINTS = 1024;
 
 export type Project = {
   id: string;
   name: string;
-  path: string | null;
   sort_order: number;
-  archived: boolean;
 };
 
 export type ProjectInputError = {
-  code: "INVALID_PROJECT_ID" | "INVALID_PROJECT_NAME" | "INVALID_PROJECT_PATH" | "INVALID_PROJECT_ARCHIVED";
+  code: "INVALID_PROJECT_ID" | "INVALID_PROJECT_NAME";
 };
 
 export function isProjectId(value: unknown): value is string {
@@ -34,26 +31,31 @@ export function isProjectOrderValid(order: number): boolean {
 }
 
 export function isProjectNameValid(name: string): boolean {
-  const length = Array.from(name).length;
+  const length = Array.from(name.trim()).length;
   return length >= 1 && length <= PROJECT_NAME_MAX_CODE_POINTS;
 }
 
-export function isProjectPath(value: unknown): value is string | null {
-  if (value === null) return true;
-  return typeof value === "string" && Array.from(value.trim()).length <= PROJECT_PATH_MAX_CODE_POINTS;
+/** Project names are unique regardless of case; `exceptId` lets a project keep its own name. */
+export function hasProjectName(
+  projects: readonly Project[],
+  name: string,
+  exceptId?: string,
+): boolean {
+  const normalized = name.trim().toLowerCase();
+  return projects.some(
+    (project) => project.id !== exceptId && project.name.trim().toLowerCase() === normalized,
+  );
 }
 
 export function toProject(value: unknown): Project | undefined {
   if (!isProjectRecord(value)) return undefined;
 
-  const { id, name, path, sort_order, archived } = value;
+  const { id, name, sort_order } = value;
   if (!isProjectId(id)) return undefined;
-  if (typeof name !== "string") return undefined;
-  if (path !== null && typeof path !== "string") return undefined;
+  if (typeof name !== "string" || !isProjectNameValid(name)) return undefined;
   if (typeof sort_order !== "number") return undefined;
-  if (archived !== 0 && archived !== 1) return undefined;
 
-  return { id, name, path, sort_order, archived: archived === 1 };
+  return { id, name: name.trim(), sort_order };
 }
 
 export function sortProjects(projects: readonly Project[]): Project[] {
@@ -66,12 +68,6 @@ export function nextProjectOrder(projects: readonly Project[]): number {
   return projects.reduce((maximum, project) => Math.max(maximum, project.sort_order), 0) + 1;
 }
 
-/** Stores a blank path as `null` so an empty form value cannot create a stray directory. */
-function normalizeProjectPath(path: string | null): string | null {
-  if (path === null || path.trim().length === 0) return null;
-  return path;
-}
-
 function readProjectName(value: unknown): Result<string, ProjectInputError> {
   if (typeof value !== "string") return err({ code: "INVALID_PROJECT_NAME" });
   const trimmedName = value.trim();
@@ -82,8 +78,6 @@ function readProjectName(value: unknown): Result<string, ProjectInputError> {
 export type ProjectCreateInput = {
   id: string;
   name: string;
-  path: string | null;
-  archived: boolean;
 };
 
 export function parseProjectCreate(body: Record<string, unknown>): Result<ProjectCreateInput, ProjectInputError> {
@@ -93,19 +87,11 @@ export function parseProjectCreate(body: Record<string, unknown>): Result<Projec
   const name = readProjectName(body["name"]);
   if (!name.ok) return name;
 
-  const path = body["path"] ?? null;
-  if (!isProjectPath(path)) return err({ code: "INVALID_PROJECT_PATH" });
-
-  const archived = body["archived"] ?? false;
-  if (typeof archived !== "boolean") return err({ code: "INVALID_PROJECT_ARCHIVED" });
-
-  return ok({ id, name: name.value, path: normalizeProjectPath(path), archived });
+  return ok({ id, name: name.value });
 }
 
 export type ProjectPatch = {
   name?: string;
-  path?: string | null;
-  archived?: boolean;
 };
 
 export function parseProjectPatch(body: Record<string, unknown>): Result<ProjectPatch, ProjectInputError> {
@@ -115,16 +101,6 @@ export function parseProjectPatch(body: Record<string, unknown>): Result<Project
     const name = readProjectName(body["name"]);
     if (!name.ok) return name;
     patch.name = name.value;
-  }
-  if ("path" in body) {
-    const path = body["path"];
-    if (!isProjectPath(path)) return err({ code: "INVALID_PROJECT_PATH" });
-    patch.path = normalizeProjectPath(path);
-  }
-  if ("archived" in body) {
-    const archived = body["archived"];
-    if (typeof archived !== "boolean") return err({ code: "INVALID_PROJECT_ARCHIVED" });
-    patch.archived = archived;
   }
 
   return ok(patch);

@@ -5,7 +5,7 @@ import { sortProjects, toProject } from "../project";
 import type { Project } from "../project";
 import type { ProjectOrderUpdate, ProjectRepository, ProjectRepositoryError } from "./project-repository";
 
-const PROJECT_COLUMNS = "id, name, path, sort_order, archived";
+const PROJECT_COLUMNS = "id, name, sort_order";
 
 export function createD1ProjectRepository(db: D1Database): ProjectRepository {
   return {
@@ -13,6 +13,7 @@ export function createD1ProjectRepository(db: D1Database): ProjectRepository {
     find: (id) => findProject(db, id),
     insert: (project) => insertProject(db, project),
     update: (project) => updateProject(db, project),
+    remove: (id) => removeProject(db, id),
     move: (updates) => moveProjects(db, updates),
   };
 }
@@ -44,16 +45,25 @@ function changes(result: D1Result): number {
 
 async function insertProject(db: D1Database, project: Project): Promise<Result<Project, ProjectRepositoryError>> {
   const result = await db
-    .prepare("INSERT OR IGNORE INTO projects (id, name, path, sort_order, archived) VALUES (?, ?, ?, ?, ?)")
-    .bind(project.id, project.name, project.path, project.sort_order, project.archived ? 1 : 0)
+    .prepare("INSERT OR IGNORE INTO projects (id, name, sort_order) VALUES (?, ?, ?)")
+    .bind(project.id, project.name, project.sort_order)
     .run();
   return changes(result) === 0 ? err({ code: "CONFLICT" }) : ok(project);
 }
 
+async function removeProject(
+  db: D1Database,
+  id: string,
+): Promise<Result<null, ProjectRepositoryError>> {
+  const result = await db.prepare("DELETE FROM projects WHERE id = ?").bind(id).run();
+  if (changes(result) === 0) return err({ code: "NOT_FOUND" });
+  return ok(null);
+}
+
 async function updateProject(db: D1Database, project: Project): Promise<Result<Project, ProjectRepositoryError>> {
   const result = await db
-    .prepare("UPDATE projects SET name = ?, path = ?, sort_order = ?, archived = ? WHERE id = ?")
-    .bind(project.name, project.path, project.sort_order, project.archived ? 1 : 0, project.id)
+    .prepare("UPDATE projects SET name = ?, sort_order = ? WHERE id = ?")
+    .bind(project.name, project.sort_order, project.id)
     .run();
   return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(project);
 }

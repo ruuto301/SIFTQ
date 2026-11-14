@@ -11,6 +11,7 @@ import {
   parseTaskVersionInputs,
 } from "../task";
 import type { DomainError, Result, Task, TaskStatus, TaskVersionInput } from "../task";
+import type { Project } from "../project";
 import {
   applyProjectPatch,
   isProjectId,
@@ -360,31 +361,68 @@ async function createApiProject<T extends ApiEnv>(
   return c.json(created.value, 201);
 }
 
-async function patchApiProject<T extends ApiEnv>(
+/** Resolves `:id` to a stored project, or returns the problem response to send back. */
+async function requireApiProject<T extends ApiEnv>(
   c: Context<T>,
   projectRepository: ProjectRepositoryFactory<T>,
-) {
+): Promise<Project | Response> {
   const id = c.req.param("id");
   if (id === undefined || !isProjectId(id)) return problem(c, 404, "NOT_FOUND");
-  const body = await readJsonRecord(c);
-  if (body === null) return problem(c, 400, "INVALID_INPUT");
-  const patch = parseProjectPatch(body);
-  if (!patch.ok) return problem(c, 400, "INVALID_INPUT");
-
   const found = await projectRepository(c).find(id);
   if (!found.ok) return problem(c, 500, found.error.code);
   if (!found.value) return problem(c, 404, "NOT_FOUND");
-  const updated = await projectRepository(c).update(applyProjectPatch(found.value, patch.value));
-  if (!updated.ok) {
-    return updated.error.code === "NOT_FOUND"
-      ? problem(c, 404, "NOT_FOUND")
-      : problem(c, 500, updated.error.code);
-  }
-  return c.json(updated.value);
+  return found.value;
+}
+
+/** Runs `handle` with the stored project, or returns the problem response for `:id`. */
+function withApiProject<T extends ApiEnv>(
+  c: Context<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+  handle: (project: Project) => Promise<Response>,
+): Promise<Response> {
+  return requireApiProject(c, projectRepository).then((project) =>
+    project instanceof Response ? project : handle(project),
+  );
+}
+
+function patchApiProject<T extends ApiEnv>(
+  c: Context<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
+  return withApiProject(c, projectRepository, async (project) => {
+    const body = await readJsonRecord(c);
+    if (body === null) return problem(c, 400, "INVALID_INPUT");
+    const patch = parseProjectPatch(body);
+    if (!patch.ok) return problem(c, 400, "INVALID_INPUT");
+
+    const updated = await projectRepository(c).update(applyProjectPatch(project, patch.value));
+    if (!updated.ok) {
+      return updated.error.code === "NOT_FOUND"
+        ? problem(c, 404, "NOT_FOUND")
+        : problem(c, 500, updated.error.code);
+    }
+    return c.json(updated.value);
+  });
+}
+
+function deleteApiProject<T extends ApiEnv>(
+  c: Context<T>,
+  repository: Repository<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
+  return withApiProject(c, projectRepository, async (project) => {
+    // Tasks stay: they move to 未分類 (project = NULL) before the project row is deleted.
+    const moved = await repository(c).clearProject(project.id);
+    if (!moved.ok) return problem(c, 500, moved.error.code);
+    const removed = await projectRepository(c).remove(project.id);
+    if (!removed.ok) return problem(c, 500, removed.error.code);
+    return c.json({ id: project.id, moved: moved.value });
+  });
 }
 
 function registerProjectRoutes<T extends ApiEnv>(
   app: Hono<T>,
+  repository: Repository<T>,
   projectRepository: ProjectRepositoryFactory<T>,
 ) {
   app.get("/api/projects", async (c) => {
@@ -396,6 +434,8 @@ function registerProjectRoutes<T extends ApiEnv>(
   app.post("/api/projects", (c) => createApiProject(c, projectRepository));
 
   app.patch("/api/projects/:id", (c) => patchApiProject(c, projectRepository));
+
+  app.delete("/api/projects/:id", (c) => deleteApiProject(c, repository, projectRepository));
 
   app.post("/api/projects/reorder", async (c) => {
     const body = await readJsonRecord(c);
@@ -414,7 +454,7 @@ export function registerTaskApiRoutes<T extends ApiEnv>(
   projectRepository: ProjectRepositoryFactory<T>,
 ) {
   const deps: TaskDeps<T> = { repository, projectRepository };
-  registerProjectRoutes(app, projectRepository);
+  registerProjectRoutes(app, repository, projectRepository);
   registerTaskRoutes(app, deps);
   app.post("/api/tasks/:id/move-to-idea", (c) => moveApiTaskToIdea(c, deps, ideaRepository));
 }

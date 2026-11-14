@@ -7,6 +7,36 @@ function byMostRecentlyUpdated(left: Task, right: Task): number {
   return right.updated_at.localeCompare(left.updated_at) || left.id.localeCompare(right.id);
 }
 
+/** Moves every task of a project to 未分類 and returns how many moved. */
+function clearProjectOf(tasks: Map<string, Task>, projectId: string): number {
+  let moved = 0;
+  for (const [id, task] of tasks) {
+    if (task.project !== projectId) continue;
+    tasks.set(id, { ...task, project: null });
+    moved += 1;
+  }
+  return moved;
+}
+
+function findTask(
+  tasks: Map<string, Task>,
+  id: string,
+): Promise<Result<Task | undefined, RepositoryError>> {
+  return Promise.resolve(ok<Task | undefined, RepositoryError>(tasks.get(id)));
+}
+
+function removeTask(
+  tasks: Map<string, Task>,
+  id: string,
+  version: number,
+): Promise<Result<null, RepositoryError>> {
+  const current = tasks.get(id);
+  if (current === undefined) return Promise.resolve(err<null, RepositoryError>({ code: "NOT_FOUND" }));
+  if (current.version !== version) return Promise.resolve(err<null, RepositoryError>({ code: "CONFLICT" }));
+  tasks.delete(id);
+  return Promise.resolve(ok<null, RepositoryError>(null));
+}
+
 export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): TaskRepository {
   const tasks = new Map(initialTasks.map((task) => [task.id, task]));
 
@@ -15,7 +45,7 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
   }
 
   async function find(id: string, _ownerId: string): Promise<Result<Task | undefined, RepositoryError>> {
-    return ok<Task | undefined, RepositoryError>(tasks.get(id));
+    return findTask(tasks, id);
   }
 
   async function insert(task: Task): Promise<Result<Task, RepositoryError>> {
@@ -61,21 +91,18 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
   }
 
   async function remove(id: string, _ownerId: string, version: number): Promise<Result<null, RepositoryError>> {
-    const current = tasks.get(id);
-    if (!current) {
-      return err<null, RepositoryError>({ code: "NOT_FOUND" });
-    }
-    if (current.version !== version) return err<null, RepositoryError>({ code: "CONFLICT" });
-
-    tasks.delete(id);
-    return ok<null, RepositoryError>(null);
+    return removeTask(tasks, id, version);
   }
 
   async function move(inputs: readonly TaskOrderInput[]): Promise<Result<Task[], RepositoryError>> {
     return moveTasks(tasks, inputs);
   }
 
-  return { list, find, insert, update, remove, move, bulkUpdateStatus, bulkUpdateProject, bulkRemove };
+  async function clearProject(projectId: string): Promise<Result<number, RepositoryError>> {
+    return ok(clearProjectOf(tasks, projectId));
+  }
+
+  return { list, find, insert, update, remove, move, bulkUpdateStatus, bulkUpdateProject, bulkRemove, clearProject };
 }
 
 function moveTasks(
