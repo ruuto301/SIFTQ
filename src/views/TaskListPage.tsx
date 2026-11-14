@@ -2,6 +2,7 @@ import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
 import type { Project } from "../project";
 import { pageNavItems, withQueryToken } from "../task-list";
+import type { TaskWorkingFilter } from "../task-list";
 import { TaskRow } from "../components/TaskRow";
 import { NewTaskLink } from "./navigation";
 
@@ -10,8 +11,8 @@ const TASK_STATUS_OPTIONS: { status: TaskStatus; label: string }[] = TASK_STATUS
   label: status,
 }));
 
-function TaskStatusFilter({ status, workingOnly }: { status: TaskStatus; workingOnly: boolean }) {
-  const workingParam = workingOnly ? "&working=only" : "";
+function TaskStatusFilter({ status, working }: { status: TaskStatus; working: TaskWorkingFilter | undefined }) {
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   return (
     <>
       <nav
@@ -45,15 +46,15 @@ function TaskStatusFilter({ status, workingOnly }: { status: TaskStatus; working
 function PageNavLink({
   status,
   page,
-  workingOnly,
+  working,
   query,
 }: {
   status: TaskStatus;
   page: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
-  const workingParam = workingOnly ? "&working=only" : "";
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   const queryParam = query === undefined ? "" : `&q=${encodeURIComponent(query)}`;
   return (
     <a
@@ -71,14 +72,14 @@ function PageNavItem({
   index,
   status,
   currentPage,
-  workingOnly,
+  working,
   query,
 }: {
   item: number | "ellipsis";
   index: number;
   status: TaskStatus;
   currentPage: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
   if (item === "ellipsis") {
@@ -95,24 +96,24 @@ function PageNavItem({
       </span>
     );
   }
-  return <PageNavLink key={item} status={status} page={item} workingOnly={workingOnly} query={query} />;
+  return <PageNavLink key={item} status={status} page={item} working={working} query={query} />;
 }
 
 function PageNav({
   status,
   currentPage,
   totalPages,
-  workingOnly,
+  working,
   query,
 }: {
   status: TaskStatus;
   currentPage: number;
   totalPages: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
   if (totalPages <= 1) return null;
-  const workingParam = workingOnly ? "&working=only" : "";
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   const queryParam = query === undefined ? "" : `&q=${encodeURIComponent(query)}`;
   const href = (page: number) => `/tasks?status=${status}${workingParam}${queryParam}&page=${page}`;
   return (
@@ -133,7 +134,7 @@ function PageNav({
           index={index}
           status={status}
           currentPage={currentPage}
-          workingOnly={workingOnly}
+          working={working}
           query={query}
         />
       ))}
@@ -156,7 +157,7 @@ function projectSearchToken(project: string | null): string {
 
 type TaskListFilterProps = {
   status: TaskStatus;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
   projects: readonly Project[];
   project: string | null | undefined;
@@ -164,7 +165,7 @@ type TaskListFilterProps = {
 
 function TaskLabelsFilter({
   status,
-  workingOnly,
+  working,
   query,
   projects,
   project,
@@ -172,25 +173,24 @@ function TaskLabelsFilter({
   const baseQuery = query ?? `is:${status}`;
   const noneQuery = withQueryToken(baseQuery, "project:", null);
   const queryParam = (value: string) => `&q=${encodeURIComponent(value)}`;
-  const labelsHref = (working: boolean) => {
-    if (query === undefined) {
-      return working ? `/tasks?status=${status}&working=only` : `/tasks?status=${status}`;
-    }
-    const next = withQueryToken(query, "label:", working ? "label:working" : null);
-    return working
-      ? `/tasks?status=${status}&working=only${queryParam(next)}`
-      : `/tasks?status=${status}${queryParam(next)}`;
+  const labelsHref = (next: TaskWorkingFilter | null) => {
+    const nextQuery = withQueryToken(baseQuery, "working:", next === null ? null : `working:${next}`);
+    const workingParam = next === null ? "" : `&working=${next}`;
+    return `/tasks?status=${status}${workingParam}${queryParam(nextQuery)}`;
   };
   return (
-    <details class={workingOnly || project !== undefined ? "task-label-filter is-active" : "task-label-filter"}>
+    <details class={working !== undefined || project !== undefined ? "task-label-filter is-active" : "task-label-filter"}>
       <summary class="button small">Labels</summary>
       <div class="task-label-menu">
         <div class="task-label-group-title">Labels</div>
-        <a class={!workingOnly ? "is-selected" : undefined} href={labelsHref(false)}>
+        <a class={working === undefined ? "is-selected" : undefined} href={labelsHref(null)}>
           All labels
         </a>
-        <a class={workingOnly ? "is-selected" : undefined} href={labelsHref(true)}>
-          working only
+        <a class={working === "on" ? "is-selected" : undefined} href={labelsHref("on")}>
+          working:on
+        </a>
+        <a class={working === "off" ? "is-selected" : undefined} href={labelsHref("off")}>
+          working:off
         </a>
         <div class="task-label-group-title">Projects</div>
         <a class={project === undefined ? "is-selected" : undefined} href={`/tasks?status=${status}${queryParam(noneQuery)}`}>
@@ -218,23 +218,23 @@ function TaskLabelsFilter({
 
 function TaskListSearch({
   status,
-  workingOnly,
+  working,
   query,
 }: {
   status: TaskStatus;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string;
 }) {
   return (
     <form class="task-search" action="/tasks" method="get">
       <input type="hidden" name="status" value={status} />
-      {workingOnly ? <input type="hidden" name="working" value="only" /> : null}
+      {working === undefined ? null : <input type="hidden" name="working" value={working} />}
       <input
         type="search"
         name="q"
         aria-label="Search tasks"
         value={query}
-        placeholder="is:do project:Yoriwake label:working"
+        placeholder="見積もり is:do project:Yoriwake working:on"
       />
       <button class="button small task-search-button" type="submit" aria-label="Submit search" title="Search">
         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
@@ -282,7 +282,7 @@ function TaskBulkProjectMenu({ projects }: { projects: readonly Project[] }) {
 function TaskListToolbar({
   hasTasks,
   status,
-  workingOnly,
+  working,
   query,
   projects,
   project,
@@ -298,7 +298,7 @@ function TaskListToolbar({
             disabled={!hasTasks}
           />
         </label>
-        <TaskStatusFilter status={status} workingOnly={workingOnly} />
+        <TaskStatusFilter status={status} working={working} />
         <div class="task-bulk-actions">
           <div data-task-bulk-actions>
             <TaskBulkStatusMenu />
@@ -306,7 +306,7 @@ function TaskListToolbar({
           </div>
           <TaskLabelsFilter
             status={status}
-            workingOnly={workingOnly}
+            working={working}
             query={query}
             projects={projects}
             project={project}
@@ -342,7 +342,7 @@ function TaskListRows({ tasks, status }: { tasks: readonly Task[]; status: TaskS
 export function TaskListPage({
   tasks,
   status,
-  workingOnly,
+  working,
   query,
   currentPage,
   totalPages,
@@ -352,7 +352,7 @@ export function TaskListPage({
 }: {
   tasks: readonly Task[];
   status: TaskStatus;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string;
   currentPage: number;
   totalPages: number;
@@ -370,11 +370,11 @@ export function TaskListPage({
         <NewTaskLink project={project} />
       </div>
       <div class="task-list-shell" data-task-list>
-        <TaskListSearch status={status} workingOnly={workingOnly} query={query} />
+        <TaskListSearch status={status} working={working} query={query} />
         <TaskListToolbar
           hasTasks={tasks.length > 0}
           status={status}
-          workingOnly={workingOnly}
+          working={working}
           query={queryInUrl}
           projects={projects}
           project={project}
@@ -385,7 +385,7 @@ export function TaskListPage({
         status={status}
         currentPage={currentPage}
         totalPages={totalPages}
-        workingOnly={workingOnly}
+        working={working}
         query={queryInUrl}
       />
     </div>

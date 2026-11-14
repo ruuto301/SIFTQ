@@ -14,7 +14,7 @@ import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
 import { NAV_SCREENS } from "../screens";
-import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, is_working, nextTaskOrder } from "../task";
+import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, nextTaskOrder } from "../task";
 import type { DomainError, Result, Task, TaskStatus } from "../task";
 import type { Project } from "../project";
 import {
@@ -26,8 +26,10 @@ import {
   parseTaskListQuery,
   sortTasksByOrder,
   taskProjectFilter,
+  taskTextFilter,
+  taskWorkingFilter,
 } from "../task-list";
-import type { TaskListQuery } from "../task-list";
+import type { TaskFilter, TaskWorkingFilter } from "../task-list";
 import {
   isInvalidTaskDescription,
   isInvalidTaskTitle,
@@ -152,6 +154,45 @@ function ConflictPage({ taskId }: { taskId: string }) {
   );
 }
 
+type TaskListRequest = {
+  status: TaskStatus;
+  working: TaskWorkingFilter | undefined;
+  project: string | null | undefined;
+  text: readonly string[];
+  query: string;
+};
+
+function readWorkingParam(value: unknown): TaskWorkingFilter | undefined {
+  if (value === "on" || value === "only") return "on";
+  if (value === "off") return "off";
+  return undefined;
+}
+
+function parseTaskListRequest(status: unknown, working: unknown, q: unknown): TaskListRequest {
+  const parsed = parseTaskListQuery(q);
+  const resolvedStatus: TaskStatus = parsed?.status ?? (isTaskStatus(status) ? status : "do");
+  const resolvedWorking = parsed?.working ?? readWorkingParam(working);
+  let query = `is:${resolvedStatus}`;
+  if (resolvedWorking !== undefined) query += ` working:${resolvedWorking}`;
+  if (parsed !== null && typeof q === "string") query = q.trim();
+  return {
+    status: resolvedStatus,
+    working: resolvedWorking,
+    project: parsed?.project,
+    text: parsed?.text ?? [],
+    query,
+  };
+}
+
+function taskListFilters(request: TaskListRequest): TaskFilter[] {
+  return [
+    TASK_STATUS_FILTERS[request.status],
+    ...(request.working === undefined ? [] : [taskWorkingFilter(request.working)]),
+    ...(request.project === undefined ? [] : [taskProjectFilter(request.project)]),
+    ...request.text.map(taskTextFilter),
+  ];
+}
+
 function registerTaskListRoutes(app: Hono<AppEnv>, ideaRepository: IdeaRepositoryFactory) {
   app.get("/", (c) => c.redirect("/ideas"));
 
@@ -179,37 +220,23 @@ function registerTaskListViewRoute(
     const result = await repository(c).list();
     const projectList = await knownProjects(c, projectRepository);
     if (!result.ok || projectList === null) return c.text("Internal Server Error", 500);
-    const rawStatus = c.req.query("status");
     const rawQuery = c.req.query("q");
-    const parsedQuery: TaskListQuery | null = parseTaskListQuery(rawQuery);
-    let status: TaskStatus = "do";
-    if (parsedQuery !== null) status = parsedQuery.status;
-    else if (isTaskStatus(rawStatus)) status = rawStatus;
-    let workingOnly = c.req.query("working") === "only";
-    if (parsedQuery !== null) workingOnly = parsedQuery.workingOnly;
-    const project = parsedQuery?.project;
-    let query = `is:${status}`;
-    if (workingOnly) query += " label:working";
-    if (parsedQuery !== null && rawQuery !== undefined) query = rawQuery.trim();
-    const filteredTasks = filterTasks(result.value, [
-      TASK_STATUS_FILTERS[status],
-      ...(workingOnly ? [is_working] : []),
-      ...(project === undefined ? [] : [taskProjectFilter(project)]),
-    ]);
+    const listRequest = parseTaskListRequest(c.req.query("status"), c.req.query("working"), rawQuery);
+    const filteredTasks = filterTasks(result.value, taskListFilters(listRequest));
     const requestedPage = parsePageParam(c.req.query("page")) ?? 1;
     const { pageTasks, currentPage, totalPages } = paginateTasks(filteredTasks, requestedPage);
     return renderPage(
       c,
       <TaskListPage
         tasks={pageTasks}
-        status={status}
-        workingOnly={workingOnly}
-        query={query}
+        status={listRequest.status}
+        working={listRequest.working}
+        query={listRequest.query}
         currentPage={currentPage}
         totalPages={totalPages}
         queryInUrl={rawQuery}
         projects={projectList}
-        project={project}
+        project={listRequest.project}
       />,
     );
   });

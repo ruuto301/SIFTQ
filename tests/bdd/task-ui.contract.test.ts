@@ -46,7 +46,7 @@ describe("Task list page", () => {
     expect(body).toContain('name="q"');
     expect(body).toContain('value="is:do"');
     expect(body).toContain("Submit search");
-    expect(body).toContain('placeholder="is:do project:Yoriwake label:working"');
+    expect(body).toContain('placeholder="見積もり is:do project:Yoriwake working:on"');
   });
 
   it.each(["do", "done", "skip"] as const)("filters tasks by %s status", async (status) => {
@@ -121,15 +121,35 @@ describe("Task list query UI", () => {
     }
   });
 
-  it("combines a status query with the working label", async () => {
+});
+
+describe("Task list working and free text query", () => {
+  it("combines a status query with the working filter", async () => {
     await repo.insert(taskFixture({ id: "working", status: "do", working: true }));
     await repo.insert(taskFixture({ id: "idle", status: "do", working: false }));
 
-    const body = await (await request("/tasks?q=is:do%20label:working")).text();
+    const body = await (await request("/tasks?q=is:do%20working:on")).text();
 
-    expect(body).toContain("working");
-    expect(body).not.toContain("idle");
-    expect(body).toContain('href="/tasks?status=do&amp;working=only"');
+    expect(body).toContain('data-task-id="working"');
+    expect(body).not.toContain('data-task-id="idle"');
+    expect(body).toContain('href="/tasks?status=do&amp;working=on"');
+  });
+
+  it("filters by working:off and by free text", async () => {
+    await repo.insert(taskFixture({ id: "busy", title: "見積もりを送る", status: "do", working: true }));
+    await repo.insert(taskFixture({ id: "idle", title: "別の作業", status: "do", working: false }));
+
+    const offBody = await (await request("/tasks?q=is:do%20working:off")).text();
+    expect(offBody).toContain('data-task-id="idle"');
+    expect(offBody).not.toContain('data-task-id="busy"');
+
+    const textBody = await (await request(`/tasks?q=${encodeURIComponent("is:do 見積もり")}`)).text();
+    expect(textBody).toContain('data-task-id="busy"');
+    expect(textBody).not.toContain('data-task-id="idle"');
+
+    const workingOffBody = await (await request("/tasks?working=off")).text();
+    expect(workingOffBody).toContain('data-task-id="idle"');
+    expect(workingOffBody).not.toContain('data-task-id="busy"');
   });
 
   it("filters by project id and by unassigned", async () => {
@@ -149,10 +169,10 @@ describe("Task list query UI", () => {
   });
 
   it("keeps a valid query when navigating labels", async () => {
-    const body = await (await request("/tasks?q=is:do%20label:working")).text();
+    const body = await (await request("/tasks?q=is:do%20working:on")).text();
 
     expect(body).toContain('href="/tasks?status=do&amp;q=is%3Ado"');
-    expect(body).toContain('href="/tasks?status=do&amp;working=only&amp;q=is%3Ado%20label%3Aworking"');
+    expect(body).toContain('href="/tasks?status=do&amp;working=on&amp;q=is%3Ado%20working%3Aon"');
   });
 
   it("offers project choices in the labels menu", async () => {
@@ -192,19 +212,19 @@ describe("Task list working filter", () => {
     expect(body).toContain("working task");
     expect(body).not.toContain("idle task");
     expect(body).not.toContain("done working task");
-    expect(body).toContain("working only");
+    expect(body).toContain("working:on");
   });
 
   it("keeps the status filter when toggling the working filter", async () => {
     const body = await (await request("/tasks?status=done")).text();
 
-    expect(body).toContain('href="/tasks?status=done&amp;working=only"');
+    expect(body).toContain('href="/tasks?status=done&amp;working=on&amp;q=is%3Adone%20working%3Aon"');
   });
 
   it("preserves the status filter on working filter links", async () => {
     const body = await (await request("/tasks?status=skip")).text();
 
-    expect(body).toContain('href="/tasks?status=skip&amp;working=only"');
+    expect(body).toContain('href="/tasks?status=skip&amp;working=on&amp;q=is%3Askip%20working%3Aon"');
   });
 });
 
@@ -295,10 +315,10 @@ describe("Task list working and pagination interaction", () => {
   });
 
   it("resets to page 1 when switching status from a working-filtered page", async () => {
-    const body = await (await request("/tasks?status=do&working=only&page=2")).text();
+    const body = await (await request("/tasks?status=do&working=on&page=2")).text();
 
-    expect(body).toContain('href="/tasks?status=done&amp;working=only"');
-    expect(body).not.toContain("status=done&amp;working=only&amp;page");
+    expect(body).toContain('href="/tasks?status=done&amp;working=on"');
+    expect(body).not.toContain("status=done&amp;working=on&amp;page");
   });
 });
 
