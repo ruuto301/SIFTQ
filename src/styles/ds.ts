@@ -6,7 +6,7 @@ export const DS_CSS = `
   gap: 10px;
   height: calc(100vh - 120px);
   padding: 10px;
-  background: #f6f8fa;
+  background: #fff;
   color: #1b1f24;
 }
 
@@ -109,7 +109,7 @@ export const DS_CSS = `
   color: #1b1f24;
 }
 .ds__new-input::placeholder { color: #8b949e; }
-.ds__new-input:focus-visible { border-color: #1b1f24; outline: 2px solid #e6e9ee; outline-offset: 1px; }
+.ds__new-input:focus-visible { border-color: #1b1f24; outline: 2px solid rgb(27 31 36 / 35%); outline-offset: 1px; }
 .ds__new-project {
   flex: 1;
   min-width: 0;
@@ -122,7 +122,7 @@ export const DS_CSS = `
   font-size: 11px;
   color: #1b1f24;
 }
-.ds__new-project:focus-visible { border-color: #1b1f24; outline: 2px solid #e6e9ee; outline-offset: 1px; }
+.ds__new-project:focus-visible { border-color: #1b1f24; outline: 2px solid rgb(27 31 36 / 35%); outline-offset: 1px; }
 .ds__new-add {
   flex: 0 0 auto;
   min-height: 30px;
@@ -137,9 +137,9 @@ export const DS_CSS = `
   cursor: pointer;
 }
 .ds__new-add:hover:not(:disabled) { background: #30363d; border-color: #30363d; }
-.ds__new-add:disabled { background: #c1c9d3; border-color: #c1c9d3; cursor: default; }
+.ds__new-add:disabled { background: #fff; border-color: #d8dde3; cursor: default; }
 .ds__new-input:disabled,
-.ds__new-project:disabled { background: #f6f8fa; color: #8b949e; }
+.ds__new-project:disabled { background: #fff; color: #8b949e; }
 .ds__new-error {
   margin: 0 12px 6px;
   padding: 6px 10px;
@@ -190,9 +190,9 @@ export const DS_CSS = `
   gap: 8px;
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
-  background: #f6f8fa;
+  background: #fff;
   font-size: 12px;
   font-weight: 600;
   text-align: left;
@@ -200,7 +200,7 @@ export const DS_CSS = `
   cursor: pointer;
 }
 
-.ds__group-head:hover { background: #eef1f4; }
+.ds__group-head:hover { background: #f3f6fa; }
 
 .ds__group-caret { flex: 0 0 auto; transition: transform 120ms ease; }
 
@@ -274,9 +274,9 @@ export const DS_CSS = `
 .ds__task-meta .working-badge { font-size: 11px; padding: 2px 8px; }
 
 .ds__dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; }
-.ds__dot--do { background: #2f6feb; }
-.ds__dot--done { background: #2da44e; }
-.ds__dot--skip { background: #8b949e; }
+.ds__dot--do { background: #1b1f24; }
+.ds__dot--done { background: #3f6b4f; }
+.ds__dot--skip { background: #6b7280; }
 
 .ds__empty { padding: 18px 14px; font-size: 13px; color: #57606a; }
 
@@ -295,7 +295,7 @@ export const DS_CSS = `
 }
 
 .ds__tab:hover { background: #f3f6fa; }
-.ds__tab.active { background: #eef4ff; color: #2f6feb; }
+.ds__tab.active { background: #1b1f24; color: #fff; }
 
 .ds__chat-tools { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .ds__chat-tools select {
@@ -368,8 +368,8 @@ export const DS_CSS = `
   white-space: pre-wrap;
 }
 .dsh-desc__view:empty::before { content: "説明はまだありません。"; color: #8b949e; }
-.dsh-desc__view .dsh-code { padding: 10px 12px; overflow: auto; border-radius: 8px; background: #f6f8fa; font-size: 12px; }
-.dsh-desc__view code { padding: 1px 5px; border-radius: 5px; background: #f6f8fa; font-size: 12px; }
+.dsh-desc__view .dsh-code { padding: 10px 12px; overflow: auto; border-radius: 8px; background: #fff; border: 1px solid #d8dde3; font-size: 12px; }
+.dsh-desc__view code { padding: 1px 5px; border-radius: 5px; background: #fff; border: 1px solid #d8dde3; font-size: 12px; }
 .dsh-chat[hidden], .dsh-desc[hidden] { display: none !important; }
 
 /* Right pane: browser. */
@@ -421,7 +421,7 @@ export const DS_CSS = `
   padding: 4px 8px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: #f6f8fa;
+  background: #fff;
   font-size: 11px;
   color: #444d56;
 }
@@ -488,7 +488,7 @@ export const DS_CSS = `
 .ds-settings__card-name { font-size: 13px; color: #1b1f24; }
 .ds-settings__card-sub { font-size: 11px; color: #8b949e; }
 .ds-settings__card-actions { margin-left: auto; display: flex; gap: 6px; }
-.ds-settings__dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #c1c9d3; }
+.ds-settings__dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #d8dde3; }
 .ds-settings__dot.good { background: #2da44e; }
 .ds-settings__dot.bad { background: #d1242f; }
 .ds-settings__hint { font-size: 10px; color: #8b949e; }
