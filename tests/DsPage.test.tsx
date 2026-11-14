@@ -108,6 +108,9 @@ describe("DsPage task composer", () => {
     expect(html).toContain('id="ds-new-add"');
     expect(html).toContain('id="ds-new-project"');
     expect(html).toContain('id="ds-new-error"');
+    expect(html).toContain('aria-keyshortcuts="Control+Enter Meta+Enter"');
+    expect(html).toContain('title="追加 (Ctrl + Enter)"');
+    expect(html).toContain("Ctrl + Enter で追加");
     expect(html).toContain('for="ds-new-project"');
     expect(html).toContain('<option value="dsh" selected="">dsh</option>');
     const composer = html.indexOf('id="ds-new-task"');

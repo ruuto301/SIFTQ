@@ -102,8 +102,9 @@ function TaskComposer({
           maxlength={256}
           placeholder={`タスクを追加（${status}）`}
           aria-describedby="ds-new-error"
+          aria-keyshortcuts="Control+Enter Meta+Enter"
         />
-        <button type="submit" class="ds__new-add" id="ds-new-add" disabled>
+        <button type="submit" class="ds__new-add" id="ds-new-add" disabled title="追加 (Ctrl + Enter)">
           追加
         </button>
       </div>
@@ -115,6 +116,7 @@ function TaskComposer({
           <ProjectOptions projects={projects} selected={selected?.project ?? null} noneLast />
         </select>
       </div>
+      <p class="ds__new-hint">Ctrl + Enter で追加</p>
     </form>
   );
 }
