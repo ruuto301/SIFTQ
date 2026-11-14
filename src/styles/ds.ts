@@ -32,6 +32,21 @@ export const DS_CSS = `
   color: #1b1f24;
 }
 
+.ds__chat-title {
+  padding: 8px 14px;
+  border-bottom: 1px solid #eef1f4;
+  background: #fafbfd;
+}
+
+.ds__chat-title__text {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .ds__resizer {
   align-self: stretch;
   border-radius: 4px;

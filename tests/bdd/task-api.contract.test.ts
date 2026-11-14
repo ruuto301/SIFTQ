@@ -82,7 +82,7 @@ describe("BDD-TM-001: task creation", () => {
   });
 });
 
-describe("BDD-TM-027: task creation from the DS composer", () => {
+describe("BDD-TM-028: task creation from the DS composer", () => {
   it("creates a task with the requested status and project", async () => {
     const response = await request("POST", "/api/tasks", {
       title: "Buy milk",

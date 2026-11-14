@@ -16,7 +16,7 @@ async function selectedProject(page: Page): Promise<string> {
     .evaluate((link) => link.closest(".ds__task-item")?.getAttribute("data-task-project") ?? "");
 }
 
-test("adds a task from the DS composer to the selected project (BDD-TM-027)", async ({ page }) => {
+test("adds a task from the DS composer to the selected project (BDD-TM-028)", async ({ page }) => {
   const title = `composer task ${Date.now()}`;
   await page.goto("/ds");
   await expect(page.locator("#ds-new-task")).toBeVisible();
@@ -48,7 +48,7 @@ test("adds a task from the DS composer to the selected project (BDD-TM-027)", as
   await expect(page.locator(".ds__task.active")).not.toHaveCount(0);
 });
 
-test("creates a task with the active status and the chosen project (BDD-TM-027)", async ({ page }) => {
+test("creates a task with the active status and the chosen project (BDD-TM-028)", async ({ page }) => {
   const title = `skip composer task ${Date.now()}`;
   await page.goto("/ds?status=skip");
   await expect(page.locator("#ds-new-title")).toHaveAttribute("placeholder", "タスクを追加（skip）");
@@ -70,7 +70,7 @@ test("creates a task with the active status and the chosen project (BDD-TM-027)"
   await expect(row).toHaveAttribute("data-task-project", "Yoriwake");
 });
 
-test("adds an unassigned task to the 未分類 group (BDD-TM-027)", async ({ page }) => {
+test("adds an unassigned task to the 未分類 group (BDD-TM-028)", async ({ page }) => {
   const title = `none composer task ${Date.now()}`;
   await page.goto("/ds");
   await page.selectOption("#ds-new-project", "");
@@ -82,7 +82,7 @@ test("adds an unassigned task to the 未分類 group (BDD-TM-027)", async ({ pag
   await expect(row).toHaveAttribute("data-task-project", "");
 });
 
-test("keeps the task text and reports a failure (BDD-TM-027)", async ({ page }) => {
+test("keeps the task text and reports a failure (BDD-TM-028)", async ({ page }) => {
   const title = `failing composer task ${Date.now()}`;
   await page.goto("/ds");
   await page.route("**/api/tasks", (route) =>
@@ -100,7 +100,7 @@ test("keeps the task text and reports a failure (BDD-TM-027)", async ({ page }) 
   await expect(page.locator(".ds__task-item").filter({ hasText: title })).toHaveCount(0);
 });
 
-test("expands a collapsed group when a task is added to it (BDD-TM-027)", async ({ page }) => {
+test("expands a collapsed group when a task is added to it (BDD-TM-028)", async ({ page }) => {
   const title = `collapsed composer task ${Date.now()}`;
   await page.goto("/tasks");
   await createTask(page, title, "customer_portal");

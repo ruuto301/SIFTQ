@@ -288,6 +288,11 @@ export const DsPage: FC<{
 
       <section class="ds__pane ds__pane--chat">
         <ChatHeader />
+        {selected === undefined ? null : (
+          <div class="ds__chat-title">
+            <span class="ds__chat-title__text">{selected.title}</span>
+          </div>
+        )}
         <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
         {selected === undefined ? null : <DescPane />}
         <SettingsPane />

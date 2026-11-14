@@ -163,6 +163,20 @@ describe("DsPage task list", () => {
     expect(html).toContain('data-ds-tab="desc"');
   });
 
+  it("shows the selected task title between the tabs and the chat (BDD-TM-027)", () => {
+    const selected = taskFixture({ id: "t1", title: "チャットのタイトルを表示する", project: "Yoriwake" });
+    const html = renderToString(page([selected], selected));
+
+    expect(html).toContain('class="ds__chat-title__text">チャットのタイトルを表示する<');
+    expect(html).not.toContain("ds__chat-title__label");
+  });
+
+  it("hides the title row when no task is selected", () => {
+    const html = renderToString(page([], undefined));
+
+    expect(html).not.toContain("ds__chat-title");
+  });
+
   it("renders the do, done and skip tabs with the active status", () => {
     const html = renderToString(page([taskFixture()], taskFixture(), "done"));
 
