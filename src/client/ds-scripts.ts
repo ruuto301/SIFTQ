@@ -634,12 +634,10 @@ export const DS_SCRIPT = `(function () {
           location.reload();
         });
     }
-    function deleteTask(row) {
-      if (!window.confirm("このタスクを削除しますか？")) return;
+    function removeTask(row) {
       var id = row.getAttribute("data-task-id");
       var version = Number(row.getAttribute("data-task-version"));
       var wasSelected = row.querySelector(".ds__task.active") !== null;
-      closeMenu();
       fetch("/api/tasks/" + encodeURIComponent(id), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -656,6 +654,14 @@ export const DS_SCRIPT = `(function () {
         .catch(function () {
           location.reload();
         });
+    }
+    function deleteTask(row) {
+      closeMenu();
+      // The confirmation is a centered dialog, not the browser's window.confirm.
+      if (typeof window.__siftqConfirm !== "function") return;
+      window.__siftqConfirm("このタスクを削除しますか？", function () {
+        removeTask(row);
+      });
     }
     function openProjectMenu(row, sourceBox) {
       var current = row.getAttribute("data-task-project") || "";
