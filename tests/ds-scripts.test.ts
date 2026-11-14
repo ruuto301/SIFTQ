@@ -73,6 +73,21 @@ describe("DS task action menu", () => {
     expect(DS_SCRIPT).not.toContain("リンクをコピー");
     expect(DS_SCRIPT).not.toContain("進行中");
   });
+
+  it("positions the menu like the OS context menu (flip at the screen edges)", () => {
+    for (const hook of [
+      "placeMenuAtPointer",
+      "placeSubmenu",
+      "MENU_OFFSET",
+      "MENU_PADDING",
+      "window.innerWidth - rect.width - MENU_PADDING",
+      "window.innerHeight - rect.height - MENU_PADDING",
+      "box.style.maxHeight",
+      'box.style.overflowY = "auto"',
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+  });
 });
 
 describe("DS task list DnD", () => {
