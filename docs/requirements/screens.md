@@ -18,6 +18,8 @@
 | P08 | Idea list | Ideaをカード一覧で管理する画面 |
 | P09 | Idea detail | Idea詳細画面 title、description、pinned を確認・編集する |
 | P10 | DS | project ごとに区切ったタスク一覧と DSH の chat、description、設定、browser を 1 画面で扱う |
+| P11 | Connections | 連携した MCP クライアント（OAuth）の一覧と失効 |
+| P12 | Consent | MCP クライアントへ権限を委任する同意画面 |
 
 ## 画面詳細
 
@@ -151,6 +153,24 @@
   - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
   - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。
   - ペイン幅と最大化状態は再読み込み後も維持する。
+
+### P11 Connections
+
+  - 表示項目はクライアント名、client_id、要求スコープ、有効なトークンの有無、発行日時とする。
+  - 各クライアントの `失効` で有効なトークンをすべて revoke し、以後そのクライアントの `/mcp` 呼び出しは 401 になる。
+
+### P12 Consent
+
+  - `GET /oauth/authorize` の検証が通ると、クライアント名と要求スコープ（`read` / `write`）を表示する。`write` は削除を含む旨を明記する。
+  - `許可` で認可コードを発行して `redirect_uri` へ 302 する。`拒否` は `error=access_denied` を返す。
+
+## MCP
+
+  - `POST /mcp` は Streamable HTTP の JSON-RPC 2.0 を受け付け、`initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call` を処理する。
+  - 認可は OAuth のアクセストークン（`Authorization: Bearer`）とし、未認証は 401 と `WWW-Authenticate: Bearer resource_metadata=...` を返す。
+  - `read` スコープは読み取りツールのみ、`write` スコープは tasks / projects / ideas の全操作を実行できる。
+  - 書き込みツールは `version` を必須とし、不一致はエラー結果（`CONFLICT`）を返す。削除系は `destructiveHint` を持つ。
+  - `GET /mcp` は 405 を返す。
 
 ## 画面遷移
 

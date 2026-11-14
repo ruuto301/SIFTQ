@@ -11,7 +11,14 @@ import {
   parseTaskVersionInputs,
 } from "../task";
 import type { DomainError, Result, Task, TaskStatus, TaskVersionInput } from "../task";
-import { isProjectId, isProjectOrderValid } from "../project";
+import {
+  applyProjectPatch,
+  isProjectId,
+  isProjectOrderValid,
+  nextProjectOrder,
+  parseProjectCreate,
+  parseProjectPatch,
+} from "../project";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
 import type { IdeaRepository } from "../repository/idea-repository";
@@ -329,6 +336,53 @@ function registerTaskRoutes<T extends ApiEnv>(app: Hono<T>, deps: TaskDeps<T>) {
   app.delete("/api/tasks/:id", (c) => deleteApiTask(c, deps));
 }
 
+async function createApiProject<T extends ApiEnv>(
+  c: Context<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
+  const body = await readJsonRecord(c);
+  if (body === null) return problem(c, 400, "INVALID_INPUT");
+  const input = parseProjectCreate(body);
+  if (!input.ok) return problem(c, 400, "INVALID_INPUT");
+
+  const listed = await projectRepository(c).list();
+  if (!listed.ok) return problem(c, 500, listed.error.code);
+  const created = await projectRepository(c).insert({
+    ...input.value,
+    sort_order: nextProjectOrder(listed.value),
+  });
+  if (!created.ok) {
+    return created.error.code === "CONFLICT"
+      ? problem(c, 409, "CONFLICT")
+      : problem(c, 500, created.error.code);
+  }
+  c.header("Location", `/api/projects/${created.value.id}`);
+  return c.json(created.value, 201);
+}
+
+async function patchApiProject<T extends ApiEnv>(
+  c: Context<T>,
+  projectRepository: ProjectRepositoryFactory<T>,
+) {
+  const id = c.req.param("id");
+  if (id === undefined || !isProjectId(id)) return problem(c, 404, "NOT_FOUND");
+  const body = await readJsonRecord(c);
+  if (body === null) return problem(c, 400, "INVALID_INPUT");
+  const patch = parseProjectPatch(body);
+  if (!patch.ok) return problem(c, 400, "INVALID_INPUT");
+
+  const found = await projectRepository(c).find(id);
+  if (!found.ok) return problem(c, 500, found.error.code);
+  if (!found.value) return problem(c, 404, "NOT_FOUND");
+  const updated = await projectRepository(c).update(applyProjectPatch(found.value, patch.value));
+  if (!updated.ok) {
+    return updated.error.code === "NOT_FOUND"
+      ? problem(c, 404, "NOT_FOUND")
+      : problem(c, 500, updated.error.code);
+  }
+  return c.json(updated.value);
+}
+
 function registerProjectRoutes<T extends ApiEnv>(
   app: Hono<T>,
   projectRepository: ProjectRepositoryFactory<T>,
@@ -338,6 +392,10 @@ function registerProjectRoutes<T extends ApiEnv>(
     if (!result.ok) return problem(c, 500, result.error.code);
     return c.json(result.value);
   });
+
+  app.post("/api/projects", (c) => createApiProject(c, projectRepository));
+
+  app.patch("/api/projects/:id", (c) => patchApiProject(c, projectRepository));
 
   app.post("/api/projects/reorder", async (c) => {
     const body = await readJsonRecord(c);

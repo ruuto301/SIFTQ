@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types";
 import { createD1ProjectRepository } from "../src/repository/d1-project-repository";
+import type { Project } from "../src/project";
 
 type Execution = { query: string; values: readonly unknown[] };
 
@@ -44,7 +45,7 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 
   run<T = Record<string, unknown>>(): Promise<D1Result<T>> {
     this.recorder.record(this.query, this.values);
-    return Promise.resolve(successResult<T>([], 1));
+    return Promise.resolve(successResult<T>([], this.recorder.runChanges));
   }
 
   all<T = Record<string, unknown>>(): Promise<D1Result<T>> {
@@ -63,6 +64,7 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 class RecordingD1Database implements D1Database {
   readonly executions: Execution[] = [];
   readonly resultSets: unknown[] = [];
+  runChanges = 1;
 
   prepare(query: string): D1PreparedStatement {
     return new RecordingPreparedStatement(this, query);
@@ -151,5 +153,33 @@ describe("D1 project repository", () => {
     expect(
       database.executions.some((execution) => execution.query.startsWith("UPDATE")),
     ).toBe(false);
+  });
+});
+
+describe("D1 project repository writes", () => {
+  it("inserts a project and reports a duplicated id", async () => {
+    const database = new RecordingD1Database();
+    const repository = createD1ProjectRepository(database);
+    const project: Project = { id: "c", name: "C", path: null, sort_order: 3, archived: false };
+
+    expect(await repository.insert(project)).toEqual({ ok: true, value: project });
+    expect(database.executions[0]?.query).toContain("INSERT OR IGNORE INTO projects");
+    expect(database.executions[0]?.values).toEqual(["c", "C", null, 3, 0]);
+
+    database.runChanges = 0;
+    expect(await repository.insert(project)).toEqual({ ok: false, error: { code: "CONFLICT" } });
+  });
+
+  it("updates a project and reports an unknown id", async () => {
+    const database = new RecordingD1Database();
+    const repository = createD1ProjectRepository(database);
+    const project: Project = { id: "c", name: "C", path: "/c", sort_order: 3, archived: true };
+
+    expect(await repository.update(project)).toEqual({ ok: true, value: project });
+    expect(database.executions[0]?.query).toContain("UPDATE projects SET name = ?");
+    expect(database.executions[0]?.values).toEqual(["C", "/c", 3, 1, "c"]);
+
+    database.runChanges = 0;
+    expect(await repository.update(project)).toEqual({ ok: false, error: { code: "NOT_FOUND" } });
   });
 });

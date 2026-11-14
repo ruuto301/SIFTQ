@@ -6,11 +6,10 @@ import {
   isIdeaRecord,
   isIdeaOrderValid,
   isIdeaTitleValid,
-  nextIdeaOrder,
   parseIdeaPatch,
   type Idea,
 } from "../idea";
-import { createTask, nextTaskOrder } from "../task";
+import { createIdea, moveIdeaToTask } from "../idea-tasks";
 import type { DomainError, Result, Task } from "../task";
 import type { AppEnv } from "../app-env";
 import type { IdeaOrderUpdate, IdeaRepository, IdeaRepositoryError } from "../repository/idea-repository";
@@ -75,9 +74,7 @@ export function registerIdeaApiRoutes(
     if (!isIdeaDescriptionValid(description)) return problem(c, 400, "INVALID_DESCRIPTION");
     const current = await repository(c).list(OWNER_ID);
     if (!current.ok) return problem(c, 500, current.error.code);
-    const pinned = body["pinned"] === true;
-    const order = nextIdeaOrder(current.value, pinned);
-    const idea: Idea = { id: crypto.randomUUID(), owner_id: OWNER_ID, title, description, order, pinned };
+    const idea = createIdea(current.value, { title, description, pinned: body["pinned"] === true });
     const inserted = await repository(c).insert(idea);
     if (!inserted.ok) return problem(c, errorStatus(inserted.error.code), inserted.error.code);
     return c.json(inserted.value, 201);
@@ -130,19 +127,9 @@ function registerIdeaMoveRoute(
     if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);
     const tasks = await taskRepository(c).list();
     if (!tasks.ok) return problem(c, 500, tasks.error.code);
-    const now = new Date().toISOString();
-    const created = createTask({
-      id: crypto.randomUUID(),
-      owner_id: OWNER_ID,
-      title: found.value.title,
-      description: found.value.description,
-      status: "do",
-      created_at: now,
-      updated_at: now,
-    });
-    if (!created.ok) return problem(c, 400, created.error.code);
-    const task = { ...created.value, order: nextTaskOrder(tasks.value) };
-    const inserted = await taskRepository(c).insert(task);
+    const task = moveIdeaToTask(found.value, tasks.value);
+    if (!task.ok) return problem(c, 400, task.error.code);
+    const inserted = await taskRepository(c).insert(task.value);
     if (!inserted.ok) return problem(c, 500, inserted.error.code);
     const removed = await repository(c).remove(found.value.id, OWNER_ID);
     if (!removed.ok) {
