@@ -92,7 +92,7 @@ class RecordingD1Database implements D1Database {
 }
 
 function projectRow(id: string, sortOrder: number): Record<string, unknown> {
-  return { id, name: id.toUpperCase(), path: null, sort_order: sortOrder, archived: 0 };
+  return { id, name: id.toUpperCase(), sort_order: sortOrder };
 }
 
 describe("D1 project repository", () => {
@@ -130,8 +130,8 @@ describe("D1 project repository", () => {
     expect(moved).toEqual({
       ok: true,
       value: [
-        { id: "b", name: "B", path: null, sort_order: 1, archived: false },
-        { id: "a", name: "A", path: null, sort_order: 2, archived: false },
+        { id: "b", name: "B", sort_order: 1 },
+        { id: "a", name: "A", sort_order: 2 },
       ],
     });
     const updates = database.executions.filter((execution) =>
@@ -160,11 +160,11 @@ describe("D1 project repository writes", () => {
   it("inserts a project and reports a duplicated id", async () => {
     const database = new RecordingD1Database();
     const repository = createD1ProjectRepository(database);
-    const project: Project = { id: "c", name: "C", path: null, sort_order: 3, archived: false };
+    const project: Project = { id: "c", name: "C", sort_order: 3 };
 
     expect(await repository.insert(project)).toEqual({ ok: true, value: project });
     expect(database.executions[0]?.query).toContain("INSERT OR IGNORE INTO projects");
-    expect(database.executions[0]?.values).toEqual(["c", "C", null, 3, 0]);
+    expect(database.executions[0]?.values).toEqual(["c", "C", 3]);
 
     database.runChanges = 0;
     expect(await repository.insert(project)).toEqual({ ok: false, error: { code: "CONFLICT" } });
@@ -173,13 +173,29 @@ describe("D1 project repository writes", () => {
   it("updates a project and reports an unknown id", async () => {
     const database = new RecordingD1Database();
     const repository = createD1ProjectRepository(database);
-    const project: Project = { id: "c", name: "C", path: "/c", sort_order: 3, archived: true };
+    const project: Project = { id: "c", name: "C", sort_order: 3 };
 
     expect(await repository.update(project)).toEqual({ ok: true, value: project });
     expect(database.executions[0]?.query).toContain("UPDATE projects SET name = ?");
-    expect(database.executions[0]?.values).toEqual(["C", "/c", 3, 1, "c"]);
+    expect(database.executions[0]?.values).toEqual(["C", 3, "c"]);
 
     database.runChanges = 0;
     expect(await repository.update(project)).toEqual({ ok: false, error: { code: "NOT_FOUND" } });
+  });
+
+  it("removes a project and reports an unknown id", async () => {
+    const database = new RecordingD1Database();
+    const repository = createD1ProjectRepository(database);
+
+    expect(await repository.remove("c")).toEqual({ ok: true, value: null });
+    expect(database.executions[0]?.query).toContain("DELETE FROM projects WHERE id = ?");
+    expect(database.executions[0]?.values).toEqual(["c"]);
+
+    const missing = new RecordingD1Database();
+    missing.runChanges = 0;
+    expect(await createD1ProjectRepository(missing).remove("c")).toEqual({
+      ok: false,
+      error: { code: "NOT_FOUND" },
+    });
   });
 });

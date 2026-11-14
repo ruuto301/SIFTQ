@@ -12,8 +12,6 @@ import { errorContent, jsonContent, repositoryError, type McpTool, type ToolCont
 const PROJECT_PROPERTIES = {
   id: { type: "string" },
   name: { type: "string" },
-  path: { type: ["string", "null"] },
-  archived: { type: "boolean" },
 };
 
 async function loadProjects(ctx: ToolContext): Promise<Project[] | ToolResult> {
@@ -24,7 +22,7 @@ async function loadProjects(ctx: ToolContext): Promise<Project[] | ToolResult> {
 
 const listProjects: McpTool = {
   name: "list_projects",
-  description: "List projects with their id, name, path, sort order and archived flag.",
+  description: "List projects with their id, name and sort order.",
   scope: "read",
   inputSchema: schema({}),
   handler: async (ctx) => {
@@ -46,9 +44,7 @@ const createProject: McpTool = {
     const project: Project = {
       id: parsed.value.id,
       name: parsed.value.name,
-      path: parsed.value.path,
       sort_order: nextProjectOrder(projects),
-      archived: parsed.value.archived,
     };
     const inserted = await ctx.projects.insert(project);
     if (!inserted.ok) return repositoryError(inserted.error.code);
@@ -58,7 +54,7 @@ const createProject: McpTool = {
 
 const updateProject: McpTool = {
   name: "update_project",
-  description: "Update a project name, path or archived flag.",
+  description: "Update a project name.",
   scope: "write",
   inputSchema: schema(PROJECT_PROPERTIES, ["id"]),
   handler: async (ctx, args) => {

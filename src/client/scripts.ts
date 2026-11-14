@@ -10,6 +10,7 @@ import { DESCRIPTION_EDITOR_SCRIPT } from "./task-form-scripts";
 import { TASK_LIST_SELECTION_SCRIPT } from "./task-list-scripts";
 import { DSH_CHAT_SCRIPT } from "./dsh-chat-scripts";
 import { CONFIRM_DIALOG_SCRIPT } from "./confirm-dialog";
+import { SETTINGS_SCRIPT } from "./settings-scripts";
 import { DS_SCRIPT } from "./ds-scripts";
 import { DS_SETTINGS_SCRIPT } from "./ds-settings-scripts";
 
@@ -31,6 +32,12 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/popover-dismiss.js",
     body: POPOVER_DISMISS_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/settings.js",
+    body: SETTINGS_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },

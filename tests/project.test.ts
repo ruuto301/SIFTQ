@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   applyProjectPatch,
+  hasProjectName,
   isProjectId,
   isProjectNameValid,
   isProjectOrderValid,
-  isProjectPath,
   nextProjectOrder,
   parseProjectCreate,
   parseProjectPatch,
@@ -25,15 +25,18 @@ describe("project id", () => {
 });
 
 describe("toProject", () => {
-  it("maps a stored row and converts the archived flag", () => {
-    expect(
-      toProject({ id: "dsh", name: "dsh", path: null, sort_order: 2, archived: 1 }),
-    ).toEqual({ id: "dsh", name: "dsh", path: null, sort_order: 2, archived: true });
+  it("maps a stored row and trims the name", () => {
+    expect(toProject({ id: "life", name: " 生活 ", sort_order: 2 })).toEqual({
+      id: "life",
+      name: "生活",
+      sort_order: 2,
+    });
   });
 
-  it("rejects rows with an invalid id or flag", () => {
-    expect(toProject({ id: "Bad Id", name: "x", path: null, sort_order: 1, archived: 0 })).toBeUndefined();
-    expect(toProject({ id: "dsh", name: "x", path: null, sort_order: 1, archived: 4 })).toBeUndefined();
+  it("rejects rows with an invalid id or name", () => {
+    expect(toProject({ id: "Bad Id", name: "x", sort_order: 1 })).toBeUndefined();
+    expect(toProject({ id: "life", name: "  ", sort_order: 1 })).toBeUndefined();
+    expect(toProject({ id: "life", name: "x" })).toBeUndefined();
     expect(toProject(null)).toBeUndefined();
   });
 });
@@ -41,8 +44,8 @@ describe("toProject", () => {
 describe("sortProjects", () => {
   it("orders by sort_order and then by id without mutating the input", () => {
     const projects = [
-      { id: "b", name: "b", path: null, sort_order: 2, archived: false },
-      { id: "a", name: "a", path: null, sort_order: 1, archived: false },
+      { id: "b", name: "b", sort_order: 2 },
+      { id: "a", name: "a", sort_order: 1 },
     ];
 
     expect(sortProjects(projects).map((project) => project.id)).toEqual(["a", "b"]);
@@ -65,21 +68,30 @@ describe("isProjectOrderValid", () => {
   });
 });
 
-describe("project input validation", () => {
-  it("accepts names of 1 to 100 code points", () => {
+describe("project name validation", () => {
+  it("accepts 1 to 32 code points, including Japanese names", () => {
     expect(isProjectNameValid("a")).toBe(true);
-    expect(isProjectNameValid("a".repeat(100))).toBe(true);
+    expect(isProjectNameValid("生活")).toBe(true);
+    expect(isProjectNameValid("a".repeat(32))).toBe(true);
     expect(isProjectNameValid("")).toBe(false);
-    expect(isProjectNameValid("a".repeat(101))).toBe(false);
+    expect(isProjectNameValid("a".repeat(33))).toBe(false);
+  });
+});
+
+describe("hasProjectName", () => {
+  const projects = [
+    { id: "life", name: "生活", sort_order: 1 },
+    { id: "work", name: "Work", sort_order: 2 },
+  ];
+
+  it("matches names regardless of case and surrounding spaces", () => {
+    expect(hasProjectName(projects, " work ")).toBe(true);
+    expect(hasProjectName(projects, "生活")).toBe(true);
+    expect(hasProjectName(projects, "home")).toBe(false);
   });
 
-  it("accepts null and bounded paths", () => {
-    expect(isProjectPath(null)).toBe(true);
-    expect(isProjectPath("/workspace/a")).toBe(true);
-    expect(isProjectPath("a".repeat(1024))).toBe(true);
-    expect(isProjectPath("a".repeat(1025))).toBe(false);
-    expect(isProjectPath(3)).toBe(false);
-    expect(isProjectPath(undefined)).toBe(false);
+  it("ignores the project itself when renaming", () => {
+    expect(hasProjectName(projects, "生活", "life")).toBe(false);
   });
 });
 
@@ -88,22 +100,29 @@ describe("nextProjectOrder", () => {
     expect(nextProjectOrder([])).toBe(1);
     expect(
       nextProjectOrder([
-        { id: "a", name: "a", path: null, sort_order: 3, archived: false },
-        { id: "b", name: "b", path: null, sort_order: 7, archived: false },
+        { id: "a", name: "a", sort_order: 3 },
+        { id: "b", name: "b", sort_order: 7 },
       ]),
     ).toBe(8);
   });
 });
 
 describe("parseProjectCreate", () => {
-  it("normalizes the name and optional fields", () => {
+  it("normalizes the name", () => {
     expect(parseProjectCreate({ id: "gamma", name: " Gamma " })).toEqual({
       ok: true,
-      value: { id: "gamma", name: "Gamma", path: null, archived: false },
+      value: { id: "gamma", name: "Gamma" },
     });
-    expect(parseProjectCreate({ id: "gamma", name: "Gamma", path: " ", archived: true })).toEqual({
+    expect(parseProjectCreate({ id: "life", name: "生活" })).toEqual({
       ok: true,
-      value: { id: "gamma", name: "Gamma", path: null, archived: true },
+      value: { id: "life", name: "生活" },
+    });
+  });
+
+  it("ignores the removed path and archived fields", () => {
+    expect(parseProjectCreate({ id: "gamma", name: "Gamma", path: "/x", archived: true })).toEqual({
+      ok: true,
+      value: { id: "gamma", name: "Gamma" },
     });
   });
 
@@ -116,42 +135,26 @@ describe("parseProjectCreate", () => {
       ok: false,
       error: { code: "INVALID_PROJECT_NAME" },
     });
-    expect(parseProjectCreate({ id: "gamma", name: "Gamma", path: 3 })).toEqual({
+    expect(parseProjectCreate({ id: "gamma", name: "a".repeat(33) })).toEqual({
       ok: false,
-      error: { code: "INVALID_PROJECT_PATH" },
-    });
-    expect(parseProjectCreate({ id: "gamma", name: "Gamma", archived: "no" })).toEqual({
-      ok: false,
-      error: { code: "INVALID_PROJECT_ARCHIVED" },
+      error: { code: "INVALID_PROJECT_NAME" },
     });
   });
 });
 
 describe("parseProjectPatch", () => {
   it("reads only the provided fields", () => {
-    expect(parseProjectPatch({ archived: true })).toEqual({ ok: true, value: { archived: true } });
-    expect(parseProjectPatch({ name: " Beta ", path: null })).toEqual({
-      ok: true,
-      value: { name: "Beta", path: null },
-    });
+    expect(parseProjectPatch({ name: " Beta " })).toEqual({ ok: true, value: { name: "Beta" } });
     expect(parseProjectPatch({})).toEqual({ ok: true, value: {} });
   });
 
-  it("rejects invalid values and applies to a project", () => {
+  it("rejects an invalid name and applies the patch", () => {
     expect(parseProjectPatch({ name: "" })).toEqual({ ok: false, error: { code: "INVALID_PROJECT_NAME" } });
-    expect(parseProjectPatch({ path: 3 })).toEqual({ ok: false, error: { code: "INVALID_PROJECT_PATH" } });
-    expect(parseProjectPatch({ archived: 1 })).toEqual({ ok: false, error: { code: "INVALID_PROJECT_ARCHIVED" } });
 
-    const project = { id: "a", name: "a", path: "/a", sort_order: 1, archived: false };
-    const patch = parseProjectPatch({ name: "b", path: null, archived: true });
+    const project = { id: "a", name: "a", sort_order: 1 };
+    const patch = parseProjectPatch({ name: "生活" });
     expect(patch.ok).toBe(true);
     if (!patch.ok) return;
-    expect(applyProjectPatch(project, patch.value)).toEqual({
-      id: "a",
-      name: "b",
-      path: null,
-      sort_order: 1,
-      archived: true,
-    });
+    expect(applyProjectPatch(project, patch.value)).toEqual({ id: "a", name: "生活", sort_order: 1 });
   });
 });

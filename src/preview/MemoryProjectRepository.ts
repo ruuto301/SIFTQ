@@ -33,6 +33,12 @@ export function createMemoryProjectRepository(
     return ok(project);
   }
 
+  async function remove(id: string): Promise<Result<null, ProjectRepositoryError>> {
+    if (!projects.has(id)) return err({ code: "NOT_FOUND" });
+    projects.delete(id);
+    return ok(null);
+  }
+
   async function move(
     updates: readonly ProjectOrderUpdate[],
   ): Promise<Result<Project[], ProjectRepositoryError>> {
@@ -46,5 +52,5 @@ export function createMemoryProjectRepository(
     return list();
   }
 
-  return { list, find, insert, update, move };
+  return { list, find, insert, update, remove, move };
 }

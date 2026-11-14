@@ -179,9 +179,9 @@ describe("MCP project and idea tools", () => {
   it("creates and updates a project", async () => {
     const ctx = context();
     const created = await payload(await call(ctx, "create_project", { id: "new_project", name: "New Project" }));
-    expect(created).toMatchObject({ id: "new_project", name: "New Project", archived: false });
-    const updated = await payload(await call(ctx, "update_project", { id: "new_project", archived: true }));
-    expect(updated).toMatchObject({ id: "new_project", archived: true });
+    expect(created).toMatchObject({ id: "new_project", name: "New Project" });
+    const updated = await payload(await call(ctx, "update_project", { id: "new_project", name: "Renamed" }));
+    expect(updated).toMatchObject({ id: "new_project", name: "Renamed" });
     expect(code(await call(ctx, "create_project", { id: "bad id!", name: "x" }))).toBe("INVALID_PROJECT_ID");
   });
 

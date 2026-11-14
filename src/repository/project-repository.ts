@@ -13,5 +13,6 @@ export interface ProjectRepository {
   find(id: string): Promise<Result<Project | undefined, ProjectRepositoryError>>;
   insert(project: Project): Promise<Result<Project, ProjectRepositoryError>>;
   update(project: Project): Promise<Result<Project, ProjectRepositoryError>>;
+  remove(id: string): Promise<Result<null, ProjectRepositoryError>>;
   move(updates: readonly ProjectOrderUpdate[]): Promise<Result<Project[], ProjectRepositoryError>>;
 }

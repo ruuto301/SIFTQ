@@ -10,10 +10,12 @@ import { IdeasPage } from "../views/IdeasPage";
 import { IdeaDetailPage } from "../views/IdeaDetailPage";
 import { DshChatPage } from "../views/DshChatPage";
 import { DsPage } from "../views/DsPage";
+import { SettingsPage } from "../views/SettingsPage";
 import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
 import { NAV_SCREENS } from "../screens";
+import type { ActiveKey } from "../screens";
 import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, nextTaskOrder } from "../task";
 import type { DomainError, Result, Task, TaskStatus } from "../task";
 import type { Project } from "../project";
@@ -47,7 +49,7 @@ type Repository = (c: Context<AppEnv>) => TaskRepository;
 type ProjectRepositoryFactory = (c: Context<AppEnv>) => ProjectRepository;
 type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
-function activePage(path: string): "ideas" | "tasks" | "ds" {
+function activePage(path: string): ActiveKey {
   const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
   return match?.activeKey ?? "tasks";
 }
@@ -438,6 +440,30 @@ export function registerTaskScreenRoutes(
   registerTaskDetailRoutes(app, repository, projectRepository);
   registerTaskCreateRoute(app, repository, projectRepository);
   registerTaskEditRoutes(app, repository, projectRepository);
+  registerSettingsRoute(app, repository, projectRepository);
+}
+
+function registerSettingsRoute(
+  app: Hono<AppEnv>,
+  repository: Repository,
+  projectRepository: ProjectRepositoryFactory,
+) {
+  app.get("/settings", async (c) => {
+    const projects = await knownProjects(c, projectRepository);
+    const tasks = await repository(c).list();
+    if (projects === null || !tasks.ok) return c.text("Internal Server Error", 500);
+    const counts = new Map<string, number>();
+    let unassigned = 0;
+    for (const task of tasks.value) {
+      if (task.project === null) {
+        unassigned += 1;
+        continue;
+      }
+      counts.set(task.project, (counts.get(task.project) ?? 0) + 1);
+    }
+    const rows = projects.map((project) => ({ project, count: counts.get(project.id) ?? 0 }));
+    return renderPage(c, <SettingsPage rows={rows} unassigned={unassigned} />);
+  });
 }
 
 async function updateTaskMeta(

@@ -72,6 +72,7 @@
       { "status": 500 }
     ]
   },
+  "projects_delete": { "errors": [{ "status": 404, "code": "NOT_FOUND" }, { "status": 500 }] },
   "projects_reorder": {
     "errors": [
       { "status": 400, "code": "INVALID_INPUT" },

@@ -94,14 +94,8 @@
         "name": {
           "domain": "string"
         },
-        "path": {
-          "domain": "string"
-        },
         "sort_order": {
           "domain": "number"
-        },
-        "archived": {
-          "domain": "boolean"
         }
       }
     },
@@ -683,6 +677,22 @@
         }
       ]
     },
+    "projects_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/projects/{id}",
+      "operation": "delete",
+      "success": 204,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
     "projects_reorder": {
       "kind": "api",
       "method": "POST",
@@ -864,6 +874,13 @@
       "operation": "load",
       "success": 200,
       "entity": "tasks"
+    },
+    "html_settings_page": {
+      "kind": "html",
+      "method": "GET",
+      "path": "/settings",
+      "operation": "load",
+      "success": 200
     }
   },
   "relations": [],

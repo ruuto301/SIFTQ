@@ -94,14 +94,8 @@
         "name": {
           "domain": "string"
         },
-        "path": {
-          "domain": "string"
-        },
         "sort_order": {
           "domain": "number"
-        },
-        "archived": {
-          "domain": "boolean"
         }
       }
     },

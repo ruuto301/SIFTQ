@@ -42,6 +42,7 @@ describe("screen registry", () => {
       "/tasks": "html_tasks_page",
       "/tasks/new": "html_new_task_page",
       "/tasks/:id": "html_task_page",
+      "/settings": "html_settings_page",
     });
     expect(pageEntities()).toEqual({
       "/ds": "tasks",
