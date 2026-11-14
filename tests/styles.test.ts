@@ -44,6 +44,11 @@ describe("styles", () => {
     expect(STYLES_CSS).toContain(".matrix-modal-backdrop");
   });
 
+  it("keeps the disabled DS composer button label visible", () => {
+    const disabled = STYLES_CSS.match(/(?:^|\n)\.ds__new-add:disabled\s*\{[^}]*\}/);
+    expect(disabled?.[0]).toContain("color: #8b949e;");
+  });
+
   it("does not change the DS status tab colors on hover", () => {
     expect(STYLES_CSS).not.toContain(".ds__status-tabs .button.small:hover");
   });

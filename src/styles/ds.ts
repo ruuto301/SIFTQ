@@ -138,7 +138,7 @@ export const DS_CSS = `
   cursor: pointer;
 }
 .ds__new-add:hover:not(:disabled) { background: #30363d; border-color: #30363d; }
-.ds__new-add:disabled { background: #fff; border-color: #d8dde3; cursor: default; }
+.ds__new-add:disabled { background: #fff; border-color: #d8dde3; color: #8b949e; cursor: default; }
 .ds__new-input:disabled,
 .ds__new-project:disabled { background: #fff; color: #8b949e; }
 .ds__new-error {
