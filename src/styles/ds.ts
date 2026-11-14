@@ -88,6 +88,7 @@ export const DS_CSS = `
 .ds__new { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 4px 12px 16px; }
 .ds__new-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ds__new-label { flex: 0 0 auto; font-size: 11px; color: #57606a; }
+.ds__new-hint { margin: 0; font-size: 11px; color: #57606a; }
 .ds__new-label--hidden {
   position: absolute;
   width: 1px;

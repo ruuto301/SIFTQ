@@ -292,11 +292,22 @@ export const DS_SCRIPT = `(function () {
       composing = false;
     });
     newInput.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" && (composing || event.isComposing)) event.preventDefault();
-      if (event.key === "Escape") {
-        newInput.value = "";
-        showNewError("");
-        syncNewSubmit();
+      if (event.key !== "Enter") {
+        if (event.key === "Escape") {
+          newInput.value = "";
+          showNewError("");
+          syncNewSubmit();
+        }
+        return;
+      }
+      if (composing || event.isComposing) {
+        event.preventDefault();
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        if (typeof newForm.requestSubmit === "function") newForm.requestSubmit();
+        else newForm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
       }
     });
     syncNewSubmit();
