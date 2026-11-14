@@ -16,6 +16,13 @@ describe("styles", () => {
     expect(STYLES_CSS).toContain(".working-badge");
   });
 
+  it("keeps the right side panel headings spaced from their controls", () => {
+    const spaced = STYLES_CSS.match(/(?:^|\n)\.meta-row--spaced\s*\{[^}]*\}/);
+    const sidePanel = STYLES_CSS.match(/(?:^|\n)\.side-panel > \.meta-row-link\s*\{[^}]*\}/);
+    expect(spaced?.[0]).toContain("margin-bottom: 8px;");
+    expect(sidePanel?.[0]).toContain("margin-bottom: 8px;");
+  });
+
   it("styles the project label and the unassigned variant in a lighter tone", () => {
     const label = STYLES_CSS.match(/(?:^|\n)\.label\s*\{[^}]*\}/);
     const project = STYLES_CSS.match(/(?:^|\n)\.label--project\s*\{[^}]*\}/);

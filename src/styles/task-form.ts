@@ -48,7 +48,13 @@ export const TASK_FORM_CSS = `
 .meta-row--spaced {
   border-top: 1px solid #8b949e;
   margin-top: 16px;
+  margin-bottom: 8px;
   padding-top: 16px;
+}
+
+/* Right side panel: keep the same gap between every heading row and its control. */
+.side-panel > .meta-row-link {
+  margin-bottom: 8px;
 }
 
 .meta-caret {
