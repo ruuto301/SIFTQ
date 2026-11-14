@@ -2,7 +2,11 @@ import type { FC } from "hono/jsx";
 import { is_working } from "../task";
 import type { Task, TaskStatus } from "../task";
 
-export const TaskRow: FC<{ task: Task; listStatus?: TaskStatus }> = ({ task, listStatus = "do" }) => (
+export const TaskRow: FC<{ task: Task; listStatus?: TaskStatus; projectName?: string }> = ({
+  task,
+  listStatus = "do",
+  projectName,
+}) => (
   <div
     class={is_working(task) ? "task-row task-row--working" : "task-row"}
     data-task-row={task.id}
@@ -19,7 +23,7 @@ export const TaskRow: FC<{ task: Task; listStatus?: TaskStatus }> = ({ task, lis
           <span
             class={task.project === null ? "label label--project label--project-none" : "label label--project"}
           >
-            {task.project === null ? "未分類" : `#${task.project}`}
+            {task.project === null ? "未分類" : `#${projectName ?? task.project}`}
           </span>
           <span class={`status status--${task.status}`}>{task.status}</span>
           {is_working(task) ? <span class="working-badge">working</span> : null}

@@ -42,6 +42,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-016 | ユーザーは、DS で追加した task をすぐ見つけたい。 | screens.md |
 | REQ-TM-017 | ユーザーは、DS の中央ペインでタスクの description を確認したい。 | screens.md |
 | REQ-TM-018 | ユーザーは、DS でタスクを削除する前に画面中央で確認したい。 | screens.md |
+| REQ-TM-019 | ユーザーは、タスクを用途（リポジトリ・生活）ごとのプロジェクトに分けて整理したい。 | screens.md |
 
 ## 仕様
 
@@ -74,6 +75,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-025 | REQ-TM-016 | DS の composer で作成した task は所属 project グループの先頭に挿入し、既存 task の `order` は `+1` する。グループが折りたたまれている場合は折りたたんだまま件数だけを更新する。`/tasks` の新規作成は従来どおり末尾に追加する。 | BDD-TM-031 |
 | SPEC-TM-026 | REQ-TM-017 | DS 中央ペインの `description` タブは、選択中 task の description を初期表示から描画する。DSH transport が使える場合は `desc.get` の応答を優先し、使えない場合は task の description を表示する。description が空のときはプレースホルダを表示する。 | BDD-TM-032 |
 | SPEC-TM-027 | REQ-TM-018 | DS のタスク削除は、既存の中央モーダル（`.matrix-modal`）を使った確認ダイアログを経由する。ダイアログはビューポート中央に表示し、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。 | BDD-TM-033 |
+| SPEC-TM-028 | REQ-TM-019 | project の一覧は `Yoriwake` / `affiliate` / `customer_portal` / `生活` とし、未設定は `未分類` として扱う。`生活` は id `life`・表示名 `生活` を持つ。タスク一覧の project ラベルは id ではなく表示名を表示する。 | BDD-TM-034 |
 
 ## BDD 候補
 
@@ -108,6 +110,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-031 | SPEC-TM-025 | DS で task を追加すると、その project グループの先頭に表示され、リロード後も先頭のままになる。折りたたみ中のグループでは折りたたみが維持され件数だけ増える。 | 正常 |
 | BDD-TM-032 | SPEC-TM-026 | DS の `description` タブを開くと、task の description が transport の接続有無にかかわらず表示される。 | 正常 |
 | BDD-TM-033 | SPEC-TM-027 | DS でタスクを右クリックして delete を選ぶと確認ダイアログが画面中央に表示され、キャンセルでは消えず、削除でタスクが消える。 | 正常 |
+| BDD-TM-034 | SPEC-TM-028 | タスク一覧の project ラベルが表示名（例: `#生活`）で表示され、DS のグループにも `生活` が並ぶ。 | 正常 |
 
 ## 未決事項
 

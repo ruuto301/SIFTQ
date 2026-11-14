@@ -113,8 +113,8 @@ test.describe("task list bulk project", () => {
     await selectTask(page, "do", title);
 
     await page.getByText("Project", { exact: true }).click();
-    await page.locator('[data-task-project="dsh"]').click();
-    await expect(page.locator("[data-task-row]", { hasText: title })).toContainText("#dsh");
+    await page.locator('[data-task-project="affiliate"]').click();
+    await expect(page.locator("[data-task-row]", { hasText: title })).toContainText("#affiliate");
 
     const row = page.locator("[data-task-row]", { hasText: title });
     await row.getByRole("checkbox").check();

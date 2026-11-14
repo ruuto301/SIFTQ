@@ -46,7 +46,7 @@ test("moves a task between project groups by drag and drop (BDD-TM-025)", async 
   await watchDragOver(page);
 
   const source = group(page, "Yoriwake");
-  const target = group(page, "dsh");
+  const target = group(page, "affiliate");
   const row = source.locator(".ds__task-item").filter({ hasText: title });
   await expect(row).toHaveCount(1);
   const taskId = await row.getAttribute("data-task-id");
@@ -57,7 +57,7 @@ test("moves a task between project groups by drag and drop (BDD-TM-025)", async 
   );
   await row.dragTo(target.locator(".ds__group-head"));
   const body = (await moved).postData() ?? "";
-  expect(body).toContain('"project":"dsh"');
+  expect(body).toContain('"project":"affiliate"');
   expect(body).toContain(`"id":"${taskId}"`);
 
   await expect(target.locator(`.ds__task-item[data-task-id="${taskId}"]`)).toHaveCount(1);
