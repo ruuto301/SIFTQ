@@ -217,7 +217,7 @@ describe("unified palette", () => {
   });
 
   it("no longer carries the old gray and green accents", () => {
-    for (const stale of ["#1f883d", "#2a9147", "#b7e3c3", "#4ac26b", "#aeb8c4", "#e6e9ee", "#3b434d"]) {
+    for (const stale of ["#1f883d", "#2a9147", "#b7e3c3", "#4ac26b", "#aeb8c4", "#e6e9ee", "#3b434d", "#2f6feb", "#eef4ff", "#f5f9ff", "#e8f0ff", "#c7d3e3"]) {
       expect(STYLES_CSS, stale).not.toContain(stale);
     }
   });

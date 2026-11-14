@@ -567,7 +567,6 @@ export const DS_SCRIPT = `(function () {
   }
 
   // Task list context menu: status, working, project, open and delete.
-  var STATUS_LABELS = { do: "進行中", done: "完了", skip: "見送り" };
   var taskList = document.querySelector(".ds__groups");
   if (taskList) initTaskMenu(taskList);
 
@@ -674,7 +673,7 @@ export const DS_SCRIPT = `(function () {
         item.type = "button";
         item.className = "matrix-menu-item";
         item.setAttribute("data-ds-project", option.id);
-        item.textContent = (option.id === current ? "● " : "　") + option.name;
+        item.textContent = (option.id === current ? "✓ " : "　") + option.name;
         submenu.appendChild(item);
       });
       submenu.addEventListener("click", function (event) {
@@ -692,29 +691,138 @@ export const DS_SCRIPT = `(function () {
       submenu.style.top = Math.max(8, Math.min(rect.top, window.innerHeight - subRect.height - 8)) + "px";
       menu = submenu;
     }
+    function addDivider(box) {
+      var divider = document.createElement("div");
+      divider.className = "ds-menu__divider";
+      box.appendChild(divider);
+    }
+    function projectName(value) {
+      if (value === "" || value === null || value === undefined) return "未分類";
+      for (var index = 0; index < projectOptions.length; index += 1) {
+        if (projectOptions[index].id === value) return projectOptions[index].name;
+      }
+      return value;
+    }
+    function addValueRow(box, label, value, action, caret) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className = "matrix-menu-item ds-menu__row";
+      item.setAttribute("data-ds-task-action", action);
+      var text = document.createElement("span");
+      text.textContent = label;
+      item.appendChild(text);
+      var meta = document.createElement("span");
+      meta.className = "ds-menu__value";
+      meta.textContent = value;
+      item.appendChild(meta);
+      if (caret === true) {
+        var arrow = document.createElement("span");
+        arrow.className = "ds-menu__caret";
+        arrow.textContent = "▸";
+        item.appendChild(arrow);
+      }
+      box.appendChild(item);
+    }
+    function setCopyStatus(ok) {
+      var status = document.getElementById("ds-groups-status");
+      if (status === null) return;
+      var message = ok === true ? "copied" : "copy failed";
+      status.textContent = message;
+      status.hidden = false;
+      status.classList.toggle("ds__groups-status--error", ok !== true);
+      window.setTimeout(function () {
+        if (status.textContent !== message) return;
+        status.textContent = "";
+        status.hidden = true;
+        status.classList.remove("ds__groups-status--error");
+      }, 2000);
+    }
+    function copyTitle(row) {
+      var node = row.querySelector(".ds__task-title");
+      var text = node === null ? "" : node.textContent.trim();
+      if (text === "") return;
+      function fallback() {
+        var area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        var copied = false;
+        try {
+          copied = document.execCommand("copy");
+        } catch (error) {
+          copied = false;
+        }
+        area.remove();
+        setCopyStatus(copied);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          setCopyStatus(true);
+        }, fallback);
+      } else {
+        fallback();
+      }
+    }
     function openMenu(row, x, y) {
       closeMenu();
       menuRow = row;
       var status = row.getAttribute("data-task-status") || "do";
       var working = row.getAttribute("data-task-working") === "true";
+      var project = row.getAttribute("data-task-project") || "";
+      var titleNode = row.querySelector(".ds__task-title");
       var box = document.createElement("div");
       box.className = "matrix-menu";
+      box.setAttribute("role", "menu");
+
+      var head = document.createElement("div");
+      head.className = "ds-menu__head";
+      var title = document.createElement("span");
+      title.className = "ds-menu__title";
+      title.textContent = titleNode === null ? "" : titleNode.textContent.trim();
+      title.title = title.textContent;
+      var meta = document.createElement("span");
+      meta.className = "ds-menu__meta";
+      meta.textContent = status + " ・ " + projectName(project);
+      head.appendChild(title);
+      head.appendChild(meta);
+      box.appendChild(head);
+      addDivider(box);
+
+      var label = document.createElement("div");
+      label.className = "ds-menu__label";
+      label.textContent = "status";
+      box.appendChild(label);
+      var segment = document.createElement("div");
+      segment.className = "ds-menu__segment";
       ["do", "done", "skip"].forEach(function (value) {
-        addItem(box, (value === status ? "● " : "　") + STATUS_LABELS[value], "status:" + value, false);
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "ds-menu__chip" + (value === status ? " is-active" : "");
+        chip.setAttribute("data-ds-task-action", "status:" + value);
+        chip.textContent = value;
+        segment.appendChild(chip);
       });
-      addItem(box, working ? "作業中を解除" : "作業中にする", "working", false);
-      addItem(box, "プロジェクト", "project", false);
-      addItem(box, "タスク詳細を開く", "open", false);
-      addItem(box, "削除", "delete", true);
+      box.appendChild(segment);
+      addDivider(box);
+
+      addValueRow(box, "project", projectName(project), "project", true);
+      addItem(box, "copy title", "copy-title", false);
+      addDivider(box);
+      addValueRow(box, "working", working ? "on" : "off", "working", false);
+      addItem(box, "delete", "delete", true);
+
       box.addEventListener("click", function (event) {
         var item = event.target.closest ? event.target.closest("[data-ds-task-action]") : null;
         if (item === null) return;
         var action = item.getAttribute("data-ds-task-action");
         var target = menuRow;
         if (target === null) return;
-        if (action === "open") {
+        if (action === "copy-title") {
+          copyTitle(target);
           closeMenu();
-          location.assign("/tasks/" + encodeURIComponent(target.getAttribute("data-task-id")));
           return;
         }
         if (action === "delete") {

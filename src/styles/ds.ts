@@ -35,7 +35,7 @@ export const DS_CSS = `
 .ds__chat-title {
   padding: 8px 14px;
   border-bottom: 1px solid #eef1f4;
-  background: #fafbfd;
+  background: #f3f6fa;
 }
 
 .ds__chat-title__text {
@@ -189,9 +189,9 @@ export const DS_CSS = `
 .ds__groups-status[hidden] { display: none; }
 
 .ds__group.dragging { opacity: 0.6; }
-.ds__group--drop { outline: 2px dashed #2f6feb; outline-offset: 2px; border-radius: 8px; }
-.ds__group--drop-before { box-shadow: 0 -2px 0 0 #2f6feb; }
-.ds__group--drop-after { box-shadow: 0 2px 0 0 #2f6feb; }
+.ds__group--drop { outline: 2px dashed #1b1f24; outline-offset: 2px; border-radius: 8px; }
+.ds__group--drop-before { box-shadow: 0 -2px 0 0 #1b1f24; }
+.ds__group--drop-after { box-shadow: 0 2px 0 0 #1b1f24; }
 
 .ds__group-head {
   display: flex;
@@ -246,8 +246,83 @@ export const DS_CSS = `
 
 .ds__task-item { border: 0; }
 .ds__task-item.dragging { opacity: 0.5; }
-.ds__task-item--drop-before { box-shadow: 0 -2px 0 0 #2f6feb; }
-.ds__task-item--drop-after { box-shadow: 0 2px 0 0 #2f6feb; }
+.ds__task-item--drop-before { box-shadow: 0 -2px 0 0 #1b1f24; }
+.ds__task-item--drop-after { box-shadow: 0 2px 0 0 #1b1f24; }
+
+/* DS task context menu: header, status pills, value rows and dividers. */
+.ds-menu__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 6px;
+}
+
+.ds-menu__title {
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-menu__meta {
+  font-size: 11px;
+  color: #57606a;
+}
+
+.ds-menu__divider {
+  height: 1px;
+  background: #d8dde3;
+  margin: 4px 6px;
+}
+
+.ds-menu__label {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #57606a;
+}
+
+.ds-menu__segment {
+  display: flex;
+  gap: 6px;
+  padding: 2px 10px 8px;
+}
+
+.ds-menu__chip {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  border: 1px solid #d8dde3;
+  border-radius: 999px;
+  background: #fff;
+  color: #1b1f24;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ds-menu__chip:hover { background: #f3f6fa; }
+.ds-menu__chip.is-active { background: #1b1f24; border-color: #1b1f24; color: #fff; }
+
+.ds-menu__row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.ds-menu__value {
+  margin-left: auto;
+  font-size: 11px;
+  color: #57606a;
+}
+
+.ds-menu__caret {
+  margin-left: 4px;
+  color: #8b949e;
+}
 
 .ds__task {
   display: flex;
@@ -262,9 +337,9 @@ export const DS_CSS = `
   color: inherit;
 }
 
-.ds__task:hover { border-color: #c7d3e3; background: #fafbfd; }
-.ds__task.active { border-color: #2f6feb; background: #f5f9ff; box-shadow: 0 0 0 2px rgb(47 111 235 / 12%); }
-.ds__task.is-new { border-color: #2f6feb; background: #eef4ff; box-shadow: 0 0 0 3px rgb(47 111 235 / 18%); }
+.ds__task:hover { border-color: #d8dde3; background: #f3f6fa; }
+.ds__task.active { border-color: #1b1f24; background: #fff; box-shadow: 0 0 0 2px rgb(27 31 36 / 12%); }
+.ds__task.is-new { border-color: #1b1f24; background: #fff; box-shadow: 0 0 0 3px rgb(27 31 36 / 18%); }
 .ds__task-head { display: flex; align-items: flex-start; gap: 8px; }
 .ds__task-title {
   flex: 1;
@@ -352,7 +427,7 @@ export const DS_CSS = `
   color: #1b1f24;
   cursor: pointer;
 }
-.ds__menu button:hover { background: #eef4ff; }
+.ds__menu button:hover { background: #f3f6fa; }
 
 .ds__pane--chat .dsh-chat { flex: 1; min-height: 0; gap: 0; max-width: none; margin: 0; padding: 0; }
 .ds__pane--chat .dsh-chat__log { flex: 1; min-height: 0; max-height: none; border: 0; border-radius: 0; padding: 16px; gap: 12px; }
@@ -433,7 +508,7 @@ export const DS_CSS = `
   font-size: 11px;
   color: #444d56;
 }
-.ds__tab2.active { background: #eef4ff; border-color: #c7d3e3; color: #1b1f24; font-weight: 600; }
+.ds__tab2.active { background: #fff; border-color: #1b1f24; color: #1b1f24; font-weight: 600; }
 .ds__tab2-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .ds__tab2-close { padding: 0 2px; border: 0; background: transparent; font-size: 11px; color: #8b949e; cursor: pointer; }
 .ds__tab2-close:hover { color: #c62828; }
@@ -445,7 +520,7 @@ export const DS_CSS = `
 .ds-settings__ns-title { padding: 2px 8px 8px; font-size: 12px; font-weight: 600; color: #1b1f24; }
 .ds-settings__ns-item { padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; font-size: 12px; text-align: left; color: #444d56; cursor: pointer; }
 .ds-settings__ns-item:hover { background: #f3f6fa; }
-.ds-settings__ns-item.active { background: #eef4ff; color: #2f6feb; font-weight: 600; }
+.ds-settings__ns-item.active { background: #f3f6fa; color: #1b1f24; font-weight: 600; }
 .ds-settings__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
 .ds-settings__head { display: flex; align-items: center; gap: 10px; }
 .ds-settings__title { font-size: 13px; font-weight: 600; color: #1b1f24; }
@@ -491,8 +566,8 @@ export const DS_CSS = `
 .ds-settings__block-title { font-size: 12px; font-weight: 600; color: #1b1f24; }
 .ds-settings__cards { display: flex; flex-direction: column; gap: 6px; }
 .ds-settings__card { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
-.ds-settings__card:hover { border-color: #c7d3e3; }
-.ds-settings__card.active { border-color: #2f6feb; background: #f5f9ff; }
+.ds-settings__card:hover { border-color: #d8dde3; }
+.ds-settings__card.active { border-color: #1b1f24; background: #fff; }
 .ds-settings__card-name { font-size: 13px; color: #1b1f24; }
 .ds-settings__card-sub { font-size: 11px; color: #8b949e; }
 .ds-settings__card-actions { margin-left: auto; display: flex; gap: 6px; }
@@ -500,7 +575,7 @@ export const DS_CSS = `
 .ds-settings__dot.good { background: #2da44e; }
 .ds-settings__dot.bad { background: #d1242f; }
 .ds-settings__hint { font-size: 10px; color: #8b949e; }
-.ds-settings__link { padding: 0; border: 0; background: transparent; font-size: 11px; color: #2f6feb; cursor: pointer; }
+.ds-settings__link { padding: 0; border: 0; background: transparent; font-size: 11px; color: #1b1f24; cursor: pointer; }
 .ds-settings__add { align-self: flex-start; }
 .ds .button { color: #1b1f24; border-radius: 8px; }
 .ds .button.small { min-height: 28px; padding: 4px 12px; font-size: 12px; }

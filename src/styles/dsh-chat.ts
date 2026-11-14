@@ -56,7 +56,7 @@ export const DSH_CHAT_CSS = `
   color: #1b1f24;
   resize: vertical;
 }
-.dsh-chat__form textarea:focus { border-color: #2f6feb; outline: none; box-shadow: 0 0 0 3px rgb(47 111 235 / 12%); }
+.dsh-chat__form textarea:focus { border-color: #1b1f24; outline: none; box-shadow: 0 0 0 3px rgb(27 31 36 / 12%); }
 .dsh-chat__buttons { display: flex; justify-content: flex-end; }
 .dsh-card {
   align-self: flex-start;

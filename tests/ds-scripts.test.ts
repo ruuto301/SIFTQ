@@ -23,15 +23,6 @@ describe("DS browser script", () => {
     expect(DS_SCRIPT).toContain("ds-browser-canvas");
   });
 
-  it("opens a task context menu with status, working, project and delete actions", () => {
-    expect(DS_SCRIPT).toContain("contextmenu");
-    expect(DS_SCRIPT).toContain("data-task-version");
-    expect(DS_SCRIPT).toContain("data-task-project");
-    expect(DS_SCRIPT).toContain("/api/tasks/");
-    for (const label of ["進行中", "完了", "見送り", "作業中にする", "プロジェクト", "未分類", "削除"]) {
-      expect(DS_SCRIPT).toContain(label);
-    }
-  });
 
   it("collapses project groups and stores the state in localStorage", () => {
     expect(DS_SCRIPT).toContain("[data-ds-group-toggle]");
@@ -63,6 +54,23 @@ describe("DS browser script", () => {
     expect(DS_SCRIPT).toContain("保存に失敗しました。もう一度お試しください。");
   });
 
+});
+
+describe("DS task action menu", () => {
+  it("opens the English task action menu with status, project, copy and working (BDD-TM-030)", () => {
+    expect(DS_SCRIPT).toContain("contextmenu");
+    expect(DS_SCRIPT).toContain("data-task-version");
+    expect(DS_SCRIPT).toContain("data-task-project");
+    expect(DS_SCRIPT).toContain("/api/tasks/");
+    for (const label of ["status", "project", "copy title", "working", "delete", "未分類"]) {
+      expect(DS_SCRIPT).toContain(label);
+    }
+    expect(DS_SCRIPT).toContain('["do", "done", "skip"]');
+    expect(DS_SCRIPT).toContain("navigator.clipboard.writeText");
+    expect(DS_SCRIPT).not.toContain("タスク詳細を開く");
+    expect(DS_SCRIPT).not.toContain("リンクをコピー");
+    expect(DS_SCRIPT).not.toContain("進行中");
+  });
 });
 
 describe("DS task list DnD", () => {
