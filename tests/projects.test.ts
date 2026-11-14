@@ -6,15 +6,11 @@ describe("PREVIEW_PROJECTS", () => {
   it("seeds the initial projects in sort order", () => {
     expect(PREVIEW_PROJECTS.map((project) => project.id)).toEqual([
       "Yoriwake",
-      "dsh",
-      "customer_portal",
       "affiliate",
-      "kits",
-      "scripts",
+      "customer_portal",
+      "life",
     ]);
-    expect(sortProjects(PREVIEW_PROJECTS).map((project) => project.sort_order)).toEqual([
-      1, 2, 3, 4, 5, 6,
-    ]);
+    expect(sortProjects(PREVIEW_PROJECTS).map((project) => project.sort_order)).toEqual([1, 2, 3, 4]);
   });
 
   it("keeps every seed project id valid", () => {

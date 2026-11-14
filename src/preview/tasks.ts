@@ -1,7 +1,7 @@
 import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
 
-const SEED_PROJECTS: readonly (string | null)[] = ["Yoriwake", "dsh", "customer_portal", null];
+const SEED_PROJECTS: readonly (string | null)[] = ["Yoriwake", "affiliate", "customer_portal", "life", null];
 
 const SEED_TASKS: readonly Task[] = [
   {
@@ -24,7 +24,7 @@ const SEED_TASKS: readonly Task[] = [
     description: "",
     status: "do",
     working: false,
-    project: "dsh",
+    project: "affiliate",
     order: 0,
     version: 1,
     created_at: "2026-08-29T00:00:00.000Z",

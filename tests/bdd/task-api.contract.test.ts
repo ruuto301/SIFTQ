@@ -157,7 +157,7 @@ describe("BDD-TM-002: project assignment", () => {
   });
 
   it("clears the project with an explicit null", async () => {
-    await repo.insert(taskFixture({ id: "task-1", project: "dsh" }));
+    await repo.insert(taskFixture({ id: "task-1", project: "affiliate" }));
 
     const response = await request("PATCH", "/api/tasks/task-1", {
       project: null,
@@ -177,17 +177,15 @@ describe("BDD-TM-002: project assignment", () => {
     expect(projects.map((project) => project.id)).toContain("Yoriwake");
     expect(projects.map((project) => project.id)).toEqual([
       "Yoriwake",
-      "dsh",
-      "customer_portal",
       "affiliate",
-      "kits",
-      "scripts",
+      "customer_portal",
+      "life",
     ]);
   });
 });
 
 describe("project reorder", () => {
-  const defaultIds = ["Yoriwake", "dsh", "customer_portal", "affiliate", "kits", "scripts"];
+  const defaultIds = ["Yoriwake", "affiliate", "customer_portal", "life"];
 
   it("reorders projects and returns the new order from the list", async () => {
     const projects = freshProjectRepository();
@@ -196,10 +194,10 @@ describe("project reorder", () => {
       projects: [
         { id: "customer_portal", order: 1 },
         { id: "Yoriwake", order: 2 },
-        { id: "dsh", order: 3 },
+        { id: "affiliate", order: 3 },
       ],
     });
-    const expected = ["customer_portal", "Yoriwake", "dsh", "affiliate", "kits", "scripts"];
+    const expected = ["customer_portal", "Yoriwake", "affiliate", "life"];
 
     expect(response.status).toBe(200);
     const reordered: Project[] = await response.json();
@@ -238,8 +236,8 @@ describe("project reorder validation", () => {
   it("rejects a duplicated project id", async () => {
     const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
       projects: [
-        { id: "dsh", order: 1 },
-        { id: "dsh", order: 2 },
+        { id: "affiliate", order: 1 },
+        { id: "affiliate", order: 2 },
       ],
     });
     const body: { code?: string } = await response.json();
@@ -251,7 +249,7 @@ describe("project reorder validation", () => {
   it("rejects a duplicated order", async () => {
     const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
       projects: [
-        { id: "dsh", order: 1 },
+        { id: "affiliate", order: 1 },
         { id: "kits", order: 1 },
       ],
     });
@@ -275,11 +273,11 @@ describe("project reorder validation", () => {
 describe("project reorder input validation", () => {
   it.each([
     ["missing projects", {}, "INVALID_INPUT"],
-    ["a non-object element", { projects: ["dsh"] }, "INVALID_INPUT"],
+    ["a non-object element", { projects: ["affiliate"] }, "INVALID_INPUT"],
     ["a non-string id", { projects: [{ id: 1, order: 1 }] }, "INVALID_INPUT"],
-    ["a non-numeric order", { projects: [{ id: "dsh", order: "1" }] }, "INVALID_ORDER"],
-    ["a zero order", { projects: [{ id: "dsh", order: 0 }] }, "INVALID_ORDER"],
-    ["a fractional order", { projects: [{ id: "dsh", order: 1.5 }] }, "INVALID_ORDER"],
+    ["a non-numeric order", { projects: [{ id: "affiliate", order: "1" }] }, "INVALID_ORDER"],
+    ["a zero order", { projects: [{ id: "affiliate", order: 0 }] }, "INVALID_ORDER"],
+    ["a fractional order", { projects: [{ id: "affiliate", order: 1.5 }] }, "INVALID_ORDER"],
   ])("rejects %s", async (_name, body, code) => {
     const response = await requestWith(
       freshProjectRepository(),
@@ -488,14 +486,14 @@ describe("BDD-TM-005 / BDD-TM-007: task update", () => {
 
     const response = await request("PATCH", "/api/tasks/task-1", {
       status: "done",
-      project: "dsh",
+      project: "affiliate",
       version: 1,
     });
     const task: Task = await response.json();
 
     expect(response.status).toBe(200);
     expect(task.status).toBe("done");
-    expect(task.project).toBe("dsh");
+    expect(task.project).toBe("affiliate");
   });
 
   it("keeps the project when only the status changes", async () => {
@@ -594,7 +592,7 @@ describe("BDD-TM-004: bulk project update", () => {
   });
 
   it("clears the project when null is requested", async () => {
-    await repo.insert(taskFixture({ id: "task-1", project: "dsh", version: 1 }));
+    await repo.insert(taskFixture({ id: "task-1", project: "affiliate", version: 1 }));
 
     const response = await request("PATCH", "/api/tasks/bulk/project", {
       project: null,
@@ -621,7 +619,7 @@ describe("BDD-TM-004: bulk project update", () => {
 
   it("rejects invalid bulk inputs", async () => {
     const response = await request("PATCH", "/api/tasks/bulk/project", {
-      project: "dsh",
+      project: "affiliate",
       tasks: [],
     });
     const body: { code?: string } = await response.json();

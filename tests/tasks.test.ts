@@ -12,7 +12,7 @@ describe("PREVIEW_TASKS", () => {
     ]);
     expect(PREVIEW_TASKS.slice(0, 4).map((task) => task.project)).toEqual([
       "Yoriwake",
-      "dsh",
+      "affiliate",
       "customer_portal",
       null,
     ]);
@@ -26,7 +26,7 @@ describe("PREVIEW_TASKS", () => {
   });
 
   it("assigns every project id to an existing preview project", () => {
-    const ids = new Set(["Yoriwake", "dsh", "customer_portal"]);
+    const ids = new Set(["Yoriwake", "affiliate", "customer_portal", "life"]);
     for (const task of PREVIEW_TASKS) {
       if (task.project !== null) expect(ids.has(task.project)).toBe(true);
     }

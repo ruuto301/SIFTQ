@@ -42,8 +42,8 @@ test("project update then Status operation stays interactive", async ({ page }) 
   await signIn(page);
   await createTask(page, title);
   await openTaskFromList(page, title, "do");
-  await page.getByLabel("Project").selectOption("dsh");
-  await expect(page.getByLabel("Project")).toHaveValue("dsh");
+  await page.getByLabel("Project").selectOption("affiliate");
+  await expect(page.getByLabel("Project")).toHaveValue("affiliate");
   await changeStatus(page, "skip");
 });
 
