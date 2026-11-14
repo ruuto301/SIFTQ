@@ -208,5 +208,10 @@
     "path": "src/styles/settings.ts",
     "reason": "集約したSTYLES_CSSのstyles.test.tsが検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/api-helpers.ts",
+    "reason": "API の共通ヘルパーで、idea-api / mk-api の契約テストが検証するため。",
+    "removal": "ヘルパー単位のテストを追加したとき。"
   }
 ]
