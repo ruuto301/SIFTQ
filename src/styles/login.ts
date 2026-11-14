@@ -6,7 +6,7 @@ button { font: inherit; }
 export const LOGIN_CSS = `
 .login {
   align-items: center;
-  background: #3b434d;
+  background: #fff;
   display: flex;
   justify-content: center;
   min-height: 100vh;
@@ -14,8 +14,8 @@ export const LOGIN_CSS = `
 }
 
 .login-card {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
   display: grid;
   gap: 16px;

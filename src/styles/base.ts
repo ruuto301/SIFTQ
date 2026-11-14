@@ -1,7 +1,7 @@
 export const BASE_CSS = `
 :root {
   color: #1b1f24;
-  background: #3b434d;
+  background: #fff;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 }
@@ -31,8 +31,8 @@ html:has(dialog[open]) {
 }
 
 :focus-visible {
-  box-shadow: 0 0 0 4px #e6e9ee;
-  outline: 2px solid #0f4d24;
+  box-shadow: 0 0 0 4px rgb(27 31 36 / 18%);
+  outline: 2px solid #1b1f24;
   outline-offset: 2px;
 }
 
@@ -98,8 +98,8 @@ a {
 
 .topbar {
   align-items: center;
-  background: #e6e9ee;
-  border-bottom: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #1b1f24;
   display: flex;
   gap: 16px;
   justify-content: flex-start;
@@ -132,9 +132,10 @@ a {
 
 .nav a,
 .button {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
-  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #d8dde3;
+  border-radius: 999px;
+  color: #1b1f24;
   display: inline-flex;
   font-size: 14px;
   font-weight: 600;
@@ -144,8 +145,8 @@ a {
 
 .nav .active,
 .button.primary {
-  background: #1f883d;
-  border-color: #2a9147;
+  background: #1b1f24;
+  border-color: #1b1f24;
   color: #ffffff;
 }
 
@@ -168,8 +169,8 @@ a {
 }
 
 .task-status-filter .button.is-active {
-  background: #1f883d;
-  border-color: #2a9147;
+  background: #1b1f24;
+  border-color: #1b1f24;
   color: #ffffff;
 }
 
@@ -205,13 +206,13 @@ a {
 }
 
 .page-title {
-  color: #e6e9ee;
+  color: #1b1f24;
   font-size: 24px;
   margin: 0;
 }
 
 .muted {
-  color: #b1bac4;
+  color: #57606a;
   font-size: 13px;
 }
 
@@ -226,29 +227,29 @@ a {
 }
 
 .label--project {
-  background: #eef4ff;
+  background: #fff;
   border-color: #c7d3e3;
   color: #1b1f24;
 }
 
 .label--project-none {
-  background: #f6f8fa;
-  border-color: #8b949e;
+  background: #fff;
+  border-color: #d8dde3;
   color: #3f4854;
 }
 
 .task-card,
 .task-row {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
 }
 
 .form-panel,
 .side-panel,
 .state-card {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
 }
 
@@ -264,12 +265,12 @@ a {
 
 .task-card--working,
 .task-row--working {
-  border-left: 4px solid #0f4d24;
+  border-left: 4px solid #3f6b4f;
 }
 
 .task-card:hover {
-  border-color: #1f883d;
-  box-shadow: 0 0 0 2px #b7e3c3;
+  border-color: #1b1f24;
+  box-shadow: 0 0 0 2px #e5e7eb;
 }
 
 .task-card-header {
@@ -300,23 +301,23 @@ a {
 }
 
 .status--done {
-  background: #b7e3c3;
-  border-color: #4ac26b;
-  color: #0f4d24;
+  background: transparent;
+  border-color: #3f6b4f;
+  color: #2f4a38;
 }
 
 .status--skip {
-  background: #f6f8fa;
-  border-color: #8b949e;
+  background: transparent;
+  border-color: #6b7280;
   color: #3f4854;
 }
 
 .working-badge {
   align-items: center;
   background: transparent;
-  border: 1px solid #0f4d24;
+  border: 1px solid #3f6b4f;
   border-radius: 999px;
-  color: #0f4d24;
+  color: #3f6b4f;
   display: inline-flex;
   font-size: 12px;
   font-weight: 700;
@@ -326,7 +327,7 @@ a {
 }
 
 .working-badge::before {
-  background: #0f4d24;
+  background: #3f6b4f;
   border-radius: 50%;
   content: "";
   height: 6px;
@@ -342,8 +343,8 @@ a {
 }
 
 .matrix-menu {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
   display: grid;
@@ -364,7 +365,7 @@ a {
 }
 
 .matrix-menu-item:hover {
-  background: #eaeef2;
+  background: #f3f6fa;
 }
 
 .matrix-menu-item--delete {
@@ -383,8 +384,8 @@ a {
 }
 
 .matrix-modal {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 12px;
   box-shadow: 0 16px 36px rgb(31 35 40 / 30%);
   display: flex;
@@ -409,7 +410,7 @@ a {
 }
 
 .matrix-modal-button {
-  border: 1px solid #8b949e;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -419,11 +420,11 @@ a {
 }
 
 .matrix-modal-button--cancel {
-  background: #c1c9d3;
+  background: #fff;
 }
 
 .matrix-modal-button--cancel:hover {
-  background: #eaeef2;
+  background: #f3f6fa;
 }
 
 .matrix-modal-button--danger {

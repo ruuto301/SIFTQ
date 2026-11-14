@@ -80,7 +80,7 @@ describe("DS project groups", () => {
 
     const head = STYLES_CSS.match(/(?:^|\n)\.ds__group-head\s*\{[^}]*\}/);
     expect(head?.[0]).toContain("border-radius: 8px;");
-    expect(head?.[0]).toContain("background: #f6f8fa;");
+    expect(head?.[0]).toContain("background: #fff;");
     expect(head?.[0]).toContain("cursor: pointer;");
 
     const card = STYLES_CSS.match(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
@@ -141,5 +141,47 @@ describe("Idea detail description divider", () => {
     const empty = STYLES_CSS.match(/(?:^|\n)\.idea-detail__description--empty\s*\{[^}]*\}/);
     expect(empty?.[0]).toContain("border-top: 0;");
     expect(empty?.[0]).toContain("padding-top: 0;");
+  });
+});
+
+describe("unified palette", () => {
+  it("puts the header on a white surface with a black outline", () => {
+    const topbar = STYLES_CSS.match(/(?:^|\n)\.topbar\s*\{[^}]*\}/);
+    expect(topbar?.[0]).toContain("background: #fff;");
+    expect(topbar?.[0]).toContain("border: 1px solid #1b1f24;");
+  });
+
+  it("renders nav and buttons as black and white pills", () => {
+    const button = STYLES_CSS.match(/(?:^|\n)\.nav a,\s*\n?\.button\s*\{[^}]*\}/);
+    expect(button?.[0]).toContain("background: #fff;");
+    expect(button?.[0]).toContain("border-radius: 999px;");
+    const active = STYLES_CSS.match(/(?:^|\n)\.nav \.active,\s*\n?\.button\.primary\s*\{[^}]*\}/);
+    expect(active?.[0]).toContain("background: #1b1f24;");
+    const filter = STYLES_CSS.match(/(?:^|\n)\.task-status-filter \.button\.is-active\s*\{[^}]*\}/);
+    expect(filter?.[0]).toContain("background: #1b1f24;");
+  });
+
+  it("keeps done and skip as outlined muted accents", () => {
+    const done = STYLES_CSS.match(/(?:^|\n)\.status--done\s*\{[^}]*\}/);
+    expect(done?.[0]).toContain("background: transparent;");
+    expect(done?.[0]).toContain("border-color: #3f6b4f;");
+    expect(done?.[0]).toContain("color: #2f4a38;");
+    const skip = STYLES_CSS.match(/(?:^|\n)\.status--skip\s*\{[^}]*\}/);
+    expect(skip?.[0]).toContain("border-color: #6b7280;");
+  });
+
+  it("uses white surfaces for the page, DS and login", () => {
+    const ds = STYLES_CSS.match(/(?:^|\n)\.ds\s*\{[^}]*\}/);
+    expect(ds?.[0]).toContain("background: #fff;");
+    const login = STYLES_CSS.match(/(?:^|\n)\.login\s*\{[^}]*\}/);
+    expect(login?.[0]).toContain("background: #fff;");
+    const list = STYLES_CSS.match(/(?:^|\n)\.list\s*\{[^}]*\}/);
+    expect(list?.[0]).toContain("background: #fff;");
+  });
+
+  it("no longer carries the old gray and green accents", () => {
+    for (const stale of ["#1f883d", "#2a9147", "#b7e3c3", "#4ac26b", "#aeb8c4", "#e6e9ee", "#3b434d"]) {
+      expect(STYLES_CSS, stale).not.toContain(stale);
+    }
   });
 });
