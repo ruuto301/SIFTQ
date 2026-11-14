@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import { STYLES_CSS } from "../src/styles";
 
+/** Returns the declaration block for a rule, or an empty string when it is missing. */
+function cssBlock(pattern: RegExp): string {
+  return pattern.exec(STYLES_CSS)?.[0] ?? "";
+}
+
 describe("styles", () => {
   it("defines the application shell, rows, cards and popover", () => {
     expect(STYLES_CSS).toContain(".topbar");
@@ -74,17 +79,44 @@ describe("styles regression guards", () => {
 });
 
 describe("DS project groups", () => {
-  it("lays out a scrollable group column with header bars and cards", () => {
-    const groups = STYLES_CSS.match(/(?:^|\n)\.ds__groups\s*\{[^}]*\}/);
-    expect(groups?.[0]).toContain("overflow: auto;");
+  it("draws each project as a bordered box that keeps its natural height", () => {
+    const group = cssBlock(/(?:^|\n)\.ds__group\s*\{[^}]*\}/);
+    expect(group).toContain("border: 2px solid #000;");
+    expect(group).toContain("border-radius: 8px;");
+    expect(group).toContain("overflow: hidden;");
+    expect(group).toContain("gap: 0;");
+    // `overflow: hidden` disables the automatic minimum height of a flex item, so the
+    // box opts out of shrinking or an added task squashes the other projects.
+    expect(group).toContain("flex: 0 0 auto;");
+  });
 
-    const head = STYLES_CSS.match(/(?:^|\n)\.ds__group-head\s*\{[^}]*\}/);
-    expect(head?.[0]).toContain("border-radius: 8px;");
-    expect(head?.[0]).toContain("background: #f6f8fa;");
-    expect(head?.[0]).toContain("cursor: pointer;");
+  it("uses the header as the top edge and the count badge as an outline", () => {
+    const head = cssBlock(/(?:^|\n)\.ds__group-head\s*\{[^}]*\}/);
+    expect(head).toContain("background: #000;");
+    expect(head).toContain("color: #fff;");
+    expect(head).toContain("border: 0;");
+    expect(head).toContain("border-radius: 0;");
+    expect(head).toContain("cursor: pointer;");
 
-    const card = STYLES_CSS.match(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
-    expect(card?.[0]).toContain("border-radius: 10px;");
+    const count = cssBlock(/(?:^|\n)\.ds__group-count\s*\{[^}]*\}/);
+    expect(count).toContain("background: transparent;");
+    expect(count).toContain("border: 1px solid #8b949e;");
+    expect(count).toContain("color: #fff;");
+  });
+
+  it("pads the framed body and drops the card shadow", () => {
+    const tasks = cssBlock(/(?:^|\n)\.ds__tasks\s*\{[^}]*\}/);
+    expect(tasks).toContain("padding: 8px;");
+
+    const card = cssBlock(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
+    expect(card).toContain("border: 1px solid #d8dde3;");
+    expect(card).toContain("border-radius: 10px;");
+    expect(card).not.toContain("box-shadow");
+  });
+
+  it("scrolls the group column", () => {
+    const groups = cssBlock(/(?:^|\n)\.ds__groups\s*\{[^}]*\}/);
+    expect(groups).toContain("overflow: auto;");
   });
 
   it("hides the tasks and rotates the caret for a collapsed group", () => {
