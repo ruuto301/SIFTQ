@@ -156,6 +156,8 @@ export const DS_CSS = `
 
 .ds__task-item { border: 0; }
 .ds__task-item.dragging { opacity: 0.5; }
+.ds__task-item--drop-before { box-shadow: 0 -2px 0 0 #2f6feb; }
+.ds__task-item--drop-after { box-shadow: 0 2px 0 0 #2f6feb; }
 
 .ds__task {
   display: flex;

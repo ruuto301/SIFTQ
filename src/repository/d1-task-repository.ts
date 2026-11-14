@@ -2,7 +2,7 @@ import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/work
 import { changeTaskProjects, changeTaskStatuses, err, isTaskProject, isTaskStatus, ok } from "../task";
 import type { Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import { validateBulkTasks } from "./repository-validation";
-import type { RepositoryError, TaskRepository } from "./task-repository";
+import type { RepositoryError, TaskOrderInput, TaskRepository } from "./task-repository";
 
 const OWNER_ID = "local";
 
@@ -75,6 +75,7 @@ export function createD1TaskRepository(db: D1Database): TaskRepository {
     insert: (task) => insertTask(db, task),
     update: (task) => updateTask(db, task),
     remove: (id, owner_id, version) => removeTask(db, id, owner_id, version),
+    move: (inputs) => moveTasks(db, inputs),
     bulkUpdateStatus: (inputs, status) => bulkUpdateStatus(db, inputs, status),
     bulkUpdateProject: (inputs, project) => bulkUpdateProject(db, inputs, project),
     bulkRemove: (inputs) => bulkRemove(db, inputs),
@@ -238,6 +239,32 @@ async function removeTask(
 
   if (changes(result) === 0) return err({ code: "CONFLICT" });
   return ok(null);
+}
+
+async function moveTasks(
+  db: D1Database,
+  inputs: readonly TaskOrderInput[],
+): Promise<Result<Task[], RepositoryError>> {
+  const current = await listTasks(db);
+  if (!current.ok) return current;
+
+  const byId = new Map(current.value.map((task) => [task.id, task]));
+  const moved: Task[] = [];
+  for (const input of inputs) {
+    const task = byId.get(input.id);
+    if (task === undefined) return err({ code: "NOT_FOUND" });
+    moved.push({ ...task, order: input.order });
+  }
+
+  const results = await db.batch(
+    inputs.map((input) =>
+      db
+        .prepare('UPDATE tasks SET "order" = ? WHERE id = ? AND owner_id = ?')
+        .bind(input.order, input.id, OWNER_ID),
+    ),
+  );
+  if (results.some((result) => changes(result) === 0)) return err({ code: "NOT_FOUND" });
+  return ok(moved);
 }
 
 async function findBulkTasks(

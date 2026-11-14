@@ -51,6 +51,10 @@ export function isTaskProject(value: unknown): value is string | null {
   return value === null || isProjectId(value);
 }
 
+export function isTaskOrderValid(order: number): boolean {
+  return Number.isSafeInteger(order) && order > 0;
+}
+
 export type TaskVersionInput = {
   id: string;
   version: number;

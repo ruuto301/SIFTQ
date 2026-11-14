@@ -10,6 +10,7 @@ import {
   descriptionCodePointLength,
   is_working,
   isTaskProject,
+  isTaskOrderValid,
   isTaskStatus,
   isTaskTitleValid,
   isTaskDescriptionValid,
@@ -29,6 +30,7 @@ import {
   paginateTasks,
   parseTaskListQuery,
   parsePageParam,
+  sortTasksByOrder,
   taskProjectFilter,
   withQueryToken,
 } from "../src/task-list";
@@ -75,6 +77,14 @@ describe("task enums", () => {
     expect(isTaskProject("")).toBe(false);
     expect(isTaskProject("a".repeat(65))).toBe(false);
     expect(isTaskProject(1)).toBe(false);
+  });
+
+  it("accepts only positive safe integer orders", () => {
+    expect(isTaskOrderValid(1)).toBe(true);
+    expect(isTaskOrderValid(0)).toBe(false);
+    expect(isTaskOrderValid(-1)).toBe(false);
+    expect(isTaskOrderValid(1.5)).toBe(false);
+    expect(isTaskOrderValid(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
   });
 });
 
@@ -158,6 +168,21 @@ describe("BDD-TM-006: DS project grouping", () => {
 
     expect(groups.map((group) => group.project?.id ?? null)).toEqual(["a", "b", null]);
     expect(groups[2]?.tasks.map((task) => task.id)).toEqual(["none", "ghost"]);
+  });
+});
+
+describe("sortTasksByOrder", () => {
+  it("sorts tasks by order and breaks ties by id without mutating the input", () => {
+    const tasks = [
+      taskFixture({ id: "c", order: 3 }),
+      taskFixture({ id: "b", order: 1 }),
+      taskFixture({ id: "a", order: 1 }),
+    ];
+
+    const sorted = sortTasksByOrder(tasks);
+
+    expect(sorted.map((task) => task.id)).toEqual(["a", "b", "c"]);
+    expect(tasks.map((task) => task.id)).toEqual(["c", "b", "a"]);
   });
 });
 

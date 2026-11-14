@@ -1,7 +1,7 @@
 import { changeTaskProjects, changeTaskStatuses, err, ok } from "../task";
 import type { Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import { validateBulkTasks } from "../repository/repository-validation";
-import type { RepositoryError, TaskRepository } from "../repository/task-repository";
+import type { RepositoryError, TaskOrderInput, TaskRepository } from "../repository/task-repository";
 
 function byMostRecentlyUpdated(left: Task, right: Task): number {
   return right.updated_at.localeCompare(left.updated_at) || left.id.localeCompare(right.id);
@@ -71,7 +71,25 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
     return ok<null, RepositoryError>(null);
   }
 
-  return { list, find, insert, update, remove, bulkUpdateStatus, bulkUpdateProject, bulkRemove };
+  async function move(inputs: readonly TaskOrderInput[]): Promise<Result<Task[], RepositoryError>> {
+    return moveTasks(tasks, inputs);
+  }
+
+  return { list, find, insert, update, remove, move, bulkUpdateStatus, bulkUpdateProject, bulkRemove };
+}
+
+function moveTasks(
+  tasks: Map<string, Task>,
+  inputs: readonly TaskOrderInput[],
+): Result<Task[], RepositoryError> {
+  const moved: Task[] = [];
+  for (const input of inputs) {
+    const task = tasks.get(input.id);
+    if (task === undefined) return err<Task[], RepositoryError>({ code: "NOT_FOUND" });
+    moved.push({ ...task, order: input.order });
+  }
+  for (const task of moved) tasks.set(task.id, task);
+  return ok<Task[], RepositoryError>(moved);
 }
 
 function applyBulk(

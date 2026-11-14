@@ -107,6 +107,13 @@ export function withQueryToken(query: string, prefix: string, token: string | nu
 
 export type TaskGroup = { project: Project | null; tasks: Task[] };
 
+/** Sorts tasks by the manual `order`, breaking ties by id. */
+export function sortTasksByOrder(tasks: readonly Task[]): Task[] {
+  return [...tasks].sort(
+    (left, right) => left.order - right.order || left.id.localeCompare(right.id),
+  );
+}
+
 /** Builds the DS left-pane groups: projects by sort_order, then unassigned tasks last. */
 export function groupTasksByProject(
   tasks: readonly Task[],
