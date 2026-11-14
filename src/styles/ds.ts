@@ -162,10 +162,18 @@ export const DS_CSS = `
   overflow: auto;
 }
 
+/* Each project is a bordered box: the header is its top edge, the task list its body.
+   The box opts out of flex shrinking so an added task extends it instead of
+   squashing the other projects. */
 .ds__group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  flex: 0 0 auto;
+  border: 2px solid #000;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
 }
 
 .ds__groups-status {
@@ -191,17 +199,17 @@ export const DS_CSS = `
   gap: 8px;
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #d8dde3;
-  border-radius: 8px;
-  background: #fff;
+  border: 0;
+  border-radius: 0;
+  background: #000;
   font-size: 12px;
   font-weight: 600;
   text-align: left;
-  color: #1b1f24;
+  color: #fff;
   cursor: pointer;
 }
 
-.ds__group-head:hover { background: #f3f6fa; }
+.ds__group-head:hover { background: #1b1f24; }
 
 .ds__group-caret { flex: 0 0 auto; transition: transform 120ms ease; }
 
@@ -219,12 +227,12 @@ export const DS_CSS = `
 .ds__group-count {
   flex: 0 0 auto;
   padding: 1px 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #8b949e;
   border-radius: 999px;
-  background: #fff;
+  background: transparent;
   font-size: 11px;
   font-weight: 600;
-  color: #57606a;
+  color: #fff;
 }
 
 .ds__tasks {
@@ -232,7 +240,7 @@ export const DS_CSS = `
   flex-direction: column;
   gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 8px;
   list-style: none;
 }
 
@@ -247,12 +255,11 @@ export const DS_CSS = `
   gap: 8px;
   min-height: 72px;
   padding: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d8dde3;
   border-radius: 10px;
   background: #fff;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 1px 2px rgb(27 31 36 / 4%);
 }
 
 .ds__task:hover { border-color: #c7d3e3; background: #fafbfd; }
