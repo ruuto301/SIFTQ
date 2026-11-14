@@ -138,9 +138,8 @@ describe("DsPage task list", () => {
     const selected = taskFixture({ id: "t1", title: "チャットのタイトルを表示する", project: "Yoriwake" });
     const html = renderToString(page([selected], selected));
 
-    expect(html).toContain("ds__chat-title");
-    expect(html).toContain('class="ds__chat-title__label">タスク<');
-    expect(html).toContain('title="チャットのタイトルを表示する"');
+    expect(html).toContain('class="ds__chat-title__text">チャットのタイトルを表示する<');
+    expect(html).not.toContain("ds__chat-title__label");
   });
 
   it("hides the title row when no task is selected", () => {
