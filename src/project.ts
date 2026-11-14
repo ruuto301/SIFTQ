@@ -72,6 +72,13 @@ function normalizeProjectPath(path: string | null): string | null {
   return path;
 }
 
+function readProjectName(value: unknown): Result<string, ProjectInputError> {
+  if (typeof value !== "string") return err({ code: "INVALID_PROJECT_NAME" });
+  const trimmedName = value.trim();
+  if (!isProjectNameValid(trimmedName)) return err({ code: "INVALID_PROJECT_NAME" });
+  return ok(trimmedName);
+}
+
 export type ProjectCreateInput = {
   id: string;
   name: string;
@@ -83,10 +90,8 @@ export function parseProjectCreate(body: Record<string, unknown>): Result<Projec
   const id = body["id"];
   if (!isProjectId(id)) return err({ code: "INVALID_PROJECT_ID" });
 
-  const name = body["name"];
-  if (typeof name !== "string") return err({ code: "INVALID_PROJECT_NAME" });
-  const trimmedName = name.trim();
-  if (!isProjectNameValid(trimmedName)) return err({ code: "INVALID_PROJECT_NAME" });
+  const name = readProjectName(body["name"]);
+  if (!name.ok) return name;
 
   const path = body["path"] ?? null;
   if (!isProjectPath(path)) return err({ code: "INVALID_PROJECT_PATH" });
@@ -94,7 +99,7 @@ export function parseProjectCreate(body: Record<string, unknown>): Result<Projec
   const archived = body["archived"] ?? false;
   if (typeof archived !== "boolean") return err({ code: "INVALID_PROJECT_ARCHIVED" });
 
-  return ok({ id, name: trimmedName, path: normalizeProjectPath(path), archived });
+  return ok({ id, name: name.value, path: normalizeProjectPath(path), archived });
 }
 
 export type ProjectPatch = {
@@ -107,11 +112,9 @@ export function parseProjectPatch(body: Record<string, unknown>): Result<Project
   const patch: ProjectPatch = {};
 
   if ("name" in body) {
-    const name = body["name"];
-    if (typeof name !== "string") return err({ code: "INVALID_PROJECT_NAME" });
-    const trimmedName = name.trim();
-    if (!isProjectNameValid(trimmedName)) return err({ code: "INVALID_PROJECT_NAME" });
-    patch.name = trimmedName;
+    const name = readProjectName(body["name"]);
+    if (!name.ok) return name;
+    patch.name = name.value;
   }
   if ("path" in body) {
     const path = body["path"];

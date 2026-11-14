@@ -5,8 +5,16 @@ import {
   parseProjectPatch,
 } from "../project";
 import type { Project } from "../project";
-import { readOrderUpdates, readString, schema } from "./schema";
+import { findById, isToolResult, updateContent } from "./helpers";
+import { readOrderUpdates, schema } from "./schema";
 import { errorContent, jsonContent, repositoryError, type McpTool, type ToolContext, type ToolResult } from "./types";
+
+const PROJECT_PROPERTIES = {
+  id: { type: "string" },
+  name: { type: "string" },
+  path: { type: ["string", "null"] },
+  archived: { type: "boolean" },
+};
 
 async function loadProjects(ctx: ToolContext): Promise<Project[] | ToolResult> {
   const listed = await ctx.projects.list();
@@ -29,15 +37,7 @@ const createProject: McpTool = {
   name: "create_project",
   description: "Create a project. id must match [A-Za-z0-9_-] and be unique.",
   scope: "write",
-  inputSchema: schema(
-    {
-      id: { type: "string" },
-      name: { type: "string" },
-      path: { type: ["string", "null"] },
-      archived: { type: "boolean" },
-    },
-    ["id", "name"],
-  ),
+  inputSchema: schema(PROJECT_PROPERTIES, ["id", "name"]),
   handler: async (ctx, args) => {
     const parsed = parseProjectCreate(args);
     if (!parsed.ok) return errorContent(parsed.error.code, "invalid create_project arguments");
@@ -60,26 +60,13 @@ const updateProject: McpTool = {
   name: "update_project",
   description: "Update a project name, path or archived flag.",
   scope: "write",
-  inputSchema: schema(
-    {
-      id: { type: "string" },
-      name: { type: "string" },
-      path: { type: ["string", "null"] },
-      archived: { type: "boolean" },
-    },
-    ["id"],
-  ),
+  inputSchema: schema(PROJECT_PROPERTIES, ["id"]),
   handler: async (ctx, args) => {
-    const id = readString(args, "id");
-    if (id === null || id === "") return errorContent("INVALID_INPUT", "id is required");
-    const found = await ctx.projects.find(id);
-    if (!found.ok) return errorContent(found.error.code, "failed to load the project");
-    if (found.value === undefined) return repositoryError("NOT_FOUND");
+    const found = await findById(args, "failed to load the project", (id) => ctx.projects.find(id));
+    if (isToolResult(found)) return found;
     const patch = parseProjectPatch(args);
     if (!patch.ok) return errorContent(patch.error.code, "invalid update_project arguments");
-    const updated = await ctx.projects.update(applyProjectPatch(found.value, patch.value));
-    if (!updated.ok) return repositoryError(updated.error.code);
-    return jsonContent(updated.value);
+    return updateContent(ctx.projects.update(applyProjectPatch(found, patch.value)));
   },
 };
 

@@ -37,11 +37,13 @@ export const Layout: FC<{ active: ActiveKey; children?: JSX.Element }> = ({
               {screen.label}
             </a>
           ))}
-          <a href="/connections">Connections</a>
         </nav>
-        <form action="/logout" method="post" class="logout">
-          <button type="submit" class="button">Logout</button>
-        </form>
+        <div class="topbar-actions">
+          <a class="button" href="/connections">Connections</a>
+          <form action="/logout" method="post" class="logout">
+            <button type="submit" class="button">Logout</button>
+          </form>
+        </div>
       </header>
       <p id="move-error" class="error move-error" hidden>移動に失敗しました。もう一度お試しください。</p>
       <main id="page">{children}</main>

@@ -116,10 +116,7 @@ export function registerMcpRoutes(
 
   app.post("/mcp", async (c) => {
     const info = await verifyMcpToken(c.env, c.req.header("authorization"));
-    if (info === null) {
-      c.header("WWW-Authenticate", oauthChallenge(c));
-      return c.json(rpcError(null, JSON_RPC_UNAUTHORIZED, "a valid OAuth access token is required"), 401);
-    }
+    if (info === null) return mcpUnauthorized(c);
     let body: unknown;
     try {
       body = await c.req.json();

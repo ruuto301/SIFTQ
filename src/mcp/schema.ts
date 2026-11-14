@@ -27,55 +27,48 @@ export function readOptionalBoolean(args: Record<string, unknown>, key: string):
   return typeof value === "boolean" ? value : null;
 }
 
-export function readStringArray(args: Record<string, unknown>, key: string): string[] | null {
-  const value = args[key];
-  if (!Array.isArray(value)) return null;
-  const items: string[] = [];
-  for (const item of value) {
-    if (typeof item !== "string") return null;
-    items.push(item);
-  }
-  return items;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export type OrderUpdate = { id: string; order: number };
 
-export function readOrderUpdates(value: unknown): OrderUpdate[] | null {
-  if (!Array.isArray(value) || value.length === 0) return null;
-  const updates: OrderUpdate[] = [];
-  const seen = new Set<string>();
-  for (const entry of value) {
-    if (!isRecord(entry)) return null;
-    const id = entry["id"];
-    const order = entry["order"];
-    if (typeof id !== "string" || id === "") return null;
-    if (typeof order !== "number" || !Number.isSafeInteger(order) || order <= 0) return null;
-    if (seen.has(id)) return null;
-    seen.add(id);
-    updates.push({ id, order });
-  }
-  return updates;
-}
-
 export type VersionInput = { id: string; version: number };
 
-export function readVersionInputs(value: unknown): VersionInput[] | null {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 50) return null;
-  const inputs: VersionInput[] = [];
+type NumberedEntry = { id: string; value: number };
+
+function readPositiveInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
+/** Reads a non-empty list of uniquely identified entries with one positive integer each. */
+function readNumberedEntries(
+  value: unknown,
+  read: (entry: Record<string, unknown>) => number | null,
+  maximum = Number.MAX_SAFE_INTEGER,
+): NumberedEntry[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > maximum) return null;
+  const entries: NumberedEntry[] = [];
   const seen = new Set<string>();
   for (const entry of value) {
     if (!isRecord(entry)) return null;
     const id = entry["id"];
-    const version = entry["version"];
     if (typeof id !== "string" || id === "") return null;
-    if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) return null;
+    const number = read(entry);
+    if (number === null) return null;
     if (seen.has(id)) return null;
     seen.add(id);
-    inputs.push({ id, version });
+    entries.push({ id, value: number });
   }
-  return inputs;
+  return entries;
+}
+
+export function readOrderUpdates(value: unknown): OrderUpdate[] | null {
+  const entries = readNumberedEntries(value, (entry) => readPositiveInteger(entry["order"]));
+  return entries?.map((entry) => ({ id: entry.id, order: entry.value })) ?? null;
+}
+
+export function readVersionInputs(value: unknown): VersionInput[] | null {
+  const entries = readNumberedEntries(value, (entry) => readPositiveInteger(entry["version"]), 50);
+  return entries?.map((entry) => ({ id: entry.id, version: entry.value })) ?? null;
 }

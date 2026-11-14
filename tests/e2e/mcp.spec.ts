@@ -23,9 +23,17 @@ async function registerClient(page: import("@playwright/test").Page): Promise<st
   return String(body["client_id"]);
 }
 
+/** The consent screen needs the browser session; pass it explicitly for API requests. */
+async function sessionCookie(page: import("@playwright/test").Page): Promise<string> {
+  const cookies = await page.context().cookies();
+  const session = cookies.find((cookie) => cookie.name.includes("session"));
+  return session === undefined ? "" : `${session.name}=${session.value}`;
+}
+
 async function acquireToken(page: import("@playwright/test").Page, scope: string): Promise<string> {
   const clientId = await registerClient(page);
   const consent = await page.request.post("/oauth/authorize", {
+    headers: { cookie: await sessionCookie(page) },
     form: {
       response_type: "code",
       client_id: clientId,

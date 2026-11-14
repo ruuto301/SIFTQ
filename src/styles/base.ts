@@ -126,8 +126,15 @@ a {
   gap: 8px;
 }
 
+.topbar-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .logout {
-  margin: 0 0 0 auto;
+  margin: 0;
 }
 
 .nav a,

@@ -1,5 +1,6 @@
 import type { Context, Hono } from "hono";
 import type { AppEnv, Env } from "./app-env";
+import { encodeUtf8, timingSafeEqual } from "./crypto";
 import { isRecord } from "./task";
 import { createD1OAuthRepository } from "./repository/d1-oauth-repository";
 import { createMemoryOAuthRepository } from "./preview/MemoryOAuthRepository";
@@ -19,7 +20,6 @@ const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const CODE_TTL_MS = 10 * 60 * 1000;
 const PROTECTED_RESOURCE_PATH = "/.well-known/oauth-protected-resource";
 
-const encoder = new TextEncoder();
 const previewOAuthRepository = createMemoryOAuthRepository();
 
 /** Resolves the OAuth store: an injected test repository, then D1, then the preview memory store. */
@@ -39,7 +39,7 @@ function base64Url(bytes: Uint8Array): string {
 }
 
 async function digest(value: string): Promise<Uint8Array> {
-  return new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(value)));
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", encodeUtf8(value)));
 }
 
 /** Tokens and codes are persisted as the hex SHA-256 of the value handed to the client. */
@@ -56,15 +56,6 @@ function randomToken(prefix: string): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return `${prefix}${base64Url(bytes)}`;
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1) {
-    difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
-  }
-  return difference === 0;
 }
 
 function bearerToken(authorization: string | undefined): string | null {
@@ -303,6 +294,12 @@ async function issueTokens(
   };
 }
 
+/** Issues access and refresh tokens, mapping a failure to the OAuth invalid_grant error. */
+async function grantTokens(repo: OAuthRepository, clientId: string, scopes: readonly McpScope[]): Promise<TokenOutcome> {
+  const payload = await issueTokens(repo, clientId, scopes.filter(isMcpScope));
+  return payload === null ? { ok: false, error: "invalid_grant" } : { ok: true, payload };
+}
+
 async function authorizationCodeGrant(
   repo: OAuthRepository,
   body: Record<string, unknown>,
@@ -329,8 +326,7 @@ async function authorizationCodeGrant(
   const challenge = await sha256Base64Url(verifier);
   if (!timingSafeEqual(challenge, record.code_challenge)) return { ok: false, error: "invalid_grant" };
 
-  const payload = await issueTokens(repo, clientId, record.scopes.filter(isMcpScope));
-  return payload === null ? { ok: false, error: "invalid_grant" } : { ok: true, payload };
+  return grantTokens(repo, clientId, record.scopes);
 }
 
 async function refreshTokenGrant(repo: OAuthRepository, body: Record<string, unknown>): Promise<TokenOutcome> {
@@ -353,8 +349,7 @@ async function refreshTokenGrant(repo: OAuthRepository, body: Record<string, unk
   const revoked = await repo.revokeToken(hash);
   if (!revoked.ok) return { ok: false, error: "invalid_grant" };
 
-  const payload = await issueTokens(repo, clientId, record.scopes.filter(isMcpScope));
-  return payload === null ? { ok: false, error: "invalid_grant" } : { ok: true, payload };
+  return grantTokens(repo, clientId, record.scopes);
 }
 
 function runTokenGrant(

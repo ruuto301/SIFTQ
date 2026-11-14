@@ -13,5 +13,3 @@ export const MCP_PROTOCOL_VERSION = "2025-06-18";
 export function findTool(name: string): McpTool | undefined {
   return MCP_TOOLS.find((tool) => tool.name === name);
 }
-
-export type { McpTool, ToolContext, ToolResult } from "./types";

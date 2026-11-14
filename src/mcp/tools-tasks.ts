@@ -9,13 +9,18 @@ import {
 } from "../task";
 import type { Task, TaskStatus } from "../task";
 import { sortTasksByOrder, taskTextFilter, taskWorkingFilter } from "../task-list";
-import { nextIdeaOrder } from "../idea";
-import type { Idea } from "../idea";
+import { createIdea as buildIdea } from "../idea-tasks";
+import { findById, findVersioned, isToolResult, readVersionedInput, removeContent, updateContent } from "./helpers";
 import { errorContent, jsonContent, repositoryError, type McpTool, type ToolContext, type ToolResult } from "./types";
 import { TASK_STATUS_SCHEMA, readOptionalBoolean, readOptionalNumber, readOrderUpdates, readString, readVersionInputs, schema } from "./schema";
 
 const OWNER_ID = "local";
 const LIST_LIMIT_MAX = 200;
+
+const ID_VERSION_PROPERTIES = {
+  id: { type: "string" },
+  version: { type: "integer" },
+};
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -88,12 +93,9 @@ const getTask: McpTool = {
   scope: "read",
   inputSchema: schema({ id: { type: "string" } }, ["id"]),
   handler: async (ctx, args) => {
-    const id = readString(args, "id");
-    if (id === null || id === "") return errorContent("INVALID_INPUT", "id is required");
-    const found = await ctx.tasks.find(id, OWNER_ID);
-    if (!found.ok) return errorContent(found.error.code, "failed to load the task");
-    if (found.value === undefined) return repositoryError("NOT_FOUND");
-    return jsonContent(found.value);
+    const found = await findById(args, "failed to load the task", (id) => ctx.tasks.find(id, OWNER_ID));
+    if (isToolResult(found)) return found;
+    return jsonContent(found);
   },
 };
 
@@ -207,8 +209,7 @@ const updateTask: McpTool = {
   scope: "write",
   inputSchema: schema(
     {
-      id: { type: "string" },
-      version: { type: "integer" },
+      ...ID_VERSION_PROPERTIES,
       title: { type: "string" },
       description: { type: "string" },
       status: TASK_STATUS_SCHEMA,
@@ -218,18 +219,11 @@ const updateTask: McpTool = {
     ["id", "version"],
   ),
   handler: async (ctx, args) => {
-    const id = readString(args, "id");
-    const version = readOptionalNumber(args, "version");
-    if (id === null || id === "" || version === null || version <= 0) return errorContent("INVALID_INPUT", "id and version are required");
-    const found = await ctx.tasks.find(id, OWNER_ID);
-    if (!found.ok) return errorContent(found.error.code, "failed to load the task");
-    if (found.value === undefined) return repositoryError("NOT_FOUND");
+    const found = await findVersioned(args, "failed to load the task", (input) => ctx.tasks.find(input.id, OWNER_ID));
+    if (isToolResult(found)) return found;
     const parsed = parseTaskPatch(args);
     if (!parsed.ok) return errorContent(parsed.error.code, "invalid update_task arguments");
-    const patched = applyTaskPatch(found.value, parsed.value);
-    const updated = await ctx.tasks.update({ ...patched, version });
-    if (!updated.ok) return repositoryError(updated.error.code);
-    return jsonContent(updated.value);
+    return updateContent(ctx.tasks.update({ ...applyTaskPatch(found.value, parsed.value), version: found.input.version }));
   },
 };
 
@@ -237,14 +231,11 @@ const deleteTask: McpTool = {
   name: "delete_task",
   description: "Delete a task. version is required. This cannot be undone.",
   scope: "write",
-  inputSchema: schema({ id: { type: "string" }, version: { type: "integer" } }, ["id", "version"]),
+  inputSchema: schema(ID_VERSION_PROPERTIES, ["id", "version"]),
   handler: async (ctx, args) => {
-    const id = readString(args, "id");
-    const version = readOptionalNumber(args, "version");
-    if (id === null || id === "" || version === null || version <= 0) return errorContent("INVALID_INPUT", "id and version are required");
-    const removed = await ctx.tasks.remove(id, OWNER_ID, version);
-    if (!removed.ok) return repositoryError(removed.error.code);
-    return jsonContent({ deleted: id });
+    const input = readVersionedInput(args);
+    if (isToolResult(input)) return input;
+    return removeContent(input.id, ctx.tasks.remove(input.id, OWNER_ID, input.version));
   },
 };
 
@@ -312,27 +303,16 @@ const moveTaskToIdea: McpTool = {
   name: "move_task_to_idea",
   description: "Move a task back to the idea list. version is required.",
   scope: "write",
-  inputSchema: schema({ id: { type: "string" }, version: { type: "integer" } }, ["id", "version"]),
+  inputSchema: schema(ID_VERSION_PROPERTIES, ["id", "version"]),
   handler: async (ctx, args) => {
-    const id = readString(args, "id");
-    const version = readOptionalNumber(args, "version");
-    if (id === null || id === "" || version === null || version <= 0) return errorContent("INVALID_INPUT", "id and version are required");
-    const found = await ctx.tasks.find(id, OWNER_ID);
-    if (!found.ok) return errorContent(found.error.code, "failed to load the task");
-    if (found.value === undefined) return repositoryError("NOT_FOUND");
+    const found = await findVersioned(args, "failed to load the task", (input) => ctx.tasks.find(input.id, OWNER_ID));
+    if (isToolResult(found)) return found;
     const ideas = await ctx.ideas.list(OWNER_ID);
     if (!ideas.ok) return errorContent(ideas.error.code, "failed to load ideas");
-    const idea: Idea = {
-      id: crypto.randomUUID(),
-      owner_id: OWNER_ID,
-      title: found.value.title,
-      description: found.value.description,
-      order: nextIdeaOrder(ideas.value, false),
-      pinned: false,
-    };
+    const idea = buildIdea(ideas.value, { title: found.value.title, description: found.value.description, pinned: false });
     const inserted = await ctx.ideas.insert(idea);
     if (!inserted.ok) return errorContent(inserted.error.code, "failed to insert the idea");
-    const removed = await ctx.tasks.remove(id, OWNER_ID, version);
+    const removed = await ctx.tasks.remove(found.input.id, OWNER_ID, found.input.version);
     if (!removed.ok) {
       await ctx.ideas.remove(inserted.value.id, OWNER_ID);
       return repositoryError(removed.error.code);
