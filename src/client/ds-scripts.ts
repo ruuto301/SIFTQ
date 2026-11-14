@@ -141,6 +141,167 @@ export const DS_SCRIPT = `(function () {
     });
   });
 
+  // DS left pane composer: create a task and insert it into its project group.
+  var newForm = document.getElementById("ds-new-task");
+  var newInput = document.getElementById("ds-new-title");
+  var newAdd = document.getElementById("ds-new-add");
+  var newProject = document.getElementById("ds-new-project");
+  var newError = document.getElementById("ds-new-error");
+  if (newForm && newInput && newAdd && newProject) {
+    var NEW_HIGHLIGHT_MS = 1400;
+    var submitting = false;
+    var composing = false;
+
+    function trimTitle(value) {
+      return String(value || "").replace(/^\\s+|\\s+$/g, "");
+    }
+    function showNewError(message) {
+      if (!newError) return;
+      newError.textContent = message || "";
+      newError.hidden = (message || "") === "";
+    }
+    function syncNewSubmit() {
+      newAdd.disabled = submitting || trimTitle(newInput.value) === "";
+    }
+    function activeStatus() {
+      var active = document.querySelector(".ds__status-tabs .is-active");
+      return active === null ? "do" : trimTitle(active.textContent) || "do";
+    }
+    function groupSection(projectId) {
+      var sections = document.querySelectorAll(".ds__group");
+      for (var index = 0; index < sections.length; index += 1) {
+        if ((sections[index].getAttribute("data-ds-group-id") || "") === projectId) return sections[index];
+      }
+      return null;
+    }
+    function expandGroup(section) {
+      if (section.getAttribute("data-collapsed") !== "true") return;
+      section.setAttribute("data-collapsed", "false");
+      var toggle = section.querySelector("[data-ds-group-toggle]");
+      if (toggle) toggle.setAttribute("aria-expanded", "true");
+      collapsedGroups[section.getAttribute("data-ds-group-id") || "__none__"] = false;
+      saveCollapsedGroups();
+    }
+    function buildTaskRow(task) {
+      var project = task.project === null || task.project === undefined ? "" : String(task.project);
+      var item = document.createElement("li");
+      item.className = "ds__task-item";
+      item.setAttribute("data-task-id", String(task.id));
+      item.setAttribute("data-task-version", String(task.version));
+      item.setAttribute("data-task-status", String(task.status));
+      item.setAttribute("data-task-working", task.working === true ? "true" : "false");
+      item.setAttribute("data-task-project", project);
+      var link = document.createElement("a");
+      link.className = "ds__task";
+      link.setAttribute("href", "/ds?task=" + encodeURIComponent(String(task.id)));
+      var head = document.createElement("span");
+      head.className = "ds__task-head";
+      var title = document.createElement("span");
+      title.className = "ds__task-title";
+      title.textContent = String(task.title);
+      head.appendChild(title);
+      link.appendChild(head);
+      var meta = document.createElement("span");
+      meta.className = "ds__task-meta";
+      if (task.working === true) {
+        var badge = document.createElement("span");
+        badge.className = "working-badge";
+        badge.textContent = "working";
+        meta.appendChild(badge);
+      }
+      link.appendChild(meta);
+      item.appendChild(link);
+      return item;
+    }
+    function insertTask(task) {
+      var project = task.project === null || task.project === undefined ? "" : String(task.project);
+      var section = groupSection(project);
+      if (section === null) return false;
+      var list = section.querySelector(".ds__tasks");
+      if (list === null) return false;
+      expandGroup(section);
+      var row = buildTaskRow(task);
+      list.appendChild(row);
+      var count = section.querySelector(".ds__group-count");
+      if (count !== null) count.textContent = String(list.querySelectorAll(".ds__task-item").length);
+      var link = row.firstElementChild;
+      if (link !== null) link.classList.add("is-new");
+      row.scrollIntoView({ block: "nearest" });
+      setTimeout(function () {
+        if (link !== null) link.classList.remove("is-new");
+      }, NEW_HIGHLIGHT_MS);
+      return true;
+    }
+    function settleNewTask() {
+      submitting = false;
+      newAdd.textContent = "追加";
+      newInput.disabled = false;
+      newProject.disabled = false;
+      syncNewSubmit();
+      newInput.focus();
+    }
+    function submitNewTask() {
+      var title = trimTitle(newInput.value);
+      if (submitting || title === "") return;
+      if (Array.from(title).length > 256) {
+        showNewError("タスク名は 256 文字以内にしてください。");
+        return;
+      }
+      showNewError("");
+      submitting = true;
+      newAdd.textContent = "追加中…";
+      newInput.disabled = true;
+      newProject.disabled = true;
+      syncNewSubmit();
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title,
+          description: "",
+          status: activeStatus(),
+          project: newProject.value === "" ? null : newProject.value,
+        }),
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return response.json();
+        })
+        .then(function (task) {
+          insertTask(task);
+          newInput.value = "";
+        })
+        .catch(function () {
+          showNewError("保存に失敗しました。もう一度お試しください。");
+        })
+        .then(settleNewTask);
+    }
+
+    newForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      submitNewTask();
+    });
+    newInput.addEventListener("input", function () {
+      showNewError("");
+      syncNewSubmit();
+    });
+    newInput.addEventListener("compositionstart", function () {
+      composing = true;
+    });
+    newInput.addEventListener("compositionend", function () {
+      composing = false;
+    });
+    newInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && (composing || event.isComposing)) event.preventDefault();
+      if (event.key === "Escape") {
+        newInput.value = "";
+        showNewError("");
+        syncNewSubmit();
+      }
+    });
+    syncNewSubmit();
+  }
+
   // DS left pane DnD: task rows move between project groups, group heads reorder projects.
   var groupsBox = document.querySelector(".ds__groups");
   if (groupsBox) initGroupsDnd(groupsBox);

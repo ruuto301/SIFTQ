@@ -70,6 +70,73 @@ export const DS_CSS = `
 .ds__status-tabs .button.small:hover { background: #f3f6fa; }
 .ds__status-tabs .button.is-active { background: #1b1f24; border-color: #1b1f24; color: #fff; }
 
+/* Left pane: task composer. It sits outside the scrolling group list. */
+.ds__new { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 4px 12px 16px; }
+.ds__new-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ds__new-label { flex: 0 0 auto; font-size: 11px; color: #57606a; }
+.ds__new-label--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ds__new-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  color: #1b1f24;
+}
+.ds__new-input::placeholder { color: #8b949e; }
+.ds__new-input:focus-visible { border-color: #1b1f24; outline: 2px solid #e6e9ee; outline-offset: 1px; }
+.ds__new-project {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 11px;
+  color: #1b1f24;
+}
+.ds__new-project:focus-visible { border-color: #1b1f24; outline: 2px solid #e6e9ee; outline-offset: 1px; }
+.ds__new-add {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid #1b1f24;
+  border-radius: 8px;
+  background: #1b1f24;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+.ds__new-add:hover:not(:disabled) { background: #30363d; border-color: #30363d; }
+.ds__new-add:disabled { background: #c1c9d3; border-color: #c1c9d3; cursor: default; }
+.ds__new-input:disabled,
+.ds__new-project:disabled { background: #f6f8fa; color: #8b949e; }
+.ds__new-error {
+  margin: 0 12px 6px;
+  padding: 6px 10px;
+  border: 1px solid #f3c2c2;
+  border-radius: 8px;
+  background: #fdf3f3;
+  color: #b3261e;
+  font-size: 12px;
+}
+.ds__new-error[hidden] { display: none; }
+
 .ds__groups {
   flex: 1;
   min-height: 0;
@@ -175,6 +242,7 @@ export const DS_CSS = `
 
 .ds__task:hover { border-color: #c7d3e3; background: #fafbfd; }
 .ds__task.active { border-color: #2f6feb; background: #f5f9ff; box-shadow: 0 0 0 2px rgb(47 111 235 / 12%); }
+.ds__task.is-new { border-color: #2f6feb; background: #eef4ff; box-shadow: 0 0 0 3px rgb(47 111 235 / 18%); }
 .ds__task-head { display: flex; align-items: flex-start; gap: 8px; }
 .ds__task-title {
   flex: 1;

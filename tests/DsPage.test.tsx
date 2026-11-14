@@ -96,6 +96,35 @@ describe("DsPage", () => {
   });
 });
 
+describe("DsPage task composer", () => {
+  it("renders the composer above the group list with the selected project and status", () => {
+    const html = renderToString(
+      page([taskFixture({ id: "t1", project: "dsh" })], taskFixture({ id: "t1", project: "dsh" }), "skip"),
+    );
+
+    expect(html).toContain('id="ds-new-task"');
+    expect(html).toContain('id="ds-new-title"');
+    expect(html).toContain('placeholder="タスクを追加（skip）"');
+    expect(html).toContain('id="ds-new-add"');
+    expect(html).toContain('id="ds-new-project"');
+    expect(html).toContain('id="ds-new-error"');
+    expect(html).toContain('for="ds-new-project"');
+    expect(html).toContain('<option value="dsh" selected="">dsh</option>');
+    const composer = html.indexOf('id="ds-new-task"');
+    const groups = html.indexOf('class="ds__groups"');
+    expect(composer).toBeGreaterThanOrEqual(0);
+    expect(groups).toBeGreaterThan(composer);
+  });
+
+  it("defaults the project to 未分類 when no task is selected", () => {
+    const html = renderToString(page([taskFixture({ project: "dsh" })], undefined));
+
+    expect(html).toContain('<option value="Yoriwake">Yoriwake</option>');
+    expect(html).toContain('<option value="" selected="">未分類</option>');
+    expect(html.indexOf('value="" selected')).toBeGreaterThan(html.indexOf('value="Yoriwake"'));
+  });
+});
+
 describe("DsPage chat and browser panes", () => {
   it("renders the send button as an arrow", () => {
     const html = renderToString(page([taskFixture()], taskFixture()));

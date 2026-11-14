@@ -40,6 +40,26 @@ describe("DS browser script", () => {
     expect(DS_SCRIPT).toContain("localStorage.setItem");
   });
 
+  it("creates a task from the composer and inserts it into the matching project group (BDD-TM-027)", () => {
+    for (const hook of [
+      "ds-new-task",
+      "ds-new-title",
+      "ds-new-add",
+      "ds-new-project",
+      "ds-new-error",
+      'fetch("/api/tasks"',
+      "ds__task-item",
+      "is-new",
+      "scrollIntoView",
+      "compositionstart",
+      "Escape",
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+    expect(DS_SCRIPT).toContain("ds__group-count");
+    expect(DS_SCRIPT).toContain("保存に失敗しました。もう一度お試しください。");
+  });
+
 });
 
 describe("DS task list DnD", () => {

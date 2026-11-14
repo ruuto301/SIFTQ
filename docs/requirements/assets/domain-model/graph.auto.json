@@ -597,6 +597,13 @@
       "trigger": "POST",
       "view": "screen:P10",
       "gateway": "ds-scripts.ts",
+      "api": "tasks_create"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
       "api": "tasks_bulk_project"
     },
     {

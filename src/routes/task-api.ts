@@ -10,7 +10,7 @@ import {
   parseTaskPatch,
   parseTaskVersionInputs,
 } from "../task";
-import type { DomainError, Result, Task, TaskVersionInput } from "../task";
+import type { DomainError, Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import { isProjectId, isProjectOrderValid } from "../project";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
@@ -73,10 +73,12 @@ function readOrderUpdates(value: unknown, isValidOrder: (order: number) => boole
 function createTaskAtBoundary({
   title,
   description,
+  status,
   project,
 }: {
   title: string;
   description: string;
+  status?: TaskStatus;
   project: string | null;
 }) {
   const now = new Date().toISOString();
@@ -85,6 +87,7 @@ function createTaskAtBoundary({
     owner_id: "local",
     title,
     description,
+    ...(status === undefined ? {} : { status }),
     project,
     created_at: now,
     updated_at: now,
@@ -177,9 +180,16 @@ async function createApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>)
   const body = await c.req.json<Record<string, unknown>>();
   const title = typeof body["title"] === "string" ? body["title"].trim() : "";
   const description = typeof body["description"] === "string" ? body["description"] : "";
+  const status = body["status"];
+  if (status !== undefined && !isTaskStatus(status)) return problem(c, 400, "INVALID_STATUS");
   const project = await resolveApiProject(deps.projectRepository, c, body["project"]);
   if (!project.ok) return problem(c, 400, project.code);
-  const created = createTaskAtBoundary({ title, description, project: project.project });
+  const created = createTaskAtBoundary({
+    title,
+    description,
+    ...(status === undefined ? {} : { status }),
+    project: project.project,
+  });
   if (!created.ok) return problem(c, 400, created.error.code);
   const listed = await deps.repository(c).list();
   if (!listed.ok) return problem(c, 500, listed.error.code);
