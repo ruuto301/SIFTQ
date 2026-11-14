@@ -129,7 +129,7 @@
   - 見出しバーを押すとグループを折りたたみ、折りたたみ状態は再読み込み後も維持する。折りたたむと枠は見出しバー 1 行に縮む。
   - 各カードは title と `working` badge を表示する。status badge と project ラベルは表示しない。
   - task 行を右クリックすると action menu を表示する。
-  - action menu の選択肢は `do`、`done`、`skip` への変更、`working` の切り替え、`プロジェクト` サブメニュー（`未分類` と各 project）、task detail を開く、削除とする。
+  - action menu は先頭に task 名と `status ・ project` を表示する。選択肢は `status` の `do` / `done` / `skip`（現在値は黒地 + 白文字のピル）、`project`（現在の project 名と `▸`、サブメニューは `未分類` と各 project）、`copy title`、区切りの下に `working`（`on` / `off`）と `delete` とする。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。
   - status 変更後、選択中 status と一致しない行は一覧から除外する。選択中だった場合は同じ status の一覧へ移動する。
   - project 変更後は一覧を読み込み直してグループへ反映する。
   - task カードをドラッグして別の project グループへドロップすると、その task の project を変更する。`未分類` へドロップすると project を未設定へ戻す。

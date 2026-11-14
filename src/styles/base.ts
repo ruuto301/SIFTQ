@@ -228,7 +228,7 @@ a {
 
 .label--project {
   background: #fff;
-  border-color: #c7d3e3;
+  border-color: #d8dde3;
   color: #1b1f24;
 }
 
