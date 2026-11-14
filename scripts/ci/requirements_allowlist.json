@@ -138,5 +138,35 @@
     "path": "src/styles/dsh-chat.ts",
     "reason": "既存CSSから分割した静的スタイルで、既存stylesテストが最終CSSを検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/schema.ts",
+    "reason": "MCP ツールの入力検証は tests/mcp.test.ts と tests/mcp-oauth.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/types.ts",
+    "reason": "MCP ツールの結果整形は tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-tasks.ts",
+    "reason": "Task 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-projects.ts",
+    "reason": "Project 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/mcp/tools-ideas.ts",
+    "reason": "Idea 系 MCP ツールは tests/mcp.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/oauth-repository.ts",
+    "reason": "OAuth リポジトリの契約は tests/d1-oauth-repository.test.ts と tests/MemoryOAuthRepository.test.ts が検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
   }
 ]
