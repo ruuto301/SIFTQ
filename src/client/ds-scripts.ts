@@ -571,6 +571,47 @@ export const DS_SCRIPT = `(function () {
       menu = null;
       menuRow = null;
     }
+    // OS の右クリックメニューと同じ位置決め: 左上をカーソル位置に置き、
+    // 右/下に入らないときは左/上へ反転してから画面内（8px）に収める。
+    var MENU_OFFSET = 1;
+    var MENU_PADDING = 8;
+    function clampMenu(box, left, top) {
+      var rect = box.getBoundingClientRect();
+      var maxLeft = window.innerWidth - rect.width - MENU_PADDING;
+      var maxTop = window.innerHeight - rect.height - MENU_PADDING;
+      return {
+        left: Math.max(MENU_PADDING, Math.min(left, maxLeft)),
+        top: Math.max(MENU_PADDING, Math.min(top, maxTop)),
+      };
+    }
+    // 画面より高いメニューでも最後の項目に届くように、使える高さでスクロールさせる。
+    function fitMenuHeight(box, top) {
+      var available = window.innerHeight - top - MENU_PADDING;
+      box.style.overflowY = "auto";
+      box.style.maxHeight = box.scrollHeight > available ? available + "px" : "";
+    }
+    function placeMenuAtPointer(box, x, y) {
+      var rect = box.getBoundingClientRect();
+      var left = x + MENU_OFFSET;
+      var top = y + MENU_OFFSET;
+      if (left + rect.width > window.innerWidth - MENU_PADDING) left = x - rect.width - MENU_OFFSET;
+      if (top + rect.height > window.innerHeight - MENU_PADDING) top = y - rect.height - MENU_OFFSET;
+      var position = clampMenu(box, left, top);
+      box.style.left = Math.round(position.left) + "px";
+      box.style.top = Math.round(position.top) + "px";
+      fitMenuHeight(box, position.top);
+    }
+    function placeSubmenu(box, sourceRect) {
+      var rect = box.getBoundingClientRect();
+      var left = sourceRect.right + MENU_OFFSET;
+      if (left + rect.width > window.innerWidth - MENU_PADDING) {
+        left = sourceRect.left - rect.width - MENU_OFFSET;
+      }
+      var position = clampMenu(box, left, sourceRect.top);
+      box.style.left = Math.round(position.left) + "px";
+      box.style.top = Math.round(position.top) + "px";
+      fitMenuHeight(box, position.top);
+    }
     function currentFilter() {
       var active = document.querySelector(".ds__status-tabs .is-active");
       return active ? active.textContent.trim() : "do";
@@ -684,10 +725,7 @@ export const DS_SCRIPT = `(function () {
         patchTask(target, { project: value === "" ? null : value });
       });
       document.body.appendChild(submenu);
-      var rect = sourceBox.getBoundingClientRect();
-      var subRect = submenu.getBoundingClientRect();
-      submenu.style.left = Math.max(8, Math.min(rect.right + 4, window.innerWidth - subRect.width - 8)) + "px";
-      submenu.style.top = Math.max(8, Math.min(rect.top, window.innerHeight - subRect.height - 8)) + "px";
+      placeSubmenu(submenu, sourceBox.getBoundingClientRect());
       menu = submenu;
     }
     function addDivider(box) {
@@ -839,9 +877,7 @@ export const DS_SCRIPT = `(function () {
         if (action.indexOf("status:") === 0) patchTask(target, { status: action.slice("status:".length) });
       });
       document.body.appendChild(box);
-      var rect = box.getBoundingClientRect();
-      box.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + "px";
-      box.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + "px";
+      placeMenuAtPointer(box, x, y);
       menu = box;
     }
     document.addEventListener("contextmenu", function (event) {
