@@ -39,6 +39,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-013 | ユーザーは、DS の左ペインからタスクを追加したい。 | screens.md |
 | REQ-TM-014 | ユーザーは、DS の左ペインで project ごとのまとまりを見分けたい。 | screens.md |
 | REQ-TM-015 | ユーザーは、DS の task を右クリックして状態や作業中を切り替え、タイトルをコピーしたい。 | screens.md |
+| REQ-TM-016 | ユーザーは、DS の中央ペインでタスクの description を確認したい。 | screens.md |
 
 ## 仕様
 
@@ -68,6 +69,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-022 | REQ-TM-013 | DS 左ペインの status タブ直下で task を作成できる。status は選択中タブ、project は追加先 select（既定は選択中 task、`未分類` も選べる）とし、作成した task は該当 project グループへ追加して件数を更新する。失敗時は入力内容を保持してエラーを表示する。 | BDD-TM-028 |
 | SPEC-TM-023 | REQ-TM-014 | DS 左ペインの project グループは 2px の黒枠で囲み、見出しバーを枠の上辺にする。枠は中身の高さに追従し、task の追加・削除・折りたたみで伸縮する。task が増えても他のグループは潰れず、一覧側がスクロールする。 | BDD-TM-029 |
 | SPEC-TM-024 | REQ-TM-015 | DS の task 行の右クリックメニューは、先頭に task 名と `status ・ project` を表示する。`status` は `do` / `done` / `skip` のピル（現在値は黒地 + 白文字）、`project` は現在の project 名と `▸`、続いて `copy title`、区切りの下に `working`（`on` / `off`）と `delete` を表示する。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。 | BDD-TM-030 |
+| SPEC-TM-025 | REQ-TM-016 | DS 中央ペインの `description` タブは、選択中 task の description を初期表示から描画する。DSH transport が使える場合は `desc.get` の応答を優先し、使えない場合は task の description を表示する。description が空のときはプレースホルダを表示する。 | BDD-TM-031 |
 
 ## BDD 候補
 
@@ -99,6 +101,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-028 | SPEC-TM-022 | DS 左ペインで task を追加すると、選択中 status と追加先 project で作成され、その project グループに表示される。 | 正常 |
 | BDD-TM-029 | SPEC-TM-023 | DS 左ペインの project ごとに黒枠が付き、task を追加すると枠が伸びて他の project は縮まない。折りたたむと枠は見出し 1 行に縮む。 | 正常 |
 | BDD-TM-030 | SPEC-TM-024 | DS 左ペインの task を右クリックすると英語の action menu が開き、status ピルで状態を変更でき、`copy title` でタイトルがクリップボードに入る。 | 正常 |
+| BDD-TM-031 | SPEC-TM-025 | DS の `description` タブを開くと、task の description が transport の接続有無にかかわらず表示される。 | 正常 |
 
 ## 未決事項
 

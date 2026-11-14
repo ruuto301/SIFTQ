@@ -19,6 +19,12 @@ describe("DSH chat script", () => {
     expect(DSH_CHAT_SCRIPT).toContain("desc.updated");
   });
 
+  it("renders the stored description before the transport answers (BDD-TM-031)", () => {
+    // The pane must not wait for `desc.get`: the request is only sent once a session exists.
+    expect(DSH_CHAT_SCRIPT).toContain("setDesc(taskDescription);");
+    expect(DSH_CHAT_SCRIPT).toContain("else setDesc(taskDescription);");
+  });
+
   it("switches the send button to stop while a turn runs", () => {
     expect(DSH_CHAT_SCRIPT).toContain("prompt.cancel");
     expect(DSH_CHAT_SCRIPT).toContain("dataset.state");
