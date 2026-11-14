@@ -102,6 +102,12 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("タスクを並び替えできませんでした");
   });
 
+  it("deletes through the centered confirm dialog instead of window.confirm (BDD-TM-033)", () => {
+    expect(DS_SCRIPT).not.toContain("window.confirm(");
+    expect(DS_SCRIPT).toContain("window.__siftqConfirm");
+    expect(DS_SCRIPT).toContain("このタスクを削除しますか？");
+  });
+
   it("rejects non-http URLs and ignores frames from inactive tabs", () => {
     expect(DS_SCRIPT).toContain("http(s) の URL のみ開けます");
     expect(DS_SCRIPT).toContain("tabId");
