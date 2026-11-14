@@ -53,6 +53,9 @@ describe("DS browser script", () => {
       "scrollIntoView",
       "compositionstart",
       "Escape",
+      "requestSubmit",
+      "ctrlKey",
+      "metaKey",
     ]) {
       expect(DS_SCRIPT).toContain(hook);
     }

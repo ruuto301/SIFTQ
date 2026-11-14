@@ -93,7 +93,7 @@ textarea {
 }
 
 .description-editor {
-  background: #c1c9d3;
+  background: #fff;
   min-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
@@ -169,8 +169,8 @@ textarea[data-description-value] {
 }
 
 .popover {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 12px;
   box-shadow: 0 16px 36px rgb(31 35 40 / 18%);
   display: grid;
@@ -196,7 +196,7 @@ details:not([open]) .popover {
 }
 
 .status-group-title {
-  background: #f6f8fa;
+  background: #fff;
   border-bottom: 1px solid #8b949e;
   border-top: 1px solid #8b949e;
   color: #3f4854;
@@ -214,8 +214,8 @@ details:not([open]) .popover {
 }
 
 .status-choice.selected {
-  background: #f6f8fa;
-  box-shadow: inset 4px 0 0 #0f4d24;
+  background: #fff;
+  box-shadow: inset 4px 0 0 #3f6b4f;
 }
 
 button.status-choice {
@@ -230,7 +230,7 @@ button.status-choice {
 
 .check {
   align-items: center;
-  background: #1f883d;
+  background: #1b1f24;
   border-radius: 4px;
   color: #ffffff;
   display: inline-flex;
@@ -261,11 +261,11 @@ button.status-choice {
 }
 
 .status-dot--done {
-  background: #0f4d24;
+  background: #3f6b4f;
 }
 
 .status-dot--skip {
-  background: #4a5260;
+  background: #6b7280;
 }
 
 @media (width >= 48rem) {

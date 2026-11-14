@@ -22,7 +22,8 @@ export const DSH_CHAT_CSS = `
   max-width: 82%;
   padding: 8px 12px;
   border-radius: 12px 12px 2px 12px;
-  background: #e8f0ff;
+  background: #fff;
+  border: 1px solid #1b1f24;
   color: #1b1f24;
 }
 .dsh-chat__line--assistant { align-self: stretch; max-width: 100%; }
@@ -30,9 +31,9 @@ export const DSH_CHAT_CSS = `
   align-self: flex-start;
   max-width: 100%;
   padding: 4px 8px;
-  border: 1px solid #eef1f4;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
-  background: #f6f8fa;
+  background: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: #57606a;
@@ -61,9 +62,9 @@ export const DSH_CHAT_CSS = `
   align-self: flex-start;
   max-width: 100%;
   padding: 6px 10px;
-  border: 1px solid #eef1f4;
+  border: 1px solid #d8dde3;
   border-radius: 10px;
-  background: #f6f8fa;
+  background: #fff;
   font-size: 11px;
   color: #57606a;
 }
@@ -84,5 +85,5 @@ export const DSH_CHAT_CSS = `
   font-size: 11px;
   white-space: pre-wrap;
 }
-.dsh-code { padding: 10px 12px; overflow: auto; border-radius: 8px; background: #f6f8fa; font-size: 12px; }
+.dsh-code { padding: 10px 12px; overflow: auto; border: 1px solid #d8dde3; border-radius: 8px; background: #fff; font-size: 12px; }
 `;

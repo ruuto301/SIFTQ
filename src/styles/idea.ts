@@ -1,7 +1,7 @@
 export const IDEAS_CSS = `
 .page--ideas {
-  background: #3b434d;
-  color: #e6e9ee;
+  background: transparent;
+  color: #1b1f24;
   max-width: none;
   min-height: calc(100vh - 63px);
   padding: 48px 16px;
@@ -16,8 +16,8 @@ export const IDEAS_CSS = `
 }
 
 .ideas-composer {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgb(31 35 40 / 8%);
   color: #3f4854;
@@ -50,8 +50,8 @@ export const IDEAS_CSS = `
 }
 
 .ideas-composer--open {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
   padding: 0;
 }
@@ -98,7 +98,7 @@ export const IDEAS_CSS = `
 
 .ideas-composer__title:focus,
 .ideas-composer__description:focus {
-  box-shadow: 0 2px 0 #0f4d24;
+  box-shadow: 0 2px 0 #1b1f24;
 }
 
 .ideas-composer__actions {
@@ -118,8 +118,8 @@ export const IDEAS_CSS = `
 
 .ideas-composer__close:hover,
 .ideas-composer__close:focus-visible {
-  background: #f6f8fa;
-  color: #0f4d24;
+  background: #f3f6fa;
+  color: #1b1f24;
 }
 
 .ideas-grid {
@@ -143,8 +143,8 @@ export const IDEAS_CSS = `
 }
 
 .idea-card {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
   display: flex;
@@ -158,15 +158,15 @@ export const IDEAS_CSS = `
 }
 
 .idea-card:nth-child(3n + 2) {
-  background: #b6c0cb;
+  background: #fff;
 }
 
 .idea-card:nth-child(3n + 3) {
-  background: #ccd3dc;
+  background: #fff;
 }
 
 .idea-card:hover {
-  border-color: #1f883d;
+  border-color: #1b1f24;
   box-shadow: 0 4px 12px rgb(31 35 40 / 14%);
   transform: translateY(-1px);
 }
@@ -181,7 +181,7 @@ export const IDEAS_CSS = `
 }
 
 .idea-card.drop-target {
-  border-color: #1f883d;
+  border-color: #1b1f24;
 }
 
 .idea-card__link {
@@ -242,8 +242,8 @@ export const IDEAS_CSS = `
 }
 
 .ideas-empty {
-  background: #c1c9d3;
-  border: 1px dashed #8b949e;
+  background: #fff;
+  border: 1px dashed #d8dde3;
   border-radius: 6px;
   box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
   color: #1b1f24;
@@ -269,7 +269,7 @@ export const IDEAS_CSS = `
 }
 
 .page--idea-detail {
-  background: #3b434d;
+  background: transparent;
   max-width: none;
   min-height: calc(100vh - 63px);
   padding: 24px 5vw 48px;
@@ -295,7 +295,7 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail__title:focus {
-  box-shadow: 0 2px 0 #0f4d24;
+  box-shadow: 0 2px 0 #1b1f24;
 }
 
 .idea-detail__pin {
@@ -347,7 +347,7 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail-modal {
-  background: #c1c9d3;
+  background: #fff;
   color: #1b1f24;
   border: 0;
   border-radius: 8px;
@@ -362,7 +362,7 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail-modal .idea-detail__form {
-  background: #c1c9d3;
+  background: #fff;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -382,13 +382,13 @@ export const IDEAS_CSS = `
 
 .idea-detail__close:hover,
 .idea-detail__close:focus-visible {
-  background: #f6f8fa;
-  color: #0f4d24;
+  background: #f3f6fa;
+  color: #1b1f24;
 }
 
 .idea-detail__form {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
   padding: 24px;

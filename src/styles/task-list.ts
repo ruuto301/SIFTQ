@@ -1,7 +1,7 @@
 export const TASK_LIST_CSS = `
 .list {
-  background: #aeb8c4;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -25,8 +25,8 @@ export const TASK_LIST_CSS = `
 }
 
 .task-row.is-selected {
-  background: #aeb8c4;
-  box-shadow: inset 3px 0 0 #0f4d24;
+  background: #fff;
+  box-shadow: inset 3px 0 0 #1b1f24;
 }
 
 .task-row-selection {
@@ -38,7 +38,7 @@ export const TASK_LIST_CSS = `
 
 .task-row-selection input,
 .task-select-all input {
-  accent-color: #0f4d24;
+  accent-color: #1b1f24;
   height: 20px;
   margin: 0;
   width: 20px;
@@ -54,7 +54,7 @@ export const TASK_LIST_CSS = `
 
 .task-row-link:focus-visible,
 .task-row-selection:has(input:focus-visible) {
-  outline: 2px solid #0f4d24;
+  outline: 2px solid #1b1f24;
   outline-offset: 2px;
 }
 
@@ -81,8 +81,8 @@ export const TASK_LIST_CSS = `
 
 .task-list-toolbar {
   align-items: center;
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 8px;
   display: flex;
   gap: 12px;
@@ -148,14 +148,14 @@ export const TASK_LIST_CSS = `
 }
 
 .task-label-filter.is-active summary {
-  background: #b7e3c3;
-  border-color: #0f4d24;
-  color: #0f4d24;
+  background: #fff;
+  border-color: #3f6b4f;
+  color: #3f6b4f;
 }
 
 .task-label-menu {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
   display: grid;
@@ -175,7 +175,7 @@ export const TASK_LIST_CSS = `
 
 .task-label-menu a:hover,
 .task-label-menu a.is-selected {
-  background: #eaeef2;
+  background: #f3f6fa;
 }
 
 .task-bulk-menu {
@@ -197,8 +197,8 @@ export const TASK_LIST_CSS = `
 }
 
 .task-bulk-menu-items {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
   box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
   display: grid;
@@ -221,7 +221,7 @@ export const TASK_LIST_CSS = `
 }
 
 .task-bulk-menu-items button:hover {
-  background: #eaeef2;
+  background: #f3f6fa;
 }
 
 .task-bulk-actions[hidden],
@@ -230,10 +230,10 @@ export const TASK_LIST_CSS = `
 }
 
 .task-selection-feedback {
-  background: #b7e3c3;
-  border: 1px solid #4ac26b;
+  background: #fff;
+  border: 1px solid #d8dde3;
   border-radius: 6px;
-  color: #0f4d24;
+  color: #2f4a38;
   margin: 0 0 10px;
   padding: 8px 12px;
 }
@@ -280,8 +280,8 @@ export const TASK_LIST_CSS = `
 }
 
 .pagination .button.small.is-active {
-  background: #1f883d;
-  border-color: #2a9147;
+  background: #1b1f24;
+  border-color: #1b1f24;
   color: #ffffff;
 }
 
@@ -291,7 +291,7 @@ export const TASK_LIST_CSS = `
 }
 
 .pagination-ellipsis {
-  color: #b1bac4;
+  color: #8b949e;
   font-weight: 700;
   padding: 0 4px;
 }
