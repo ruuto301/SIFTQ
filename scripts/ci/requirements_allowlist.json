@@ -168,5 +168,40 @@
     "path": "src/repository/oauth-repository.ts",
     "reason": "OAuth リポジトリの契約は tests/d1-oauth-repository.test.ts と tests/MemoryOAuthRepository.test.ts が検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/client/mk-scripts.ts",
+    "reason": "MKのブラウザ操作はMK契約テストとE2Eが実際の画面挙動を検証するため。",
+    "removal": "ブラウザスクリプト単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/preview/MemoryMkRepository.ts",
+    "reason": "preview用repositoryはMK契約テストが検証するため。",
+    "removal": "repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/d1-mk-repository.ts",
+    "reason": "D1 repositoryはMK契約テストと同じ変換規則で検証するため。",
+    "removal": "D1 repository単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/repository/mk-repository.ts",
+    "reason": "repository interfaceはmemory/D1実装とMK契約テストが利用するため。",
+    "removal": "interface単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/mk-api.ts",
+    "reason": "MK APIはMK契約テストがHTTP境界の挙動を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/mk-screens.tsx",
+    "reason": "MK画面はMK契約テストが描画結果を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/views/MkPage.tsx",
+    "reason": "MK一覧viewはMK契約テストとE2Eが検証するため。",
+    "removal": "view単位のテストを追加したとき。"
   }
 ]

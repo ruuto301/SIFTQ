@@ -14,6 +14,7 @@ import { TaskListPage } from "../views/TaskListPage";
 import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskFormPage";
 import { pageNav } from "../views/navigation";
 import { NAV_SCREENS } from "../screens";
+import type { ActiveKey } from "../screens";
 import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, nextTaskOrder } from "../task";
 import type { DomainError, Result, Task, TaskStatus } from "../task";
 import type { Project } from "../project";
@@ -47,7 +48,7 @@ type Repository = (c: Context<AppEnv>) => TaskRepository;
 type ProjectRepositoryFactory = (c: Context<AppEnv>) => ProjectRepository;
 type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
-function activePage(path: string): "ideas" | "tasks" | "ds" {
+function activePage(path: string): ActiveKey {
   const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
   return match?.activeKey ?? "tasks";
 }

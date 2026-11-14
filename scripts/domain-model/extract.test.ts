@@ -33,6 +33,25 @@ describe("domain extractor", () => {
     expect(auto.api?.["tasks_list"]?.errors).toEqual([{ status: 500 }]);
   });
 
+  it("disambiguates api ids that a nested collection path shares across methods", () => {
+    const routes = parseRoutes(
+      `app.get("/api/mk/notes", h);\napp.post("/api/mk/notes", h);\napp.post("/api/mk/notes/bulk", h);\napp.patch("/api/mk/notes/:id", h);\napp.delete("/api/mk/notes/:id", h);`,
+    );
+    const auto = buildAuto(routes, [], { mk_notes_post: { errors: [{ status: 400, code: "INVALID_TITLE" }] } });
+
+    expect(Object.keys(auto.api ?? {})).toEqual([
+      "mk_notes",
+      "mk_notes_post",
+      "mk_notes_bulk",
+      "mk_notes_id",
+      "mk_notes_id_delete",
+    ]);
+    expect(auto.api?.["mk_notes_post"]?.errors).toEqual([{ status: 400, code: "INVALID_TITLE" }]);
+  });
+
+});
+
+describe("domain extractor client calls", () => {
   it("extracts calls from escaped client sources including ternaries", () => {
     const escaped = `  "  fetch(\\"/api/tasks/\\" + encodeURIComponent(id), {",\n  "    method: \\"PATCH\\",",`;
     expect(extractClientCalls(escaped)).toEqual([{ method: "PATCH", path: "/api/tasks/{id}" }]);

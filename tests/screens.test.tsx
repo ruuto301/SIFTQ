@@ -30,6 +30,7 @@ describe("screen registry", () => {
       "task-list-scripts.ts": ["P02"],
       "task-form-scripts.ts": ["P03", "P04"],
       "idea-scripts.ts": ["P08"],
+      "mk-scripts.ts": ["P13"],
     });
   });
 
@@ -39,6 +40,7 @@ describe("screen registry", () => {
       "/login": "html_login_page",
       "/ideas": "html_ideas_page",
       "/ideas/:id": "html_ideas_detail",
+      "/mk": "html_mk_page",
       "/tasks": "html_tasks_page",
       "/tasks/new": "html_new_task_page",
       "/tasks/:id": "html_task_page",
