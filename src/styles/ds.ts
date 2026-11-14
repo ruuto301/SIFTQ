@@ -33,28 +33,18 @@ export const DS_CSS = `
 }
 
 .ds__chat-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
   padding: 8px 14px;
   border-bottom: 1px solid #eef1f4;
   background: #fafbfd;
 }
 
-.ds__chat-title__label {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 600;
-  color: #57606a;
-}
-
 .ds__chat-title__text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.5;
 }
 
 .ds__resizer {

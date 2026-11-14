@@ -61,7 +61,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-018 | REQ-TM-008 | Idea の description に http/https URL を貼り付けると編集領域内でリンクとして表示する。Markdown、HTML、その他のリッチテキスト記法は解釈しない。 | BDD-TM-024 |
 | SPEC-TM-019 | REQ-TM-010 | DS の左ペインは task を project 間でドラッグ&ドロップして project を変更でき、project 見出しをドラッグ&ドロップして `sort_order` を並び替えられる。`未分類` は並び替えの対象外とし、失敗時は元の表示へ戻す。 | BDD-TM-025 |
 | SPEC-TM-020 | REQ-TM-011 | DS の project グループ内の task は `order` の昇順（同値は id 順）で並び、ドラッグ&ドロップした位置の順序を `order` として保存する。失敗時は元の表示へ戻す。 | BDD-TM-026 |
-| SPEC-TM-021 | REQ-TM-012 | DS の中央ペインはタブ行の直下に選択中 task の title を表示する。未選択時は表示せず、長い title は 1 行省略して `title` 属性に全文を持つ。 | BDD-TM-027 |
+| SPEC-TM-021 | REQ-TM-012 | DS の中央ペインはタブ行の直下に選択中 task の title をラベルなしで表示する。未選択時は表示せず、長い title は省略せず折り返して全文を表示する。 | BDD-TM-027 |
 
 ## BDD 候補
 
