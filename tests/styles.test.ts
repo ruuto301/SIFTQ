@@ -39,6 +39,10 @@ describe("styles", () => {
     expect(STYLES_CSS).toContain(".matrix-modal-backdrop");
   });
 
+  it("does not change the DS status tab colors on hover", () => {
+    expect(STYLES_CSS).not.toContain(".ds__status-tabs .button.small:hover");
+  });
+
   it("does not keep the removed Matrix layout", () => {
     expect(STYLES_CSS).not.toContain(".matrix-axis");
     expect(STYLES_CSS).not.toContain(".area--quadrant");

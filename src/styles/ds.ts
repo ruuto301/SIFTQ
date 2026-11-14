@@ -82,7 +82,6 @@ export const DS_CSS = `
   color: #444d56;
 }
 
-.ds__status-tabs .button.small:hover { background: #f3f6fa; }
 .ds__status-tabs .button.is-active { background: #1b1f24; border-color: #1b1f24; color: #fff; }
 
 /* Left pane: task composer. It sits outside the scrolling group list. */
