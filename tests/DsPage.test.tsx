@@ -145,6 +145,9 @@ describe("DsPage chat and browser panes", () => {
       expect(html).toContain(`id="${id}"`);
     }
     expect(html).toContain("ds__resizer");
+    // The tab is labelled with the field name, not the Japanese word.
+    expect(html).toContain('data-ds-tab="desc" role="tab">description</button>');
+    expect(html).not.toContain(">説明</button>");
   });
 });
 
@@ -162,7 +165,7 @@ describe("DsPage task list", () => {
 
     expect(html).toContain('data-task-description="手順は https://example.com/docs を参照"');
     expect(html).toContain('id="dsh-desc-view"');
-    expect(html).toContain("タスクの説明");
+    expect(html).toContain('<span class="dsh-desc__title">description</span>');
     expect(html).toContain('data-ds-tab="desc"');
   });
 

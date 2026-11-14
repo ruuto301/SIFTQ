@@ -146,7 +146,7 @@ function ChatHeader() {
           Chat
         </button>
         <button type="button" class="ds__tab" data-ds-tab="desc" role="tab">
-          説明
+          description
         </button>
         <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
           設定
@@ -207,7 +207,7 @@ function DescPane() {
   return (
     <div class="dsh-desc" id="dsh-desc" data-ds-pane="desc" hidden>
       <div class="dsh-desc__bar">
-        <span class="dsh-desc__title">タスクの説明</span>
+        <span class="dsh-desc__title">description</span>
       </div>
       <div class="dsh-desc__view" id="dsh-desc-view"></div>
     </div>

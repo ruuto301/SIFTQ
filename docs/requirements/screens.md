@@ -143,7 +143,8 @@
   - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
   - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
   - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
-  - `説明` タブは task の description を表示する。DSH はこの description を共有テキストとして読み書きする。
+  - `description` タブは task の description を表示する。DSH はこの description を共有テキストとして読み書きする。
+  - `description` タブは初期表示から task の description を描画する。DSH transport が使える場合は `desc.get` の応答を優先し、使えない場合も task の description を表示する。description が空のときはプレースホルダを表示する。
   - `設定` タブは選択中 profile の設定を表示し、保存する。
   - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
   - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。

@@ -388,7 +388,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
       tabs.forEach(function (other) { other.classList.toggle("active", other === tab); });
       panes.forEach(function (pane) { pane.hidden = pane.getAttribute("data-ds-pane") !== name; });
       if (name === "chat" && input) input.focus();
-      if (name === "desc" && sessionId !== null) sendRequest("desc.get", { sessionId: sessionId });
+      if (name === "desc") {
+        if (sessionId !== null) sendRequest("desc.get", { sessionId: sessionId });
+        else setDesc(taskDescription);
+      }
     });
   });
 
@@ -415,6 +418,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
       if (sessionId !== null) sendRequest("session.configure", { sessionId: sessionId, model: selectedModel });
     });
   }
+
+  // Render the stored description right away: desc.get only answers after the
+  // transport connects, and is never sent when it is unavailable.
+  setDesc(taskDescription);
 
   connect();
 })();`;
