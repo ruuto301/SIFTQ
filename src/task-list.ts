@@ -1,20 +1,24 @@
 import { isProjectId, sortProjects } from "./project";
-import { isTaskStatus } from "./task";
+import { isTaskStatus, is_working } from "./task";
 import type { Project } from "./project";
 import type { Task, TaskStatus } from "./task";
 
 export type TaskFilter = (task: Task) => boolean;
 
+export type TaskWorkingFilter = "on" | "off";
+
 export type TaskListQuery = {
-  status: TaskStatus;
-  workingOnly: boolean;
+  status: TaskStatus | undefined;
+  working: TaskWorkingFilter | undefined;
   project: string | null | undefined;
+  text: readonly string[];
 };
 
 type TaskListToken =
   | { kind: "status"; status: TaskStatus }
-  | { kind: "working" }
+  | { kind: "working"; working: TaskWorkingFilter }
   | { kind: "project"; project: string | null }
+  | { kind: "text"; text: string }
   | { kind: "invalid" };
 
 function parseTaskListToken(token: string): TaskListToken {
@@ -22,19 +26,25 @@ function parseTaskListToken(token: string): TaskListToken {
     const candidate = token.slice(3);
     return isTaskStatus(candidate) ? { kind: "status", status: candidate } : { kind: "invalid" };
   }
-  if (token === "label:working") return { kind: "working" };
+  if (token.startsWith("working:")) {
+    const candidate = token.slice("working:".length);
+    return candidate === "on" || candidate === "off"
+      ? { kind: "working", working: candidate }
+      : { kind: "invalid" };
+  }
   if (token.startsWith("project:")) {
     const candidate = token.slice("project:".length);
     if (candidate === "none") return { kind: "project", project: null };
     return isProjectId(candidate) ? { kind: "project", project: candidate } : { kind: "invalid" };
   }
-  return { kind: "invalid" };
+  return { kind: "text", text: token };
 }
 
 export type TaskListQueryState = {
   status: TaskStatus | undefined;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   project: string | null | undefined;
+  text: string[];
 };
 
 function applyTaskListToken(state: TaskListQueryState, token: string): boolean {
@@ -45,13 +55,17 @@ function applyTaskListToken(state: TaskListQueryState, token: string): boolean {
     return true;
   }
   if (parsed.kind === "working") {
-    if (state.workingOnly) return false;
-    state.workingOnly = true;
+    if (state.working !== undefined) return false;
+    state.working = parsed.working;
     return true;
   }
   if (parsed.kind === "project") {
     if (state.project !== undefined) return false;
     state.project = parsed.project;
+    return true;
+  }
+  if (parsed.kind === "text") {
+    state.text.push(parsed.text);
     return true;
   }
   return false;
@@ -60,14 +74,12 @@ function applyTaskListToken(state: TaskListQueryState, token: string): boolean {
 export function parseTaskListQuery(value: unknown): TaskListQuery | null {
   if (typeof value !== "string" || value.trim() === "") return null;
 
-  const state: TaskListQueryState = { status: undefined, workingOnly: false, project: undefined };
+  const state: TaskListQueryState = { status: undefined, working: undefined, project: undefined, text: [] };
   for (const token of value.trim().split(/\s+/)) {
     if (!applyTaskListToken(state, token)) return null;
   }
 
-  return state.status === undefined
-    ? null
-    : { status: state.status, workingOnly: state.workingOnly, project: state.project };
+  return { status: state.status, working: state.working, project: state.project, text: state.text };
 }
 
 export function is_do(task: Task): boolean {
@@ -80,6 +92,16 @@ export function is_done(task: Task): boolean {
 
 export function is_skip(task: Task): boolean {
   return task.status === "skip";
+}
+
+export function taskTextFilter(text: string): TaskFilter {
+  const needle = text.toLowerCase();
+  return (task) =>
+    task.title.toLowerCase().includes(needle) || task.description.toLowerCase().includes(needle);
+}
+
+export function taskWorkingFilter(working: TaskWorkingFilter): TaskFilter {
+  return working === "on" ? is_working : (task) => !is_working(task);
 }
 
 export function taskProjectFilter(project: string | null): TaskFilter {

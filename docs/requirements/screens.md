@@ -36,8 +36,9 @@
   - 25件以下ではページナビを表示しない。
   - ページ指定は `/tasks?status=<status>&page=<page>` で保持する。status 切替時は1ページ目に戻る。
   - 数値以外のページ指定は1ページ目へ、範囲超過は最終ページへ寄せる。
-  - 検索欄は `q` query で保持し、`is:do`、`is:done`、`is:skip`、`label:working`、`project:<id>`、`project:none` を status・label・project 絞り込みとして解釈する。
-  - 検索欄の placeholder は `is:do project:Yoriwake label:working` とする。
+  - 検索欄は `q` query で保持し、`is:do`、`is:done`、`is:skip`、`working:on`、`working:off`、`project:<id>`、`project:none` を status・working・project 絞り込みとして解釈する。これら以外の語は title / description の部分一致（フリーワード、複数語は AND）として扱う。
+  - `is:` を省略したときは `status` query（既定 `do`）で絞り込む。
+  - 検索欄の placeholder は `見積もり is:do project:Yoriwake working:on` とする。
   - `Labels` メニューから全label / `working only` と、Projects 節の全 project / `未分類` / 各 project を選択できる。選択すると検索欄の `project:<id>` を差し替える。
   - 各行に checkbox を表示し、一覧内の全選択と選択件数（`N of M selected`）を提供する。
   - 選択時は status 切り替えを隠し、`Mark as`（`do`、`done`、`skip`）、`Project`（`未分類` と各 project）、`Labels`、`delete` を表示する。

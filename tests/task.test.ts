@@ -32,6 +32,8 @@ import {
   parsePageParam,
   sortTasksByOrder,
   taskProjectFilter,
+  taskTextFilter,
+  taskWorkingFilter,
   withQueryToken,
 } from "../src/task-list";
 import { taskFixture } from "./helpers/task-fixture";
@@ -120,34 +122,81 @@ describe("task filters", () => {
 });
 
 describe("BDD-TM-003: task list query", () => {
-  it("parses status, working and project filters", () => {
-    expect(parseTaskListQuery("is:do")).toEqual({ status: "do", workingOnly: false, project: undefined });
-    expect(parseTaskListQuery("is:done label:working")).toEqual({
-      status: "done",
-      workingOnly: true,
+  it("parses status, working, project and free text filters", () => {
+    expect(parseTaskListQuery("is:do")).toEqual({
+      status: "do",
+      working: undefined,
       project: undefined,
+      text: [],
+    });
+    expect(parseTaskListQuery("working:off")).toEqual({
+      status: undefined,
+      working: "off",
+      project: undefined,
+      text: [],
+    });
+    expect(parseTaskListQuery("is:done working:on")).toEqual({
+      status: "done",
+      working: "on",
+      project: undefined,
+      text: [],
     });
     expect(parseTaskListQuery("is:do project:Yoriwake")).toEqual({
       status: "do",
-      workingOnly: false,
+      working: undefined,
       project: "Yoriwake",
+      text: [],
     });
     expect(parseTaskListQuery("is:do project:none")).toEqual({
       status: "do",
-      workingOnly: false,
+      working: undefined,
       project: null,
+      text: [],
+    });
+  });
+
+  it("parses free text terms and rejects invalid queries", () => {
+    expect(parseTaskListQuery("見積もり is:do")).toEqual({
+      status: "do",
+      working: undefined,
+      project: undefined,
+      text: ["見積もり"],
+    });
+    expect(parseTaskListQuery("label:working")).toEqual({
+      status: undefined,
+      working: undefined,
+      project: undefined,
+      text: ["label:working"],
     });
     expect(parseTaskListQuery("is:do project:Unknown!")).toBeNull();
     expect(parseTaskListQuery("is:do project:a project:b")).toBeNull();
+    expect(parseTaskListQuery("is:do working:on working:off")).toBeNull();
+    expect(parseTaskListQuery("is:do working:maybe")).toBeNull();
     expect(parseTaskListQuery("is:issue state:closed")).toBeNull();
   });
 
+});
+
+describe("BDD-TM-003: task list filters", () => {
+  it("filters by working state and free text", () => {
+    const tasks = [
+      taskFixture({ id: "busy", title: "見積もりを送る", working: true }),
+      taskFixture({ id: "idle", title: "別の作業", working: false }),
+    ];
+
+    expect(filterTasks(tasks, [taskWorkingFilter("on")]).map((task) => task.id)).toEqual(["busy"]);
+    expect(filterTasks(tasks, [taskWorkingFilter("off")]).map((task) => task.id)).toEqual(["idle"]);
+    expect(filterTasks(tasks, [taskTextFilter("見積もり")]).map((task) => task.id)).toEqual(["busy"]);
+    expect(filterTasks(tasks, [taskTextFilter("存在しない")])).toEqual([]);
+  });
+
   it("replaces one filter token without touching the others", () => {
-    expect(withQueryToken("is:do project:Yoriwake label:working", "project:", "project:dsh")).toBe(
-      "is:do label:working project:dsh",
+    expect(withQueryToken("is:do project:Yoriwake working:on", "project:", "project:dsh")).toBe(
+      "is:do working:on project:dsh",
     );
     expect(withQueryToken("is:do project:Yoriwake", "project:", null)).toBe("is:do");
-    expect(withQueryToken("is:do", "label:", "label:working")).toBe("is:do label:working");
+    expect(withQueryToken("is:do", "working:", "working:on")).toBe("is:do working:on");
+    expect(withQueryToken("is:do working:on", "working:", null)).toBe("is:do");
   });
 });
 
