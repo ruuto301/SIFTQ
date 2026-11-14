@@ -34,6 +34,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-008 | ユーザーは、Taskとは独立したIdeaを記録・整理したい。 | domain.md, screens.md |
 | REQ-TM-009 | ユーザーは、重要なIdeaを固定し、不要なIdeaを削除したい。 | domain.md, screens.md |
 | REQ-TM-010 | ユーザーは、DS でタスクの分類先と project の並び順をドラッグ&ドロップで変更したい。 | screens.md |
+| REQ-TM-011 | ユーザーは、DS の project 内でタスクの表示順を変えたい。 | screens.md |
 
 ## 仕様
 
@@ -58,6 +59,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-017 | REQ-TM-008 | Idea 詳細（詳細モーダルと `/ideas/:id`）の description 編集領域では http/https URL をリンクとして表示し、通常クリックは同じタブ、Ctrl/Command クリックは別タブで開く。保存値はプレーンテキストとする。 | BDD-TM-023 |
 | SPEC-TM-018 | REQ-TM-008 | Idea の description に http/https URL を貼り付けると編集領域内でリンクとして表示する。Markdown、HTML、その他のリッチテキスト記法は解釈しない。 | BDD-TM-024 |
 | SPEC-TM-019 | REQ-TM-010 | DS の左ペインは task を project 間でドラッグ&ドロップして project を変更でき、project 見出しをドラッグ&ドロップして `sort_order` を並び替えられる。`未分類` は並び替えの対象外とし、失敗時は元の表示へ戻す。 | BDD-TM-025 |
+| SPEC-TM-020 | REQ-TM-011 | DS の project グループ内の task は `order` の昇順（同値は id 順）で並び、ドラッグ&ドロップした位置の順序を `order` として保存する。失敗時は元の表示へ戻す。 | BDD-TM-026 |
 
 ## BDD 候補
 
@@ -84,6 +86,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-023 | SPEC-TM-017 | Idea 詳細の description のURLを通常クリックすると同じタブで開き、Ctrl/Command クリックでは別タブで開く。保存後もリンク表示が維持される。 | 正常 |
 | BDD-TM-024 | SPEC-TM-018 | Idea の description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 | 正常 |
 | BDD-TM-025 | SPEC-TM-019 | DS で task を別の project グループへドラッグ&ドロップすると project が変わり、project 見出しをドラッグ&ドロップすると並び順が変わる。 | 正常 |
+| BDD-TM-026 | SPEC-TM-020 | project グループ内で task をドラッグ&ドロップすると表示順が変わり、再読み込み後も維持される。 | 正常 |
 
 ## 未決事項
 

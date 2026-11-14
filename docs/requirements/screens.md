@@ -125,6 +125,7 @@
   - project 変更後は一覧を読み込み直してグループへ反映する。
   - task カードをドラッグして別の project グループへドロップすると、その task の project を変更する。`未分類` へドロップすると project を未設定へ戻す。
   - project 見出しをドラッグして別の見出しへドロップすると並び順を変更し、`projects.sort_order` を更新する。`未分類` は並び替えの対象外で常に最後に表示する。
+  - グループ内の task は `order` の昇順（同値は id 順）で表示する。同じ project グループ内で task カードをドラッグ&ドロップすると表示順を変更し、`tasks.order` を更新する。
   - ドラッグ中は受け入れ可能なターゲットで `dragover` を `preventDefault` し、`dropEffect = "move"` とドロップ位置の表示（枠線・挿入線）を出す。`dragend` または `Escape` で表示を戻す。
   - 並び替えや project 変更に失敗した場合は元の表示へ戻し、左ペインに失敗を表示する。
   - 削除は確認後に task を完全削除する。

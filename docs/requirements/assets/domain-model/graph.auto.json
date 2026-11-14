@@ -236,6 +236,28 @@
         }
       ]
     },
+    "tasks_reorder": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/tasks/reorder",
+      "operation": "reorder",
+      "success": 200,
+      "entity": "tasks",
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_ORDER"
+        },
+        {
+          "status": 400,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
     "tasks_bulk_status": {
       "kind": "api",
       "method": "PATCH",
@@ -576,6 +598,13 @@
       "view": "screen:P10",
       "gateway": "ds-scripts.ts",
       "api": "tasks_bulk_project"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "ds-scripts.ts",
+      "api": "tasks_reorder"
     },
     {
       "screen": "P10",

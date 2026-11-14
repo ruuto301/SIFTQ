@@ -8,6 +8,10 @@ import type { Task } from "../src/task";
 
 type Execution = { query: string; values: readonly unknown[] };
 
+function isRowArray<T>(value: unknown): value is T[] {
+  return Array.isArray(value);
+}
+
 function successResult<T>(results: T[], changes: number): D1Result<T> {
   return {
     success: true,
@@ -27,6 +31,7 @@ function successResult<T>(results: T[], changes: number): D1Result<T> {
 interface StatementRecorder {
   record(query: string, values: readonly unknown[]): void;
   nextChanges(): number;
+  nextRows(): unknown;
 }
 
 class RecordingPreparedStatement implements D1PreparedStatement {
@@ -57,7 +62,8 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 
   all<T = Record<string, unknown>>(): Promise<D1Result<T>> {
     this.recordExecution();
-    return Promise.resolve(successResult<T>([], this.recorder.nextChanges()));
+    const rows = this.recorder.nextRows();
+    return Promise.resolve(successResult<T>(isRowArray<T>(rows) ? rows : [], this.recorder.nextChanges()));
   }
 
   raw<T = unknown[]>(
@@ -71,6 +77,7 @@ class RecordingPreparedStatement implements D1PreparedStatement {
 
 class RecordingD1Database implements D1Database, StatementRecorder {
   readonly executions: Execution[] = [];
+  readonly resultRows: unknown[] = [];
   private readonly prepared: RecordingPreparedStatement[] = [];
   private changes: number[];
 
@@ -111,6 +118,10 @@ class RecordingD1Database implements D1Database, StatementRecorder {
   nextChanges(): number {
     return this.changes.shift() ?? 1;
   }
+
+  nextRows(): unknown {
+    return this.resultRows.shift();
+  }
 }
 
 function expectInsertExecution(execution: Execution | undefined, task: Task): void {
@@ -148,7 +159,7 @@ const unusedD1Database = {
   },
 } satisfies D1Database;
 
-const repositoryMethods = ["bulkRemove", "bulkUpdateProject", "bulkUpdateStatus", "find", "insert", "list", "remove", "update"];
+const repositoryMethods = ["bulkRemove", "bulkUpdateProject", "bulkUpdateStatus", "find", "insert", "list", "move", "remove", "update"];
 
 describe("TaskRepository contract", () => {
   it("inserts and reads a task through the in-memory double", async () => {
@@ -243,5 +254,100 @@ describe("Task list ordering by updated_at", () => {
 
     expect(listed.ok).toBe(true);
     expect(database.executions[0]?.query).toContain("ORDER BY updated_at DESC");
+  });
+});
+
+function taskRow(task: Task): Record<string, unknown> {
+  return { ...task, working: task.working ? 1 : 0 };
+}
+
+describe("Memory task reorder", () => {
+  it("moves tasks without touching version or updated_at", async () => {
+    const repository = createMemoryTaskRepository();
+    await repository.insert(
+      taskFixture({ id: "task-1", order: 1, version: 3, updated_at: "2026-01-01T00:00:00.000Z" }),
+    );
+    await repository.insert(
+      taskFixture({ id: "task-2", order: 2, version: 5, updated_at: "2026-02-01T00:00:00.000Z" }),
+    );
+
+    const moved = await repository.move([
+      { id: "task-2", order: 1 },
+      { id: "task-1", order: 2 },
+    ]);
+
+    expect(moved).toEqual({
+      ok: true,
+      value: [
+        expect.objectContaining({ id: "task-2", order: 1, version: 5, updated_at: "2026-02-01T00:00:00.000Z" }),
+        expect.objectContaining({ id: "task-1", order: 2, version: 3, updated_at: "2026-01-01T00:00:00.000Z" }),
+      ],
+    });
+    const listed = await repository.list();
+    expect(listed.ok).toBe(true);
+    if (!listed.ok) return;
+    const orders = new Map(listed.value.map((task) => [task.id, task.order]));
+    expect(orders.get("task-2")).toBe(1);
+    expect(orders.get("task-1")).toBe(2);
+  });
+
+  it("rejects an unknown task id without changing any order", async () => {
+    const repository = createMemoryTaskRepository();
+    await repository.insert(taskFixture({ id: "task-1", order: 1 }));
+
+    const moved = await repository.move([
+      { id: "task-1", order: 2 },
+      { id: "missing", order: 1 },
+    ]);
+
+    expect(moved).toEqual({ ok: false, error: { code: "NOT_FOUND" } });
+    const listed = await repository.list();
+    expect(listed).toEqual({
+      ok: true,
+      value: [expect.objectContaining({ id: "task-1", order: 1 })],
+    });
+  });
+});
+
+describe("D1 task reorder", () => {
+  it("updates only the order column in one batch", async () => {
+    const database = new RecordingD1Database([1, 1, 1]);
+    database.resultRows.push([
+      taskRow(taskFixture({ id: "task-1", order: 1, version: 3 })),
+      taskRow(taskFixture({ id: "task-2", order: 2, version: 5 })),
+    ]);
+
+    const moved = await createD1TaskRepository(database).move([
+      { id: "task-2", order: 1 },
+      { id: "task-1", order: 2 },
+    ]);
+
+    expect(moved).toEqual({
+      ok: true,
+      value: [
+        expect.objectContaining({ id: "task-2", order: 1, version: 5 }),
+        expect.objectContaining({ id: "task-1", order: 2, version: 3 }),
+      ],
+    });
+    const updates = database.executions.filter((execution) => execution.query.startsWith("UPDATE tasks"));
+    expect(updates.map((execution) => execution.values)).toEqual([
+      [1, "task-2", "local"],
+      [2, "task-1", "local"],
+    ]);
+    expect(
+      updates.every(
+        (execution) => !execution.query.includes("version") && !execution.query.includes("updated_at"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects an unknown task id without issuing D1 updates", async () => {
+    const database = new RecordingD1Database([1]);
+    database.resultRows.push([taskRow(taskFixture({ id: "task-1", order: 1 }))]);
+
+    const moved = await createD1TaskRepository(database).move([{ id: "missing", order: 1 }]);
+
+    expect(moved).toEqual({ ok: false, error: { code: "NOT_FOUND" } });
+    expect(database.executions.some((execution) => execution.query.startsWith("UPDATE"))).toBe(false);
   });
 });

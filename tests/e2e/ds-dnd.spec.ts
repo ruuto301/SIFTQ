@@ -32,6 +32,12 @@ function group(page: Page, id: string): Locator {
   return page.locator(`.ds__group[data-ds-group-id="${id}"]`);
 }
 
+async function taskIds(page: Page, id: string): Promise<string[]> {
+  return group(page, id)
+    .locator(".ds__task-item")
+    .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-task-id") ?? ""));
+}
+
 test("moves a task between project groups by drag and drop (BDD-TM-025)", async ({ page }) => {
   const title = `dnd task ${Date.now()}`;
   await page.goto("/tasks");
@@ -78,4 +84,33 @@ test("reorders project groups by drag and drop and keeps the order after reload 
   expect(after[0]).toBe(dragged);
   await page.reload();
   expect(await groupOrder(page)).toEqual(after);
+});
+
+test("reorders tasks inside a project group by drag and drop (BDD-TM-026)", async ({ page }) => {
+  const stamp = Date.now();
+  await page.goto("/tasks");
+  await createTask(page, `dnd order a ${stamp}`, "Yoriwake");
+  await createTask(page, `dnd order b ${stamp}`, "Yoriwake");
+  await page.goto("/ds");
+
+  const before = await taskIds(page, "Yoriwake");
+  expect(before.length).toBeGreaterThan(1);
+  const dragged = before[before.length - 1] ?? "";
+  const anchor = before[0] ?? "";
+  expect(dragged).not.toBe("");
+  expect(anchor).not.toBe("");
+
+  const reordered = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().includes("/api/tasks/reorder"),
+  );
+  await page
+    .locator(`.ds__task-item[data-task-id="${dragged}"]`)
+    .dragTo(page.locator(`.ds__task-item[data-task-id="${anchor}"]`), { targetPosition: { x: 8, y: 2 } });
+  await reordered;
+
+  const after = await taskIds(page, "Yoriwake");
+  expect(after[0]).toBe(dragged);
+  expect(after).toHaveLength(before.length);
+  await page.reload();
+  expect(await taskIds(page, "Yoriwake")).toEqual(after);
 });

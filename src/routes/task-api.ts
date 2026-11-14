@@ -4,6 +4,7 @@ import {
   applyTaskPatch,
   createTask,
   isRecord,
+  isTaskOrderValid,
   isTaskStatus,
   nextTaskOrder,
   parseTaskPatch,
@@ -12,10 +13,11 @@ import {
 import type { DomainError, Result, Task, TaskVersionInput } from "../task";
 import { isProjectId, isProjectOrderValid } from "../project";
 import type { TaskRepository } from "../repository/task-repository";
-import type { ProjectOrderUpdate, ProjectRepository } from "../repository/project-repository";
+import type { ProjectRepository } from "../repository/project-repository";
 import type { IdeaRepository } from "../repository/idea-repository";
 import { nextIdeaOrder } from "../idea";
 import type { Idea } from "../idea";
+import { sortTasksByOrder } from "../task-list";
 import { parseVersion } from "../task-input";
 
 type ApiEnv = { Bindings: Record<string, unknown> };
@@ -43,6 +45,29 @@ async function readJsonRecord<T extends ApiEnv>(c: Context<T>): Promise<Record<s
   } catch {
     return null;
   }
+}
+
+type OrderUpdates = { ok: true; updates: { id: string; order: number }[] } | { ok: false; code: string };
+
+/** Parses a non-empty `[{ id, order }]` list with unique ids and orders. */
+function readOrderUpdates(value: unknown, isValidOrder: (order: number) => boolean): OrderUpdates {
+  if (!Array.isArray(value) || value.length === 0) return { ok: false, code: "INVALID_INPUT" };
+  const seenIds = new Set<string>();
+  const seenOrders = new Set<number>();
+  const updates: { id: string; order: number }[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw)) return { ok: false, code: "INVALID_INPUT" };
+    const id = raw["id"];
+    if (typeof id !== "string") return { ok: false, code: "INVALID_INPUT" };
+    const order = raw["order"];
+    if (typeof order !== "number" || !isValidOrder(order)) return { ok: false, code: "INVALID_ORDER" };
+    if (seenIds.has(id)) return { ok: false, code: "INVALID_INPUT" };
+    if (seenOrders.has(order)) return { ok: false, code: "INVALID_ORDER" };
+    seenIds.add(id);
+    seenOrders.add(order);
+    updates.push({ id, order });
+  }
+  return { ok: true, updates };
 }
 
 function createTaskAtBoundary({
@@ -245,10 +270,21 @@ async function moveApiTaskToIdea<T extends ApiEnv>(
   return c.json(inserted.value, 200);
 }
 
+async function reorderApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+  const body = await readJsonRecord(c);
+  const updates = readOrderUpdates(body?.["tasks"], isTaskOrderValid);
+  if (!updates.ok) return problem(c, 400, updates.code);
+
+  const moved = await deps.repository(c).move(updates.updates);
+  if (!moved.ok) return problem(c, moved.error.code === "NOT_FOUND" ? 400 : 500, moved.error.code);
+  return c.json(sortTasksByOrder(moved.value));
+}
+
 function registerTaskRoutes<T extends ApiEnv>(app: Hono<T>, deps: TaskDeps<T>) {
   app.get("/api/tasks", (c) => listApiTasks(c, deps));
   app.get("/api/tasks/:id", (c) => getApiTask(c, deps));
   app.post("/api/tasks", (c) => createApiTask(c, deps));
+  app.post("/api/tasks/reorder", (c) => reorderApiTasks(c, deps));
   app.patch("/api/tasks/bulk/status", (c) => bulkStatusApiTasks(c, deps));
   app.patch("/api/tasks/bulk/project", (c) => bulkProjectApiTasks(c, deps));
   app.delete("/api/tasks/bulk", (c) => bulkDeleteApiTasks(c, deps));
@@ -268,28 +304,9 @@ function registerProjectRoutes<T extends ApiEnv>(
 
   app.post("/api/projects/reorder", async (c) => {
     const body = await readJsonRecord(c);
-    const rawProjects = body?.["projects"];
-    if (!Array.isArray(rawProjects) || rawProjects.length === 0) {
-      return problem(c, 400, "INVALID_INPUT");
-    }
-    const seenIds = new Set<string>();
-    const seenOrders = new Set<number>();
-    const updates: ProjectOrderUpdate[] = [];
-    for (const rawProject of rawProjects) {
-      if (!isRecord(rawProject)) return problem(c, 400, "INVALID_INPUT");
-      const id = rawProject["id"];
-      if (typeof id !== "string") return problem(c, 400, "INVALID_INPUT");
-      const order = rawProject["order"];
-      if (typeof order !== "number" || !isProjectOrderValid(order)) {
-        return problem(c, 400, "INVALID_ORDER");
-      }
-      if (seenIds.has(id)) return problem(c, 400, "INVALID_INPUT");
-      if (seenOrders.has(order)) return problem(c, 400, "INVALID_ORDER");
-      seenIds.add(id);
-      seenOrders.add(order);
-      updates.push({ id, order });
-    }
-    const moved = await projectRepository(c).move(updates);
+    const updates = readOrderUpdates(body?.["projects"], isProjectOrderValid);
+    if (!updates.ok) return problem(c, 400, updates.code);
+    const moved = await projectRepository(c).move(updates.updates);
     if (!moved.ok) return problem(c, moved.error.code === "INVALID_PROJECT" ? 400 : 500, moved.error.code);
     return c.json(moved.value);
   });

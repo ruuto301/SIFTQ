@@ -24,6 +24,7 @@ import {
   paginateTasks,
   parsePageParam,
   parseTaskListQuery,
+  sortTasksByOrder,
   taskProjectFilter,
 } from "../task-list";
 import type { TaskListQuery } from "../task-list";
@@ -386,7 +387,7 @@ function registerDsRoute(
     const rawStatus = c.req.query("status");
     const status: TaskStatus = isTaskStatus(rawStatus) ? rawStatus : "do";
     const tasks = result.value.filter((task) => task.status === status);
-    const groups = groupTasksByProject(tasks, projects);
+    const groups = groupTasksByProject(sortTasksByOrder(tasks), projects);
     const requested = c.req.query("task");
     const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
     const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";

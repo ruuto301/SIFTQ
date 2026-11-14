@@ -20,6 +20,13 @@
       { "status": 409, "code": "CONFLICT" }
     ]
   },
+  "tasks_reorder": {
+    "errors": [
+      { "status": 400, "code": "INVALID_INPUT" },
+      { "status": 400, "code": "INVALID_ORDER" },
+      { "status": 400, "code": "NOT_FOUND" }
+    ]
+  },
   "tasks_delete": {
     "errors": [
       { "status": 400, "code": "INVALID_ORDER" },

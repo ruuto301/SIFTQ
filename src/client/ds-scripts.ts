@@ -173,18 +173,40 @@ export const DS_SCRIPT = `(function () {
       Array.prototype.forEach.call(box.querySelectorAll(".ds__group"), function (group) {
         group.classList.remove("ds__group--drop", "ds__group--drop-before", "ds__group--drop-after");
       });
+      Array.prototype.forEach.call(box.querySelectorAll(".ds__task-item"), function (row) {
+        row.classList.remove("ds__task-item--drop-before", "ds__task-item--drop-after");
+      });
     }
     function clearDrag() {
       if (drag !== null && drag.element) drag.element.classList.remove("dragging");
       clearMarks();
       drag = null;
     }
-    function restoreTask(state) {
-      var list = taskListOf(state.originGroup);
-      if (list === null) return;
-      if (state.originNext && state.originNext.parentNode === list) list.insertBefore(state.element, state.originNext);
-      else list.appendChild(state.element);
+    function rowSnapshot() {
+      return Array.prototype.map.call(box.querySelectorAll(".ds__group"), function (group) {
+        return { list: taskListOf(group), rows: Array.prototype.slice.call(group.querySelectorAll(".ds__task-item")) };
+      });
+    }
+    function restoreRows(snapshot) {
+      snapshot.forEach(function (entry) {
+        if (entry.list === null) return;
+        entry.rows.forEach(function (row) { entry.list.appendChild(row); });
+      });
       refreshCounts();
+    }
+    function orderChanged(snapshot) {
+      return snapshot.some(function (entry) {
+        if (entry.list === null) return false;
+        var current = Array.prototype.slice.call(entry.list.querySelectorAll(".ds__task-item"));
+        return current.length !== entry.rows.length || current.some(function (row, index) { return row !== entry.rows[index]; });
+      });
+    }
+    function reorderPayload(group) {
+      var tasks = [];
+      Array.prototype.forEach.call(group.querySelectorAll(".ds__task-item"), function (row, index) {
+        tasks.push({ id: row.getAttribute("data-task-id"), order: index + 1 });
+      });
+      return tasks;
     }
     function refreshCounts() {
       Array.prototype.forEach.call(box.querySelectorAll(".ds__group"), function (group) {
@@ -196,26 +218,52 @@ export const DS_SCRIPT = `(function () {
     function restoreProjects(previous) {
       previous.forEach(function (group) { box.appendChild(group); });
     }
-    function moveTask(state, project) {
+    function changeProject(state, group) {
       var id = state.element.getAttribute("data-task-id");
       var version = Number(state.element.getAttribute("data-task-version"));
-      fetch("/api/tasks/bulk/project", {
+      return fetch("/api/tasks/bulk/project", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: project === "" ? null : project, tasks: [{ id: id, version: version }] }),
-      })
+        body: JSON.stringify({ project: projectOf(group) === "" ? null : projectOf(group), tasks: [{ id: id, version: version }] }),
+      }).then(function (response) {
+        if (!response.ok) return false;
+        return response.json().then(function (tasks) {
+          var updated = Array.isArray(tasks) ? tasks.find(function (task) { return task.id === id; }) : undefined;
+          if (updated && typeof updated.version === "number") state.element.setAttribute("data-task-version", String(updated.version));
+          state.element.setAttribute("data-task-project", projectOf(group) || "");
+          return true;
+        });
+      });
+    }
+    function saveTaskOrder(state, group, movedProject) {
+      var payload = reorderPayload(group);
+      var start = movedProject ? changeProject(state, group) : Promise.resolve(true);
+      start
+        .then(function (changed) {
+          if (!changed) {
+            restoreRows(state.snapshot);
+            setStatus("タスクを移動できませんでした", true);
+            return null;
+          }
+          return fetch("/api/tasks/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tasks: payload }),
+          });
+        })
         .then(function (response) {
+          if (response === null) return;
           if (!response.ok) {
-            restoreTask(state);
-            setStatus("タスクを移動できませんでした (" + response.status + ")", true);
+            restoreRows(state.snapshot);
+            setStatus("タスクを並び替えできませんでした (" + response.status + ")", true);
             return;
           }
           refreshCounts();
           setStatus("", false);
         })
         .catch(function () {
-          restoreTask(state);
-          setStatus("タスクを移動できませんでした", true);
+          restoreRows(state.snapshot);
+          setStatus("タスクを並び替えできませんでした", true);
         });
     }
     function saveProjectOrder(previous) {
@@ -258,7 +306,7 @@ export const DS_SCRIPT = `(function () {
       if (!event.dataTransfer) return;
       var row = target && target.closest ? target.closest(".ds__task-item") : null;
       if (row !== null && box.contains(row)) {
-        drag = { kind: "task", element: row, id: row.getAttribute("data-task-id") || "", originGroup: groupOf(row), originNext: row.nextElementSibling };
+        drag = { kind: "task", element: row, id: row.getAttribute("data-task-id") || "", originGroup: groupOf(row), snapshot: rowSnapshot() };
         row.classList.add("dragging");
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", drag.id);
@@ -291,10 +339,18 @@ export const DS_SCRIPT = `(function () {
         if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
         clearMarks();
         group.classList.add("ds__group--drop");
-        if (projectOf(group) !== projectOf(drag.originGroup)) {
-          var list = taskListOf(group);
-          if (list !== null && drag.element.parentNode !== list) list.appendChild(drag.element);
+        var list = taskListOf(group);
+        if (list === null) return;
+        var overRow = event.target && event.target.closest ? event.target.closest(".ds__task-item") : null;
+        if (overRow !== null && overRow !== drag.element && overRow.parentNode === list) {
+          var rect = overRow.getBoundingClientRect();
+          var before = event.clientY < rect.top + rect.height / 2;
+          overRow.classList.add(before ? "ds__task-item--drop-before" : "ds__task-item--drop-after");
+          if (before) list.insertBefore(drag.element, overRow);
+          else list.insertBefore(drag.element, overRow.nextSibling);
+          return;
         }
+        if (projectOf(group) !== projectOf(drag.originGroup) && drag.element.parentNode !== list) list.appendChild(drag.element);
         return;
       }
       if (group === drag.element || projectOf(group) === "") return;
@@ -318,9 +374,8 @@ export const DS_SCRIPT = `(function () {
       }
       if (state.kind === "task") {
         event.preventDefault();
-        var project = projectOf(group);
-        if (project === projectOf(state.originGroup)) restoreTask(state);
-        else moveTask(state, project === null ? "" : project);
+        var movedProject = projectOf(group) !== projectOf(state.originGroup);
+        if (movedProject || orderChanged(state.snapshot)) saveTaskOrder(state, group, movedProject);
         clearDrag();
         return;
       }
