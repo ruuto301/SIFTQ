@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 import type { Task } from "../../src/task";
+import type { Project } from "../../src/project";
 import { authenticatedRequest } from "../helpers/authenticated-request";
 import { taskFixture } from "../helpers/task-fixture";
 import { createMemoryTaskRepository } from "../helpers/memory-task-repository";
+import { createMemoryProjectRepository } from "../../src/preview/MemoryProjectRepository";
+import { PREVIEW_PROJECTS } from "../../src/preview/projects";
 import type { TaskRepository } from "../../src/repository/task-repository";
+import type { ProjectRepository } from "../../src/repository/project-repository";
 
 let repo: TaskRepository;
 
@@ -11,7 +15,12 @@ beforeEach(() => {
   repo = createMemoryTaskRepository();
 });
 
-function request(method: string, path: string, body?: unknown) {
+function requestWith(
+  projectRepository: ProjectRepository,
+  method: string,
+  path: string,
+  body?: unknown,
+) {
   const init: RequestInit = {
     method,
     headers: { "content-type": "application/json" },
@@ -20,7 +29,15 @@ function request(method: string, path: string, body?: unknown) {
     init.body = JSON.stringify(body);
   }
 
-  return authenticatedRequest(path, repo, init);
+  return authenticatedRequest(path, repo, init, projectRepository);
+}
+
+function request(method: string, path: string, body?: unknown) {
+  return requestWith(createMemoryProjectRepository(PREVIEW_PROJECTS), method, path, body);
+}
+
+function freshProjectRepository(): ProjectRepository {
+  return createMemoryProjectRepository(PREVIEW_PROJECTS);
 }
 
 describe("BDD-TM-001: task creation", () => {
@@ -37,7 +54,7 @@ describe("BDD-TM-001: task creation", () => {
     expect(task.title).toBe("Buy milk");
     expect(task.description).toBe("low-fat");
     expect(task.status).toBe("do");
-    expect(task.area).toBe(1);
+    expect(task.project).toBeNull();
     expect(task.order).toBe(1);
     expect(task.version).toBe(1);
     expect(task.id).toEqual(expect.any(String));
@@ -53,9 +70,379 @@ describe("BDD-TM-001: task creation", () => {
     expect(response.status).toBe(400);
     expect(body.code).toBe("INVALID_TITLE");
   });
+
+  it("INV-TM-004: appends the new task after the current order", async () => {
+    await repo.insert(taskFixture({ id: "task-1", order: 5 }));
+
+    const response = await request("POST", "/api/tasks", { title: "Buy milk", description: "" });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.order).toBe(6);
+  });
 });
 
-describe("BDD-TM-002 / BDD-TM-003: task list", () => {
+describe("BDD-TM-028: task creation from the DS composer", () => {
+  it("creates a task with the requested status and project", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      status: "skip",
+      project: "Yoriwake",
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.status).toBe("skip");
+    expect(task.project).toBe("Yoriwake");
+  });
+
+  it("keeps the default status do when status is omitted", async () => {
+    const response = await request("POST", "/api/tasks", { title: "Buy milk", description: "" });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.status).toBe("do");
+  });
+
+  it("rejects an unknown status", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      status: "later",
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_STATUS");
+  });
+});
+
+describe("BDD-TM-002: project assignment", () => {
+  it("creates a task with a known project", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      project: "Yoriwake",
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(task.project).toBe("Yoriwake");
+  });
+
+  it("rejects an unknown project id", async () => {
+    const response = await request("POST", "/api/tasks", {
+      title: "Buy milk",
+      description: "",
+      project: "missing",
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("rejects a malformed project id", async () => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      project: "Bad Id",
+      version: 1,
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("clears the project with an explicit null", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "affiliate" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      project: null,
+      version: 1,
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(task.project).toBeNull();
+  });
+
+  it("lists the selectable projects", async () => {
+    const response = await request("GET", "/api/projects");
+    const projects: { id: string; sort_order: number }[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(projects.map((project) => project.id)).toContain("Yoriwake");
+    expect(projects.map((project) => project.id)).toEqual([
+      "Yoriwake",
+      "affiliate",
+      "customer_portal",
+      "life",
+    ]);
+  });
+});
+
+describe("project reorder", () => {
+  const defaultIds = ["Yoriwake", "affiliate", "customer_portal", "life"];
+
+  it("reorders projects and returns the new order from the list", async () => {
+    const projects = freshProjectRepository();
+
+    const response = await requestWith(projects, "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "customer_portal", order: 1 },
+        { id: "Yoriwake", order: 2 },
+        { id: "affiliate", order: 3 },
+      ],
+    });
+    const expected = ["customer_portal", "Yoriwake", "affiliate", "life"];
+
+    expect(response.status).toBe(200);
+    const reordered: Project[] = await response.json();
+    expect(reordered.map((project) => project.id)).toEqual(expected);
+
+    const listed = await requestWith(projects, "GET", "/api/projects");
+    const persisted: Project[] = await listed.json();
+    expect(persisted.map((project) => project.id)).toEqual(expected);
+  });
+
+  it("keeps the stored order when a request is rejected", async () => {
+    const projects = freshProjectRepository();
+
+    const rejected = await requestWith(projects, "POST", "/api/projects/reorder", {
+      projects: [{ id: "missing", order: 1 }],
+    });
+    const listed = await requestWith(projects, "GET", "/api/projects");
+    const persisted: Project[] = await listed.json();
+
+    expect(rejected.status).toBe(400);
+    expect(persisted.map((project) => project.id)).toEqual(defaultIds);
+  });
+});
+
+describe("project reorder validation", () => {
+  it("rejects an empty projects array", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated project id", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "affiliate", order: 1 },
+        { id: "affiliate", order: 2 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated order", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [
+        { id: "affiliate", order: 1 },
+        { id: "kits", order: 1 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_ORDER");
+  });
+
+  it("rejects an unknown project id", async () => {
+    const response = await requestWith(freshProjectRepository(), "POST", "/api/projects/reorder", {
+      projects: [{ id: "missing", order: 1 }],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+});
+
+describe("project reorder input validation", () => {
+  it.each([
+    ["missing projects", {}, "INVALID_INPUT"],
+    ["a non-object element", { projects: ["affiliate"] }, "INVALID_INPUT"],
+    ["a non-string id", { projects: [{ id: 1, order: 1 }] }, "INVALID_INPUT"],
+    ["a non-numeric order", { projects: [{ id: "affiliate", order: "1" }] }, "INVALID_ORDER"],
+    ["a zero order", { projects: [{ id: "affiliate", order: 0 }] }, "INVALID_ORDER"],
+    ["a fractional order", { projects: [{ id: "affiliate", order: 1.5 }] }, "INVALID_ORDER"],
+  ])("rejects %s", async (_name, body, code) => {
+    const response = await requestWith(
+      freshProjectRepository(),
+      "POST",
+      "/api/projects/reorder",
+      body,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code });
+  });
+
+  it("rejects malformed JSON", async () => {
+    const response = await authenticatedRequest(
+      "/api/projects/reorder",
+      repo,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{",
+      },
+      freshProjectRepository(),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ code: "INVALID_INPUT" });
+  });
+});
+
+describe("BDD-TM-026: task reorder", () => {
+  it("reorders tasks, returns the new order, and keeps version and updated_at", async () => {
+    await repo.insert(taskFixture({ id: "task-1", order: 1, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-2", order: 2, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-3", order: 3, version: 1 }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [
+        { id: "task-3", order: 1 },
+        { id: "task-1", order: 2 },
+        { id: "task-2", order: 3 },
+      ],
+    });
+    const reordered: Task[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(reordered.map((task) => task.id)).toEqual(["task-3", "task-1", "task-2"]);
+    expect(reordered.map((task) => task.order)).toEqual([1, 2, 3]);
+    expect(reordered.map((task) => task.version)).toEqual([1, 1, 1]);
+    expect(reordered.map((task) => task.updated_at)).toEqual([
+      "2026-01-01T00:00:00.000Z",
+      "2026-01-01T00:00:00.000Z",
+      "2026-01-01T00:00:00.000Z",
+    ]);
+
+    const listed = await request("GET", "/api/tasks");
+    const persisted: Task[] = await listed.json();
+    expect(new Map(persisted.map((task) => [task.id, task.order]))).toEqual(
+      new Map([
+        ["task-3", 1],
+        ["task-1", 2],
+        ["task-2", 3],
+      ]),
+    );
+  });
+
+  it("returns the updated tasks sorted by the new order", async () => {
+    await repo.insert(taskFixture({ id: "task-b", order: 1, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-a", order: 1, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-c", order: 1, version: 1 }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [
+        { id: "task-c", order: 1 },
+        { id: "task-a", order: 2 },
+        { id: "task-b", order: 3 },
+      ],
+    });
+    const reordered: Task[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(reordered.map((task) => task.id)).toEqual(["task-c", "task-a", "task-b"]);
+  });
+});
+
+describe("task reorder validation", () => {
+  it("rejects an empty tasks array", async () => {
+    const response = await request("POST", "/api/tasks/reorder", { tasks: [] });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated task id", async () => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+    await repo.insert(taskFixture({ id: "task-2" }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [
+        { id: "task-1", order: 1 },
+        { id: "task-1", order: 2 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+
+  it("rejects a duplicated order", async () => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+    await repo.insert(taskFixture({ id: "task-2" }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [
+        { id: "task-1", order: 1 },
+        { id: "task-2", order: 1 },
+      ],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_ORDER");
+  });
+
+  it("rejects an unknown task id", async () => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [{ id: "missing", order: 1 }],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("NOT_FOUND");
+  });
+});
+
+describe("task reorder input validation", () => {
+  it.each([
+    ["a zero order", 0],
+    ["a fractional order", 1.5],
+    ["a non-numeric order", "1"],
+  ])("rejects %s", async (_name, order) => {
+    await repo.insert(taskFixture({ id: "task-1" }));
+
+    const response = await request("POST", "/api/tasks/reorder", {
+      tasks: [{ id: "task-1", order }],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_ORDER");
+  });
+
+  it("rejects a malformed element", async () => {
+    const response = await request("POST", "/api/tasks/reorder", { tasks: ["task-1"] });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_INPUT");
+  });
+});
+
+describe("BDD-TM-003: task list", () => {
   it("returns active tasks in the list", async () => {
     await repo.insert(taskFixture({ id: "task-1", status: "do" }));
 
@@ -78,7 +465,7 @@ describe("BDD-TM-002 / BDD-TM-003: task list", () => {
   });
 });
 
-describe("BDD-TM-005 / BDD-TM-006: task update", () => {
+describe("BDD-TM-005 / BDD-TM-007: task update", () => {
   it("updates title and description", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
 
@@ -94,21 +481,37 @@ describe("BDD-TM-005 / BDD-TM-006: task update", () => {
     expect(task.description).toBe("new description");
   });
 
-  it("updates status and area", async () => {
+  it("updates status and project", async () => {
     await repo.insert(taskFixture({ id: "task-1" }));
 
     const response = await request("PATCH", "/api/tasks/task-1", {
       status: "done",
-      area: 4,
+      project: "affiliate",
       version: 1,
     });
     const task: Task = await response.json();
 
     expect(response.status).toBe(200);
     expect(task.status).toBe("done");
-    expect(task.area).toBe(4);
+    expect(task.project).toBe("affiliate");
   });
 
+  it("keeps the project when only the status changes", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "Yoriwake" }));
+
+    const response = await request("PATCH", "/api/tasks/task-1", {
+      status: "done",
+      version: 1,
+    });
+    const task: Task = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(task.status).toBe("done");
+    expect(task.project).toBe("Yoriwake");
+  });
+});
+
+describe("task update conflict and working", () => {
   it("returns a conflict for a stale status change", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 2 }));
 
@@ -165,61 +568,64 @@ describe("INV-TM-006: API description validation", () => {
   });
 });
 
-describe("BDD-TM-008: bulk reorder", () => {
-  it("moves a task to another area and order", async () => {
-    await repo.insert(taskFixture({ id: "task-1" }));
+describe("BDD-TM-004: bulk project update", () => {
+  it("assigns a project to the selected tasks", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: null, version: 1 }));
+    await repo.insert(taskFixture({ id: "task-2", project: null, version: 1 }));
 
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-1",
-      area: 2,
-      order: 0,
-      version: 1,
-    });
-    const tasks: Task[] = await response.json();
-    const task = tasks.find((candidate) => candidate.id === "task-1");
-
-    expect(response.status).toBe(200);
-    expect(task?.area).toBe(2);
-    expect(task?.order).toBe(0);
-  });
-
-  it("returns every task whose version changed during reordering", async () => {
-    await repo.insert(taskFixture({ id: "task-1", area: 1, order: 0, version: 1 }));
-    await repo.insert(taskFixture({ id: "task-2", area: 1, order: 1, version: 1 }));
-
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-2",
-      area: 1,
-      order: 0,
-      version: 1,
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "Yoriwake",
+      tasks: [
+        { id: "task-1", version: 1 },
+        { id: "task-2", version: 1 },
+      ],
     });
     const tasks: Task[] = await response.json();
 
     expect(response.status).toBe(200);
     expect(tasks).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: "task-1", order: 1, version: 2 }),
-        expect.objectContaining({ id: "task-2", order: 0, version: 2 }),
+        expect.objectContaining({ id: "task-1", project: "Yoriwake", version: 2 }),
+        expect.objectContaining({ id: "task-2", project: "Yoriwake", version: 2 }),
       ]),
     );
   });
-});
 
-describe("BDD-TM-009: reorder conflict", () => {
-  it("returns 409 with code CONFLICT for a stale version", async () => {
-    await repo.insert(taskFixture({ id: "task-1", version: 2 }));
+  it("clears the project when null is requested", async () => {
+    await repo.insert(taskFixture({ id: "task-1", project: "affiliate", version: 1 }));
 
-    const response = await request("POST", "/api/tasks/reorder", {
-      id: "task-1",
-      area: 2,
-      order: 0,
-      version: 1,
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: null,
+      tasks: [{ id: "task-1", version: 1 }],
+    });
+    const tasks: Task[] = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(tasks[0]?.project).toBeNull();
+  });
+
+  it("rejects an unknown project", async () => {
+    await repo.insert(taskFixture({ id: "task-1", version: 1 }));
+
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "missing",
+      tasks: [{ id: "task-1", version: 1 }],
     });
     const body: { code?: string } = await response.json();
 
-    expect(response.status).toBe(409);
-    expect(response.headers.get("content-type")).toMatch(/^application\/json/);
-    expect(body.code).toBe("CONFLICT");
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_PROJECT");
+  });
+
+  it("rejects invalid bulk inputs", async () => {
+    const response = await request("PATCH", "/api/tasks/bulk/project", {
+      project: "affiliate",
+      tasks: [],
+    });
+    const body: { code?: string } = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("INVALID_BULK_INPUT");
   });
 });
 

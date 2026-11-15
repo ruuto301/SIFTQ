@@ -14,7 +14,6 @@ def _task() -> dict[str, object]:
         "source": {"repo": "ANKM0/SIFTQ", "issue_number": 167},
         "status": "pending",
         "phase": "spec",
-        "loop": "main_loop",
         "run": {},
     }
 
@@ -72,7 +71,7 @@ def test_run_blocks_before_loop_when_label_is_missing(monkeypatch, tmp_path: Pat
     monkeypatch.setattr(task_run, "load_task", lambda *_args: (tmp_path / "ISSUE-167.yaml", task))
     monkeypatch.setattr(task_run, "enabled_error", lambda _task: "label missing")
     monkeypatch.setattr(task_run, "block_task", lambda _path, _task, reason: blocked.append(reason))
-    monkeypatch.setattr(task_run, "run_loop", lambda **_kwargs: (_ for _ in ()).throw(AssertionError()))
+    monkeypatch.setattr(task_run, "_run_dsh", lambda **_kwargs: (_ for _ in ()).throw(AssertionError()))
 
     assert task_run.main(["ISSUE-167", "--skip-readiness-check"]) == 2
     assert blocked == ["label missing"]
@@ -86,9 +85,36 @@ def test_run_blocks_after_safe_step_when_label_is_removed(monkeypatch, tmp_path:
     monkeypatch.setattr(task_run, "enabled_error", lambda _task: next(checks))
     monkeypatch.setattr(task_run, "save_task", lambda *_args: None)
     monkeypatch.setattr(task_run, "block_task", lambda _path, _task, reason: blocked.append(reason))
-    monkeypatch.setattr(task_run, "run_loop", lambda **_kwargs: {"status": "done", "run_dir": str(tmp_path / "run")})
+    monkeypatch.setattr(
+        task_run,
+        "_run_dsh",
+        lambda **_kwargs: {
+            "failed": False,
+            "reason": None,
+            "exit_code": 0,
+            "session_id": "session-123",
+        },
+    )
+    monkeypatch.setattr(
+        task_run,
+        "run_verification",
+        lambda **_kwargs: {"status": "pass", "findings": [], "commands": []},
+    )
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-key")
 
-    assert task_run.main(["ISSUE-167", "--skip-readiness-check"]) == 2
+    assert (
+        task_run.main(
+            [
+                "ISSUE-167",
+                "--skip-readiness-check",
+                "--runs-root",
+                str(tmp_path / "runs"),
+                "--workspace",
+                str(tmp_path),
+            ]
+        )
+        == 2
+    )
     assert blocked == ["label removed"]
 
 

@@ -2,16 +2,27 @@ import type { DomainError, Result, Task, TaskStatus, TaskVersionInput } from "..
 
 export type RepositoryError = DomainError;
 
+export type TaskOrderInput = {
+  id: string;
+  order: number;
+};
+
 export interface TaskRepository {
   list(): Promise<Result<Task[], RepositoryError>>;
   find(id: string, owner_id: string): Promise<Result<Task | undefined, RepositoryError>>;
   insert(task: Task): Promise<Result<Task, RepositoryError>>;
   update(task: Task): Promise<Result<Task, RepositoryError>>;
   remove(id: string, owner_id: string, version: number): Promise<Result<null, RepositoryError>>;
+  move(inputs: readonly TaskOrderInput[]): Promise<Result<Task[], RepositoryError>>;
   bulkUpdateStatus(
     inputs: readonly TaskVersionInput[],
     status: TaskStatus,
   ): Promise<Result<Task[], RepositoryError>>;
+  bulkUpdateProject(
+    inputs: readonly TaskVersionInput[],
+    project: string | null,
+  ): Promise<Result<Task[], RepositoryError>>;
   bulkRemove(inputs: readonly TaskVersionInput[]): Promise<Result<null, RepositoryError>>;
-  move(tasks: readonly Task[]): Promise<Result<Task[], RepositoryError>>;
+  /** Moves every task of a project to 未分類. Returns the number of moved tasks. */
+  clearProject(projectId: string): Promise<Result<number, RepositoryError>>;
 }

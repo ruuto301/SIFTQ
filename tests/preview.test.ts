@@ -18,18 +18,14 @@ async function previewRequest(path: string): Promise<Response> {
 }
 
 describe("mock backend preview", () => {
-  it("renders the production Matrix, Ideas, and Task list with fixed scenario data", async () => {
-    const matrix = await previewRequest("/matrix");
+  it("renders the production Ideas, Task list and DS with fixed scenario data", async () => {
     const ideas = await previewRequest("/ideas");
     const ideasDnd = await previewRequest("/ideas-dnd.js");
     const ideaDetail = await previewRequest("/ideas/1");
     const ideaDetailScript = await previewRequest("/idea-detail.js");
     const list = await previewRequest("/tasks?status=done");
+    const ds = await previewRequest("/ds");
 
-    expect(matrix.status).toBe(200);
-    const matrixBody = await matrix.text();
-    expect(matrixBody).toContain("Matrix のタスクカードを見直す");
-    expect(matrixBody).toContain("working");
     expect(ideas.status).toBe(200);
     const ideasBody = await ideas.text();
     expect(ideasBody).toContain("Ideas");
@@ -61,6 +57,18 @@ describe("mock backend preview", () => {
     const listBody = await list.text();
     expect(listBody).toContain("完了したタスクの表示を確認する");
     expect(listBody).toContain("working");
+    expect(listBody).toContain("#customer_portal");
+    expect(ds.status).toBe(200);
+    const dsBody = await ds.text();
+    expect(dsBody).toContain("Yoriwake");
+    expect(dsBody).toContain("data-ds-group-id");
+  });
+
+  it("redirects the removed Matrix route to the task list", async () => {
+    const response = await previewRequest("/matrix");
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe("/tasks");
   });
 
   it("redirects the old root path to Ideas", async () => {

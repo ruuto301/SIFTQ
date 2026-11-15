@@ -55,6 +55,6 @@ taqt の loop 設計が妥当かを、比較実験で判定するための基準
 - 上記の決定は ADR 0068 に記録する。
 
 
-## 常設化
+## 移行後
 
-loop パス（`.taqt/loops/` または `.taqt/scripts/loop/`）を変更する PR では、`eval/results/loop/` の更新または PR 本文に測定結果（harness / command / observed / 採用基準）を記載する。CI は欠落時に warning を出す（block しない）。
+ADR 0075 で taqt loop エンジンを廃止し、フローは skill、検証は dsh hooks と外側の再検証へ移行した。この文書と `eval/baselines/loop/`、`eval/results/loop/` は旧 loop の履歴として残す。loop パスの効果測定 CI は廃止した。

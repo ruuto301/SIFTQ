@@ -10,7 +10,7 @@ tasks:
       - uv run python -m taqt.task_create {{.CLI_ARGS}}
 
   run:
-    desc: Run a taqt:enabled task through the configured development feedback loop.
+    desc: Run a taqt:enabled task through the taqt flow with dsh.
     cmds:
       - uv run python -m taqt.task_run {{.CLI_ARGS}}
 

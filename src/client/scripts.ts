@@ -6,9 +6,14 @@ import {
   TASK_FORM_SHORTCUT_SCRIPT,
 } from "./browser-scripts";
 import { IDEA_DETAIL_SCRIPT, IDEAS_DND_SCRIPT } from "./idea-scripts";
-import { MATRIX_DND_SCRIPT } from "./matrix-scripts";
+import { MK_SCRIPT } from "./mk-scripts";
 import { DESCRIPTION_EDITOR_SCRIPT } from "./task-form-scripts";
 import { TASK_LIST_SELECTION_SCRIPT } from "./task-list-scripts";
+import { DSH_CHAT_SCRIPT } from "./dsh-chat-scripts";
+import { CONFIRM_DIALOG_SCRIPT } from "./confirm-dialog";
+import { SETTINGS_SCRIPT } from "./settings-scripts";
+import { DS_SCRIPT } from "./ds-scripts";
+import { DS_SETTINGS_SCRIPT } from "./ds-settings-scripts";
 
 export type ClientAsset = {
   path: string;
@@ -32,6 +37,36 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
     kind: "script",
   },
   {
+    path: "/settings.js",
+    body: SETTINGS_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/confirm-dialog.js",
+    body: CONFIRM_DIALOG_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/ds.js",
+    body: DS_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/dsh-chat.js",
+    body: DSH_CHAT_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/ds-settings.js",
+    body: DS_SETTINGS_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
     path: "/task-form-shortcut.js",
     body: TASK_FORM_SHORTCUT_SCRIPT,
     contentType: "application/javascript",
@@ -50,12 +85,6 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
     kind: "script",
   },
   {
-    path: "/matrix-dnd.js",
-    body: MATRIX_DND_SCRIPT,
-    contentType: "application/javascript",
-    kind: "script",
-  },
-  {
     path: "/ideas-dnd.js",
     body: IDEAS_DND_SCRIPT,
     contentType: "application/javascript",
@@ -64,6 +93,12 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/idea-detail.js",
     body: IDEA_DETAIL_SCRIPT,
+    contentType: "application/javascript",
+    kind: "script",
+  },
+  {
+    path: "/mk.js",
+    body: MK_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },

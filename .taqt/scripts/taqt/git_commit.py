@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
 def _default_subject(task: dict[str, object]) -> str:
     source = task["source"]
     issue_number = source["issue_number"]
-    return f"#{issue_number} feat(taqt): implement development feedback loop task"
+    return f"#{issue_number} feat(taqt): implement task through the taqt flow"
 
 
 def _ensure_expected_branch(workspace: Path, expected: str) -> int:

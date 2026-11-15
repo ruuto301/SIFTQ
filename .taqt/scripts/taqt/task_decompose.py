@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from loop.schema import write_document
+from .task_document import write_document
 
 from .task_store import (
     DEFAULT_SLICE_MINUTES,

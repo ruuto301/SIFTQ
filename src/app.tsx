@@ -5,30 +5,49 @@ import { CLIENT_ASSETS, CLIENT_ASSET_PATHS } from "./client/scripts";
 import { SESSION_COOKIE_NAME, isValidSession } from "./auth";
 import { createD1TaskRepository } from "./repository/d1-task-repository";
 import type { TaskRepository } from "./repository/task-repository";
+import { createD1ProjectRepository } from "./repository/d1-project-repository";
+import type { ProjectRepository } from "./repository/project-repository";
 import { createD1IdeaRepository } from "./repository/d1-idea-repository";
 import type { IdeaRepository } from "./repository/idea-repository";
+import { createD1MkRepository } from "./repository/d1-mk-repository";
+import type { MkRepository } from "./repository/mk-repository";
 import { createD1ImageRepository, createMemoryImageRepository } from "./repository/image-repository";
 import type { ImageRepository } from "./repository/image-repository";
 import { createMemoryTaskRepository } from "./preview/MemoryTaskRepository";
+import { createMemoryProjectRepository } from "./preview/MemoryProjectRepository";
 import { createMemoryIdeaRepository } from "./preview/MemoryIdeaRepository";
+import { createMemoryMkRepository } from "./preview/MemoryMkRepository";
 import { PREVIEW_TASKS } from "./preview/tasks";
+import { PREVIEW_PROJECTS } from "./preview/projects";
 import { PREVIEW_IDEAS } from "./preview/ideas";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerTaskApiRoutes } from "./routes/task-api";
 import { registerIdeaApiRoutes } from "./routes/idea-api";
+import { registerMkApiRoutes } from "./routes/mk-api";
+import { registerMkImageApiRoutes } from "./routes/mk-image-api";
 import { registerImageApiRoutes } from "./routes/image-api";
 import { registerTaskScreenRoutes } from "./routes/task-screens";
+import { registerMkScreenRoutes } from "./routes/mk-screens";
+import { mcpUnauthorized, registerMcpRoutes } from "./routes/mcp";
+import { registerOAuthRoutes, verifyMcpToken } from "./oauth";
 import type { AppEnv } from "./app-env";
 
 const app = new Hono<AppEnv>();
 const previewRepository = createMemoryTaskRepository(PREVIEW_TASKS);
+const previewProjectRepository = createMemoryProjectRepository(PREVIEW_PROJECTS);
 const previewIdeaRepository = createMemoryIdeaRepository(PREVIEW_IDEAS);
+const previewMkRepository = createMemoryMkRepository();
 const previewImageRepository = createMemoryImageRepository();
 
 const PUBLIC_PATHS = new Set([
   "/login",
   "/auth/github",
   "/auth/github/callback",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-authorization-server",
+  "/oauth/register",
+  "/oauth/token",
+  "/oauth/revoke",
   ...CLIENT_ASSET_PATHS,
 ]);
 
@@ -38,6 +57,13 @@ function isPublicPath(path: string): boolean {
 
 function sessionSecret(c: Context<AppEnv>): string | null {
   return c.env.SESSION_SECRET ?? null;
+}
+
+/** The DSH transport reaches the task API with a shared secret instead of a session. */
+function hasInternalToken(c: Context<AppEnv>): boolean {
+  const token = c.env.DSH_INTERNAL_TOKEN;
+  if (token === undefined || token === "") return false;
+  return c.req.header("authorization") === `Bearer ${token}`;
 }
 
 function unauthorizedResponse(c: Context<AppEnv>): Response {
@@ -61,6 +87,12 @@ function unauthorizedResponse(c: Context<AppEnv>): Response {
 
 app.use("*", async (c, next) => {
   if (isPublicPath(c.req.path)) return next();
+  if (hasInternalToken(c)) return next();
+  if (c.req.path === "/mcp") {
+    // MCP clients authenticate with an OAuth access token issued to a delegated client.
+    if ((await verifyMcpToken(c.env, c.req.header("authorization"))) !== null) return next();
+    return mcpUnauthorized(c);
+  }
   const secret = sessionSecret(c);
   if (secret === null) return c.text("Authentication is not configured", 503);
   const session = getCookie(c, SESSION_COOKIE_NAME);
@@ -84,6 +116,20 @@ function ideaRepository(c: Context<AppEnv>): IdeaRepository {
   throw new Error("idea repository is not configured");
 }
 
+function projectRepository(c: Context<AppEnv>): ProjectRepository {
+  if (c.env.PREVIEW_MODE === "true") return previewProjectRepository;
+  if (c.env.PROJECT_REPOSITORY) return c.env.PROJECT_REPOSITORY;
+  if (c.env.DB) return createD1ProjectRepository(c.env.DB);
+  throw new Error("project repository is not configured");
+}
+
+function mkRepository(c: Context<AppEnv>): MkRepository {
+  if (c.env.PREVIEW_MODE === "true") return previewMkRepository;
+  if (c.env.MK_REPOSITORY) return c.env.MK_REPOSITORY;
+  if (c.env.DB) return createD1MkRepository(c.env.DB);
+  throw new Error("mk repository is not configured");
+}
+
 function imageRepository(c: Context<AppEnv>): ImageRepository {
   if (c.env.PREVIEW_MODE === "true") return previewImageRepository;
   if (c.env.IMAGE_REPOSITORY) return c.env.IMAGE_REPOSITORY;
@@ -91,10 +137,15 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
   throw new Error("image repository is not configured");
 }
 
-registerTaskApiRoutes(app, repository);
-registerIdeaApiRoutes(app, ideaRepository);
+registerTaskApiRoutes(app, repository, ideaRepository, projectRepository);
+registerIdeaApiRoutes(app, ideaRepository, repository);
+registerMkApiRoutes(app, mkRepository);
+registerMkImageApiRoutes(app, mkRepository, imageRepository);
 registerImageApiRoutes(app, imageRepository);
-registerTaskScreenRoutes(app, repository, ideaRepository);
+registerTaskScreenRoutes(app, repository, ideaRepository, projectRepository);
+registerMkScreenRoutes(app, mkRepository);
+registerOAuthRoutes(app);
+registerMcpRoutes(app, repository, projectRepository, ideaRepository);
 
 for (const asset of CLIENT_ASSETS) {
   app.get(asset.path, (c) => c.body(asset.body, 200, { "content-type": asset.contentType }));

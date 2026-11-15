@@ -4,7 +4,6 @@
 !/AGENTS.md
 !/README.md
 !/bun.lock
-!/opencode.json
 !/package.json
 !/pyproject.toml
 !/tsconfig.json
@@ -19,6 +18,9 @@
 !/.aqua/
 !/.aqua/aqua.yaml
 !/.aqua/aqua-code-mode-host-registry.yaml
+!/poc/
+!/poc/**
+!/poc-implementation-plan.md
 !/src/
 !/src/**
 !/tests/
@@ -88,3 +90,6 @@ target/
 
 # Generated diagrams for the domain model
 docs/requirements/assets/domain-model/generated/
+
+# poc local runtime data
+/poc/data/

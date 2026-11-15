@@ -1,5 +1,7 @@
 # ADR 0037: LLMクライアントをcodexからopencodeに変更する
 
+> Status: Superseded by [ADR 0074](0074-switch-llm-client-to-dsh.md).
+
 ## 決定
 
 - LLMクライアントをcodexからopencodeに変更する。

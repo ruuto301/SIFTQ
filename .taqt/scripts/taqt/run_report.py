@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from loop.state import load_events, load_state
+from .run_record import load_events, load_state
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,13 +20,18 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def render_report(state: dict[str, Any], events: list[dict[str, Any]]) -> str:
+    verification = state.get("verification")
+    verification_status = (
+        verification.get("status") if isinstance(verification, dict) else verification
+    )
     lines = [
         f"# taqt run {state.get('task_id')}",
         "",
         f"- status: `{state.get('status')}`",
-        f"- current step: `{state.get('current_step')}`",
-        f"- iteration: `{state.get('iteration')}`",
-        f"- last feedback: `{state.get('last_feedback')}`",
+        f"- phase: `{state.get('phase')}`",
+        f"- dsh session: `{state.get('session_id')}`",
+        f"- dsh exit code: `{state.get('dsh_exit_code')}`",
+        f"- verification: `{verification_status}`",
     ]
     if state.get("blocked_reason"):
         lines.append(f"- blocked reason: `{state.get('blocked_reason')}`")
@@ -38,51 +43,18 @@ def render_report(state: dict[str, Any], events: list[dict[str, Any]]) -> str:
 
 def _event_line(event: dict[str, Any]) -> str:
     event_type = event.get("type")
-    if event_type == "observation":
-        observation = event.get("observation", {})
-        return (
-            f"- observation `{event.get('step')}`: "
-            f"{observation.get('status')} / {observation.get('feedback')}"
-        )
-    if event_type == "decision":
-        return (
-            f"- decision `{event.get('step')}`: "
-            f"{event.get('feedback')} -> {event.get('next')}"
-        )
-    if event_type == "agent_response":
-        response = event.get("response", {})
-        lines = [
-            f"- agent `{event.get('step')}`: "
-            f"{response.get('status')} ({response.get('mode')})"
-        ]
-        log = response.get("log")
-        if isinstance(log, dict) and log.get("format") == "success-summary-v1":
-            lines.extend(_success_log_lines(response, log))
-        return "\n".join(lines)
+    if event_type == "dsh_started":
+        return f"- dsh started (session `{event.get('session_id')}`)"
+    if event_type == "dsh_finished":
+        return f"- dsh finished (exit `{event.get('exit_code')}`)"
     if event_type == "terminal":
-        return f"- terminal `{event.get('step')}`"
-    return f"- {event_type}: `{event.get('step') or event.get('reason')}`"
-
-
-def _success_log_lines(response: dict[str, Any], log: dict[str, Any]) -> list[str]:
-    changed_paths = response.get("changed_paths")
-    changed = changed_paths if isinstance(changed_paths, list) else []
-    paths = ", ".join(f"`{path}`" for path in changed if isinstance(path, str))
-    changed_line = f"  - changed: {len(changed)}"
-    if paths:
-        changed_line += f" — {paths}"
-
-    lines = [changed_line]
-    lines.append(f"  - validation: {log.get('validation', 'pending')}")
-    lines.append(f"  - next: `{log.get('next_step', 'done')}`")
-    lines.append(f"  - omitted: {_log_size(log, 'stdout')}; {_log_size(log, 'stderr')}")
-    return lines
-
-
-def _log_size(log: dict[str, Any], stream: str) -> str:
-    stream_log = log.get(stream)
-    characters = stream_log.get("characters", 0) if isinstance(stream_log, dict) else 0
-    return f"{stream} {characters} chars"
+        return (
+            f"- terminal: `{event.get('status')}` "
+            f"(verification `{event.get('verification')}`)"
+        )
+    if event_type == "self_improvement_requested":
+        return f"- self-improvement requested: `{event.get('kind')}`"
+    return f"- {event_type}: `{event.get('reason') or event.get('status')}`"
 
 
 if __name__ == "__main__":

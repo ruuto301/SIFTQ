@@ -1,0 +1,6 @@
+- insert:
+    - id: hooks-codex
+      name: '@deepseek-ai/dsh-hooks-codex'
+      config:
+        configPath: ./.config/dsh/hooks.json
+        model: deepseek-flash

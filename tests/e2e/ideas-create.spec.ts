@@ -114,14 +114,15 @@ test("deletes an idea through the action menu and confirmation", async ({ page }
 
   const initialCount = await page.locator(".idea-card").count();
   const card = page.locator(".idea-card").first();
-  await card.locator(".idea-card__more").click();
+  await expect(page.locator(".idea-card__more")).toHaveCount(0);
+  await card.click({ button: "right" });
   await expect(page.locator(".matrix-menu")).toBeVisible();
   await page.locator('.matrix-menu [data-idea-action="delete"]').click();
   await expect(page.locator(".matrix-modal")).toContainText("このメモを削除しますか？");
   await page.locator('[data-idea-modal-action="cancel"]').click();
   await expect(card).toHaveCount(1);
 
-  await card.locator(".idea-card__more").click();
+  await card.click({ button: "right" });
   await page.locator('.matrix-menu [data-idea-action="delete"]').click();
   await page.locator('[data-idea-modal-action="confirm"]').click();
   await expect(card).toHaveCount(0);

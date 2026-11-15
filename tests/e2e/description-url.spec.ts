@@ -1,5 +1,5 @@
 // covers: BDD-TM-017, BDD-TM-018
-import { signIn, descriptionEditor, waitForPageSettle, createMatrixTask } from "./matrix-helpers";
+import { signIn, descriptionEditor, waitForPageSettle, createTask } from "./task-helpers";
 import { e2eBaseUrl, expect, test } from "./fixtures";
 
 test("opens description URLs with native link behavior", async ({ page }) => {
@@ -12,7 +12,7 @@ test("opens description URLs with native link behavior", async ({ page }) => {
   await descriptionEditor(page).fill(`Open ${taskUrl} or ${taskUrl}`);
   await page.getByRole("button", { name: "Create" }).click();
 
-  await page.locator(".task-card", { hasText: taskTitle }).click();
+  await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
   const links = descriptionEditor(page).locator("a");
   await expect(links).toHaveCount(2);
@@ -53,7 +53,7 @@ test("linkifies pasted URLs and submits plain text", async ({ page }) => {
 
   await expect(editor.locator("a")).toHaveAttribute("href", taskUrl);
   await page.getByRole("button", { name: "Create" }).click();
-  await page.locator(".task-card", { hasText: taskTitle }).click();
+  await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
 
   await expect(descriptionEditor(page).locator("a")).toHaveAttribute("href", taskUrl);
@@ -137,7 +137,7 @@ test("deletes text before a description URL at the URL boundary", async ({ page 
   await descriptionEditor(page).fill(description);
   await page.getByRole("button", { name: "Create" }).click();
 
-  await page.locator(".task-card", { hasText: taskTitle }).click();
+  await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
   const editor = descriptionEditor(page);
   const urlLink = editor.locator("a", { hasText: taskUrl });
@@ -176,8 +176,8 @@ test("creates exactly one task with Ctrl+Enter from the title or description", a
     if (field === "Description") await descriptionEditor(page).fill("created by shortcut");
     await (field === "Description" ? descriptionEditor(page) : page.getByLabel(field)).press("Control+Enter");
 
-    await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-    await expect(page.locator(".task-card", { hasText: taskTitle })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+    await expect(page.locator(".task-row-link", { hasText: taskTitle })).toHaveCount(1);
   }
 });
 test("saves exactly one task with Ctrl+Enter from the detail form", async ({ page }) => {
@@ -185,16 +185,16 @@ test("saves exactly one task with Ctrl+Enter from the detail form", async ({ pag
   const updatedTitle = `${originalTitle} updated`;
 
   await signIn(page);
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
 
   await page.getByLabel("Title").fill(updatedTitle);
   await descriptionEditor(page).press("Control+Enter");
 
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await expect(page.locator(".task-card", { hasText: updatedTitle })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+  await expect(page.locator(".task-row-link", { hasText: updatedTitle })).toHaveCount(1);
 });
 test("refreshes task detail after browser back before Ctrl+Enter and Save", async ({ page }) => {
   const originalTitle = `E2E browser back ${Date.now()}`;
@@ -208,15 +208,15 @@ test("refreshes task detail after browser back before Ctrl+Enter and Save", asyn
     if (response.status() === 409) conflictResponses.push(response.url());
   });
 
-  await createMatrixTask(page, originalTitle);
-  await page.locator(".task-card", { hasText: originalTitle }).click();
+  await createTask(page, originalTitle);
+  await page.locator(".task-row-link", { hasText: originalTitle }).click();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
   await waitForPageSettle(page);
   const initialVersion = await page.locator("#task-version").inputValue();
 
   await page.getByLabel("Title").fill(shortcutTitle);
   await page.getByLabel("Title").press("Control+Enter");
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
@@ -226,8 +226,8 @@ test("refreshes task detail after browser back before Ctrl+Enter and Save", asyn
 
   await page.getByLabel("Title").fill(resavedTitle);
   await page.getByLabel("Title").press("Control+Enter");
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await expect(page.locator(".task-card", { hasText: resavedTitle })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+  await expect(page.locator(".task-row-link", { hasText: resavedTitle })).toHaveCount(1);
 
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Task detail" })).toBeVisible();
@@ -236,8 +236,8 @@ test("refreshes task detail after browser back before Ctrl+Enter and Save", asyn
 
   await page.getByLabel("Title").fill(saveTitle);
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
-  await expect(page.locator(".task-card", { hasText: saveTitle })).toHaveCount(1);
+  await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
+  await expect(page.locator(".task-row-link", { hasText: saveTitle })).toHaveCount(1);
   expect(conflictResponses).toHaveLength(0);
 });
 test("keeps native task validation on Ctrl+Enter", async ({ page }) => {

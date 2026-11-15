@@ -3,25 +3,26 @@ import {
   TASK_TITLE_MAX_CODE_POINTS,
   TASK_DESCRIPTION_MAX_CODE_POINTS,
   applyTaskPatch,
-  changeTaskArea,
+  changeTaskProject,
   changeTaskStatus,
   changeTaskWorking,
   createTask,
   descriptionCodePointLength,
   is_working,
-  isTaskArea,
+  isTaskProject,
+  isTaskOrderValid,
   isTaskStatus,
   isTaskTitleValid,
   isTaskDescriptionValid,
-  moveTask,
+  nextTaskOrder,
   parseTaskPatch,
   parseTaskVersionInputs,
-  selectMovedTasks,
   titleCodePointLength,
 } from "../src/task";
 import {
   TASK_LIST_PAGE_SIZE,
   filterTasks,
+  groupTasksByProject,
   is_do,
   is_done,
   is_skip,
@@ -29,7 +30,12 @@ import {
   paginateTasks,
   parseTaskListQuery,
   parsePageParam,
-  sortForMatrix,
+  replaceQueryToken,
+  sortTasksByOrder,
+  taskProjectFilter,
+  taskTextFilter,
+  taskWorkingFilter,
+  withQueryToken,
 } from "../src/task-list";
 import { taskFixture } from "./helpers/task-fixture";
 
@@ -59,16 +65,29 @@ describe("task description validation", () => {
 });
 
 describe("task enums", () => {
-  it("INV-TM-001 / INV-TM-007: recognizes valid status and area values", () => {
+  it("INV-TM-001: recognizes valid status values", () => {
     expect(isTaskStatus("do")).toBe(true);
     expect(isTaskStatus("done")).toBe(true);
     expect(isTaskStatus("skip")).toBe(true);
     expect(isTaskStatus("unknown")).toBe(false);
+  });
 
-    expect(isTaskArea(1)).toBe(true);
-    expect(isTaskArea(4)).toBe(true);
-    expect(isTaskArea(0)).toBe(false);
-    expect(isTaskArea(5)).toBe(false);
+  it("INV-TM-002: accepts a project id or the unassigned value", () => {
+    expect(isTaskProject(null)).toBe(true);
+    expect(isTaskProject("Yoriwake")).toBe(true);
+    expect(isTaskProject("customer_portal")).toBe(true);
+    expect(isTaskProject("Yoriwake!")).toBe(false);
+    expect(isTaskProject("")).toBe(false);
+    expect(isTaskProject("a".repeat(65))).toBe(false);
+    expect(isTaskProject(1)).toBe(false);
+  });
+
+  it("accepts only positive safe integer orders", () => {
+    expect(isTaskOrderValid(1)).toBe(true);
+    expect(isTaskOrderValid(0)).toBe(false);
+    expect(isTaskOrderValid(-1)).toBe(false);
+    expect(isTaskOrderValid(1.5)).toBe(false);
+    expect(isTaskOrderValid(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
   });
 });
 
@@ -90,16 +109,137 @@ describe("task filters", () => {
     expect(is_working(taskFixture({ status: "done", working: true }))).toBe(true);
     expect(is_working(taskFixture({ status: "do", working: false }))).toBe(false);
   });
+
+  it("filters by project, including unassigned tasks", () => {
+    const tasks = [
+      taskFixture({ id: "yoriwake", project: "Yoriwake" }),
+      taskFixture({ id: "dsh", project: "dsh" }),
+      taskFixture({ id: "none", project: null }),
+    ];
+
+    expect(filterTasks(tasks, [taskProjectFilter("Yoriwake")]).map((task) => task.id)).toEqual(["yoriwake"]);
+    expect(filterTasks(tasks, [taskProjectFilter(null)]).map((task) => task.id)).toEqual(["none"]);
+  });
 });
 
-describe("task list query", () => {
-  it("parses status and working label filters", () => {
-    expect(parseTaskListQuery("is:do")).toEqual({ status: "do", workingOnly: false });
-    expect(parseTaskListQuery("is:done label:working")).toEqual({
-      status: "done",
-      workingOnly: true,
+describe("BDD-TM-003: task list query", () => {
+  it("parses status, working, project and free text filters", () => {
+    expect(parseTaskListQuery("is:do")).toEqual({
+      status: "do",
+      working: undefined,
+      project: undefined,
+      text: [],
     });
+    expect(parseTaskListQuery("working:off")).toEqual({
+      status: undefined,
+      working: "off",
+      project: undefined,
+      text: [],
+    });
+    expect(parseTaskListQuery("is:done working:on")).toEqual({
+      status: "done",
+      working: "on",
+      project: undefined,
+      text: [],
+    });
+    expect(parseTaskListQuery("is:do project:Yoriwake")).toEqual({
+      status: "do",
+      working: undefined,
+      project: "Yoriwake",
+      text: [],
+    });
+    expect(parseTaskListQuery("is:do project:none")).toEqual({
+      status: "do",
+      working: undefined,
+      project: null,
+      text: [],
+    });
+  });
+
+  it("parses free text terms and rejects invalid queries", () => {
+    expect(parseTaskListQuery("見積もり is:do")).toEqual({
+      status: "do",
+      working: undefined,
+      project: undefined,
+      text: ["見積もり"],
+    });
+    expect(parseTaskListQuery("label:working")).toEqual({
+      status: undefined,
+      working: undefined,
+      project: undefined,
+      text: ["label:working"],
+    });
+    expect(parseTaskListQuery("is:do project:Unknown!")).toBeNull();
+    expect(parseTaskListQuery("is:do project:a project:b")).toBeNull();
+    expect(parseTaskListQuery("is:do working:on working:off")).toBeNull();
+    expect(parseTaskListQuery("is:do working:maybe")).toBeNull();
     expect(parseTaskListQuery("is:issue state:closed")).toBeNull();
+  });
+
+});
+
+describe("BDD-TM-003: task list filters", () => {
+  it("filters by working state and free text", () => {
+    const tasks = [
+      taskFixture({ id: "busy", title: "見積もりを送る", working: true }),
+      taskFixture({ id: "idle", title: "別の作業", working: false }),
+    ];
+
+    expect(filterTasks(tasks, [taskWorkingFilter("on")]).map((task) => task.id)).toEqual(["busy"]);
+    expect(filterTasks(tasks, [taskWorkingFilter("off")]).map((task) => task.id)).toEqual(["idle"]);
+    expect(filterTasks(tasks, [taskTextFilter("見積もり")]).map((task) => task.id)).toEqual(["busy"]);
+    expect(filterTasks(tasks, [taskTextFilter("存在しない")])).toEqual([]);
+  });
+
+  it("replaces one filter token without touching the others", () => {
+    expect(withQueryToken("is:do project:Yoriwake working:on", "project:", "project:dsh")).toBe(
+      "is:do working:on project:dsh",
+    );
+    expect(withQueryToken("is:do project:Yoriwake", "project:", null)).toBe("is:do");
+    expect(withQueryToken("is:do", "working:", "working:on")).toBe("is:do working:on");
+    expect(withQueryToken("is:do working:on", "working:", null)).toBe("is:do");
+  });
+
+  it("replaces a token in place with replaceQueryToken", () => {
+    expect(replaceQueryToken("is:do project:Yoriwake working:on 見積もり", "is:", "is:done")).toBe(
+      "is:done project:Yoriwake working:on 見積もり",
+    );
+    expect(replaceQueryToken("project:Yoriwake", "is:", "is:skip")).toBe("project:Yoriwake is:skip");
+  });
+});
+
+describe("BDD-TM-006: DS project grouping", () => {
+  it("orders groups by sort_order with unassigned tasks last", () => {
+    const projects = [
+      { id: "b", name: "b", path: null, sort_order: 2, archived: false },
+      { id: "a", name: "a", path: null, sort_order: 1, archived: false },
+    ];
+    const tasks = [
+      taskFixture({ id: "none", project: null }),
+      taskFixture({ id: "b-1", project: "b" }),
+      taskFixture({ id: "a-1", project: "a" }),
+      taskFixture({ id: "ghost", project: "missing" }),
+    ];
+
+    const groups = groupTasksByProject(tasks, projects);
+
+    expect(groups.map((group) => group.project?.id ?? null)).toEqual(["a", "b", null]);
+    expect(groups[2]?.tasks.map((task) => task.id)).toEqual(["none", "ghost"]);
+  });
+});
+
+describe("sortTasksByOrder", () => {
+  it("sorts tasks by order and breaks ties by id without mutating the input", () => {
+    const tasks = [
+      taskFixture({ id: "c", order: 3 }),
+      taskFixture({ id: "b", order: 1 }),
+      taskFixture({ id: "a", order: 1 }),
+    ];
+
+    const sorted = sortTasksByOrder(tasks);
+
+    expect(sorted.map((task) => task.id)).toEqual(["a", "b", "c"]);
+    expect(tasks.map((task) => task.id)).toEqual(["c", "b", "a"]);
   });
 });
 
@@ -145,7 +285,7 @@ describe("task domain", () => {
     expect(created.ok).toBe(true);
     if (!created.ok) return;
     expect(created.value.status).toBe("do");
-    expect(created.value.area).toBe(1);
+    expect(created.value.project).toBeNull();
     expect(created.value.order).toBe(1);
     expect(created.value.version).toBe(1);
     expect(created.value.id).toBe("task-1");
@@ -166,35 +306,58 @@ describe("task domain", () => {
     }
   });
 
-  it("INV-TM-002: keeps area when status changes", () => {
-    const task = taskFixture({ id: "task-1", area: 3 });
+  it("creates a task with the given project", () => {
+    const created = createTask({
+      id: "task-1",
+      owner_id: "owner-1",
+      title: "Buy milk",
+      description: "",
+      project: "Yoriwake",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    expect(created.value.project).toBe("Yoriwake");
+  });
+});
+
+describe("task status and project", () => {
+  it("INV-TM-002: keeps project when status changes", () => {
+    const task = taskFixture({ id: "task-1", project: "Yoriwake" });
 
     const done = changeTaskStatus(task, "done");
     expect(done.ok).toBe(true);
     if (!done.ok) return;
-    expect(done.value.area).toBe(3);
+    expect(done.value.project).toBe("Yoriwake");
     expect(done.value.status).toBe("done");
   });
 
-  it("changes area without changing status", () => {
+  it("changes project without changing status", () => {
     const task = taskFixture({ id: "task-1", status: "do" });
 
-    const changed = changeTaskArea(task, 4);
+    const changed = changeTaskProject(task, "dsh");
     expect(changed.ok).toBe(true);
     if (!changed.ok) return;
-    expect(changed.value.area).toBe(4);
+    expect(changed.value.project).toBe("dsh");
     expect(changed.value.status).toBe("do");
+
+    const cleared = changeTaskProject(task, null);
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok) return;
+    expect(cleared.value.project).toBeNull();
   });
 
-  it("INV-TM-003: toggles working without changing status or area", () => {
-    const task = taskFixture({ id: "task-1", status: "do", area: 2, working: false });
+  it("INV-TM-003: toggles working without changing status or project", () => {
+    const task = taskFixture({ id: "task-1", status: "do", project: "dsh", working: false });
 
     const started = changeTaskWorking(task, true);
     expect(started.ok).toBe(true);
     if (!started.ok) return;
     expect(started.value.working).toBe(true);
     expect(started.value.status).toBe("do");
-    expect(started.value.area).toBe(2);
+    expect(started.value.project).toBe("dsh");
   });
 });
 
@@ -208,43 +371,18 @@ describe("task working preservation", () => {
     expect(done.value.status).toBe("done");
     expect(done.value.working).toBe(true);
   });
-
-  it("sorts matrix tasks by area and order", () => {
-    const tasks = [
-      taskFixture({ id: "b", status: "do", area: 2, order: 0 }),
-      taskFixture({ id: "a", status: "do", area: 1, order: 2 }),
-      taskFixture({ id: "c", status: "do", area: 1, order: 1 }),
-      taskFixture({ id: "done", status: "done", area: 1, order: 0 }),
-    ];
-
-    expect(sortForMatrix(tasks).map((task) => task.id)).toEqual(["c", "a", "b"]);
-  });
 });
 
-describe("task move", () => {
-  it("INV-TM-004: normalizes order when moving to another area", () => {
+describe("task order", () => {
+  it("INV-TM-004: numbers the next order after the whole task list", () => {
     const tasks = [
-      taskFixture({ id: "task-1", area: 1, order: 0 }),
-      taskFixture({ id: "task-2", area: 1, order: 1 }),
-      taskFixture({ id: "task-3", area: 1, order: 2 }),
-      taskFixture({ id: "task-4", area: 2, order: 0 }),
+      taskFixture({ id: "a1", order: 1 }),
+      taskFixture({ id: "a2", order: 4 }),
+      taskFixture({ id: "b1", order: 9 }),
     ];
 
-    const moved = moveTask(tasks, "task-1", 2, 1);
-
-    expect(moved.ok).toBe(true);
-    if (!moved.ok) return;
-    expect(moved.value).toHaveLength(4);
-    expect(moved.value.find((task) => task.id === "task-1")?.order).toBe(1);
-    expect(moved.value.find((task) => task.id === "task-4")?.order).toBe(0);
-    expect(moved.value.filter((task) => task.area === 1).map((task) => task.order)).toEqual([0, 1]);
-  });
-
-  it("rejects invalid move input", () => {
-    const tasks = [taskFixture({ id: "task-1" })];
-
-    expect(moveTask(tasks, "missing", 1, 0).ok).toBe(false);
-    expect(moveTask(tasks, "task-1", 1, -1).ok).toBe(false);
+    expect(nextTaskOrder(tasks)).toBe(10);
+    expect(nextTaskOrder([])).toBe(1);
   });
 });
 
@@ -256,12 +394,15 @@ describe("task patch", () => {
     });
   });
 
-  it("rejects invalid enum and working values", () => {
+  it("rejects invalid enum, project and working values", () => {
     expect(parseTaskPatch({ status: "unknown" })).toEqual({
       ok: false,
       error: { code: "INVALID_STATUS" },
     });
-    expect(parseTaskPatch({ area: 5 })).toEqual({ ok: false, error: { code: "INVALID_AREA" } });
+    expect(parseTaskPatch({ project: "Yoriwake!" })).toEqual({
+      ok: false,
+      error: { code: "INVALID_PROJECT" },
+    });
     expect(parseTaskPatch({ working: "yes" })).toEqual({
       ok: false,
       error: { code: "INVALID_WORKING" },
@@ -273,29 +414,18 @@ describe("task patch", () => {
   });
 
   it("applies a patch without touching other fields", () => {
-    const task = taskFixture({ id: "task-1", title: "before", status: "do", area: 1 });
+    const task = taskFixture({ id: "task-1", title: "before", status: "do", project: null });
 
-    expect(applyTaskPatch(task, { status: "done", area: 3 })).toMatchObject({
+    expect(applyTaskPatch(task, { status: "done", project: "dsh" })).toMatchObject({
       id: "task-1",
       title: "before",
       status: "done",
-      area: 3,
+      project: "dsh",
     });
   });
-});
 
-describe("selectMovedTasks", () => {
-  it("returns only tasks whose area or order changed", () => {
-    const before = [
-      taskFixture({ id: "a", area: 1, order: 0 }),
-      taskFixture({ id: "b", area: 1, order: 1 }),
-    ];
-    const after = [
-      taskFixture({ id: "a", area: 2, order: 0 }),
-      taskFixture({ id: "b", area: 1, order: 1 }),
-    ];
-
-    expect(selectMovedTasks(before, after).map((task) => task.id)).toEqual(["a"]);
+  it("clears the project with an explicit null", () => {
+    expect(parseTaskPatch({ project: null })).toEqual({ ok: true, value: { project: null } });
   });
 });
 

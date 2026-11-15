@@ -24,25 +24,30 @@ describe("screen registry", () => {
 
   it("aggregates client files to presentation screens in screen order", () => {
     expect(screenByFile()).toEqual({
-      "matrix-scripts.ts": ["P01"],
+      "dsh-chat-scripts.ts": ["P10"],
+      "ds-scripts.ts": ["P10"],
+      "ds-settings-scripts.ts": ["P10"],
       "task-list-scripts.ts": ["P02"],
       "task-form-scripts.ts": ["P03", "P04"],
       "idea-scripts.ts": ["P08"],
+      "mk-scripts.ts": ["P13"],
     });
   });
 
   it("derives html page ids and entities from the registry", () => {
     expect(htmlPageIds()).toEqual({
+      "/ds": "html_ds_page",
       "/login": "html_login_page",
-      "/matrix": "html_matrix_page",
       "/ideas": "html_ideas_page",
       "/ideas/:id": "html_ideas_detail",
+      "/mk": "html_mk_page",
       "/tasks": "html_tasks_page",
       "/tasks/new": "html_new_task_page",
       "/tasks/:id": "html_task_page",
+      "/settings": "html_settings_page",
     });
     expect(pageEntities()).toEqual({
-      "/matrix": "tasks",
+      "/ds": "tasks",
       "/ideas": "ideas",
       "/ideas/:id": "ideas",
       "/tasks": "tasks",

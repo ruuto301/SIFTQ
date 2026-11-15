@@ -45,11 +45,6 @@ function IdeaCard({ idea }: { idea: IdeaCardData }) {
           {idea.description === "" ? "No description yet." : <DescriptionContent description={idea.description} />}
         </p>
       </a>
-      <footer class="idea-card__footer">
-        <button type="button" class="idea-card__more" aria-label={`More options for ${idea.title}`}>
-          <span aria-hidden="true" />
-        </button>
-      </footer>
     </article>
   );
 }

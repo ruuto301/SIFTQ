@@ -25,9 +25,11 @@ def target_files(root: Path) -> list[Path]:
     ).split("\0")
     vendored = (root / VENDOR_DIR).resolve()
     return sorted(
-        root / name
+        path
         for name in listed
-        if name and not (root / name).resolve().is_relative_to(vendored)
+        if name
+        and not (path := root / name).resolve().is_relative_to(vendored)
+        and path.is_file()
     )
 
 

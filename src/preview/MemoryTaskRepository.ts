@@ -1,10 +1,40 @@
-import { changeTaskStatuses, err, ok } from "../task";
+import { changeTaskProjects, changeTaskStatuses, err, ok } from "../task";
 import type { Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import { validateBulkTasks } from "../repository/repository-validation";
-import type { RepositoryError, TaskRepository } from "../repository/task-repository";
+import type { RepositoryError, TaskOrderInput, TaskRepository } from "../repository/task-repository";
 
 function byMostRecentlyUpdated(left: Task, right: Task): number {
   return right.updated_at.localeCompare(left.updated_at) || left.id.localeCompare(right.id);
+}
+
+/** Moves every task of a project to 未分類 and returns how many moved. */
+function clearProjectOf(tasks: Map<string, Task>, projectId: string): number {
+  let moved = 0;
+  for (const [id, task] of tasks) {
+    if (task.project !== projectId) continue;
+    tasks.set(id, { ...task, project: null });
+    moved += 1;
+  }
+  return moved;
+}
+
+function findTask(
+  tasks: Map<string, Task>,
+  id: string,
+): Promise<Result<Task | undefined, RepositoryError>> {
+  return Promise.resolve(ok<Task | undefined, RepositoryError>(tasks.get(id)));
+}
+
+function removeTask(
+  tasks: Map<string, Task>,
+  id: string,
+  version: number,
+): Promise<Result<null, RepositoryError>> {
+  const current = tasks.get(id);
+  if (current === undefined) return Promise.resolve(err<null, RepositoryError>({ code: "NOT_FOUND" }));
+  if (current.version !== version) return Promise.resolve(err<null, RepositoryError>({ code: "CONFLICT" }));
+  tasks.delete(id);
+  return Promise.resolve(ok<null, RepositoryError>(null));
 }
 
 export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): TaskRepository {
@@ -15,7 +45,7 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
   }
 
   async function find(id: string, _ownerId: string): Promise<Result<Task | undefined, RepositoryError>> {
-    return ok<Task | undefined, RepositoryError>(tasks.get(id));
+    return findTask(tasks, id);
   }
 
   async function insert(task: Task): Promise<Result<Task, RepositoryError>> {
@@ -37,7 +67,18 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
     inputs: readonly TaskVersionInput[],
     status: TaskStatus,
   ): Promise<Result<Task[], RepositoryError>> {
-    return applyBulkStatus(tasks, validateBulkTasks(inputs, (id) => tasks.get(id)), status);
+    return applyBulk(tasks, validateBulkTasks(inputs, (id) => tasks.get(id)), (current) =>
+      changeTaskStatuses(current, status),
+    );
+  }
+
+  async function bulkUpdateProject(
+    inputs: readonly TaskVersionInput[],
+    project: string | null,
+  ): Promise<Result<Task[], RepositoryError>> {
+    return applyBulk(tasks, validateBulkTasks(inputs, (id) => tasks.get(id)), (current) =>
+      changeTaskProjects(current, project),
+    );
   }
 
   async function bulkRemove(inputs: readonly TaskVersionInput[]): Promise<Result<null, RepositoryError>> {
@@ -50,41 +91,41 @@ export function createMemoryTaskRepository(initialTasks: readonly Task[] = []): 
   }
 
   async function remove(id: string, _ownerId: string, version: number): Promise<Result<null, RepositoryError>> {
-    const current = tasks.get(id);
-    if (!current) {
-      return err<null, RepositoryError>({ code: "NOT_FOUND" });
-    }
-    if (current.version !== version) return err<null, RepositoryError>({ code: "CONFLICT" });
-
-    tasks.delete(id);
-    return ok<null, RepositoryError>(null);
+    return removeTask(tasks, id, version);
   }
 
-  async function move(inputTasks: readonly Task[]): Promise<Result<Task[], RepositoryError>> {
-    for (const task of inputTasks) {
-      const current = tasks.get(task.id);
-      if (!current || current.version !== task.version) {
-        return err<Task[], RepositoryError>({ code: "CONFLICT" });
-      }
-    }
-
-    const updated = inputTasks.map((task) => ({ ...task, version: task.version + 1 }));
-    for (const task of updated) {
-      tasks.set(task.id, task);
-    }
-    return ok<Task[], RepositoryError>(updated);
+  async function move(inputs: readonly TaskOrderInput[]): Promise<Result<Task[], RepositoryError>> {
+    return moveTasks(tasks, inputs);
   }
 
-  return { list, find, insert, update, remove, bulkUpdateStatus, bulkRemove, move };
+  async function clearProject(projectId: string): Promise<Result<number, RepositoryError>> {
+    return ok(clearProjectOf(tasks, projectId));
+  }
+
+  return { list, find, insert, update, remove, move, bulkUpdateStatus, bulkUpdateProject, bulkRemove, clearProject };
 }
 
-function applyBulkStatus(
+function moveTasks(
+  tasks: Map<string, Task>,
+  inputs: readonly TaskOrderInput[],
+): Result<Task[], RepositoryError> {
+  const moved: Task[] = [];
+  for (const input of inputs) {
+    const task = tasks.get(input.id);
+    if (task === undefined) return err<Task[], RepositoryError>({ code: "NOT_FOUND" });
+    moved.push({ ...task, order: input.order });
+  }
+  for (const task of moved) tasks.set(task.id, task);
+  return ok<Task[], RepositoryError>(moved);
+}
+
+function applyBulk(
   tasks: Map<string, Task>,
   current: Result<Task[], RepositoryError>,
-  status: TaskStatus,
+  change: (tasks: readonly Task[]) => Result<Task[], RepositoryError>,
 ): Result<Task[], RepositoryError> {
   if (!current.ok) return current;
-  const updated = changeTaskStatuses(current.value, status);
+  const updated = change(current.value);
   if (updated.ok) updated.value.forEach((task) => tasks.set(task.id, task));
   return updated;
 }

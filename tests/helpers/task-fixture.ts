@@ -8,7 +8,7 @@ export function taskFixture(overrides: Partial<Task> = {}): Task {
     description: "",
     status: "do",
     working: false,
-    area: 1,
+    project: null,
     order: 1,
     version: 1,
     created_at: "2026-01-01T00:00:00.000Z",

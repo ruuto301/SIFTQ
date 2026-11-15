@@ -1,94 +1,67 @@
 import { describe, expect, it } from "vite-plus/test";
 import { STYLES_CSS } from "../src/styles";
 
+/** Returns the declaration block for a rule, or an empty string when it is missing. */
+function cssBlock(pattern: RegExp): string {
+  return pattern.exec(STYLES_CSS)?.[0] ?? "";
+}
+
 describe("styles", () => {
-  it("defines the application shell, matrix axes, rows, and popover", () => {
+  it("defines the application shell, rows, cards and popover", () => {
     expect(STYLES_CSS).toContain(".topbar");
-    expect(STYLES_CSS).toContain(".matrix-axis");
     expect(STYLES_CSS).toContain(".task-row");
+    expect(STYLES_CSS).toContain(".task-card");
     expect(STYLES_CSS).toContain(".popover");
   });
 
-  it("uses the full quadrant body as the Matrix drop target", () => {
-    expect(STYLES_CSS).toMatch(/\.area--quadrant \.matrix-cards\s*\{\s*flex: 1;/);
+  it("keeps the status and working badges in the shared theme", () => {
+    expect(STYLES_CSS).toContain(".status--do");
+    expect(STYLES_CSS).toContain(".status--done");
+    expect(STYLES_CSS).toContain(".status--skip");
+    expect(STYLES_CSS).toContain(".working-badge");
   });
 
-  it("uses a single-column Matrix on narrow screens", () => {
-    const matrix = STYLES_CSS.match(/(?:^|\n)\.matrix\s*\{[^}]*\}/);
-    expect(matrix?.[0]).toContain("grid-template-columns: minmax(0, 1fr);");
-    expect(STYLES_CSS).toContain("@media (width >= 40rem)");
-    expect(STYLES_CSS).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+  it("keeps the right side panel headings spaced from their controls", () => {
+    const spaced = STYLES_CSS.match(/(?:^|\n)\.meta-row--spaced\s*\{[^}]*\}/);
+    const sidePanel = STYLES_CSS.match(/(?:^|\n)\.side-panel > \.meta-row-link\s*\{[^}]*\}/);
+    expect(spaced?.[0]).toContain("margin-bottom: 8px;");
+    expect(sidePanel?.[0]).toContain("margin-bottom: 8px;");
   });
 
-  it("uses a dark border for Matrix cards against the light Matrix frame", () => {
-    const taskCard = STYLES_CSS.match(/(?:^|\n)\.task-card\s*\{[^}]*\}/);
-    const matrixAxis = STYLES_CSS.match(/(?:^|\n)\.matrix-axis\s*\{[^}]*\}/);
-    expect(taskCard?.[0]).toContain("border-color: #1b1f24;");
-    expect(matrixAxis?.[0]).toContain("border: 1px solid #8b949e;");
+  it("styles the project label and the unassigned variant with outline tones", () => {
+    const label = STYLES_CSS.match(/(?:^|\n)\.label\s*\{[^}]*\}/);
+    const project = STYLES_CSS.match(/(?:^|\n)\.label--project\s*\{[^}]*\}/);
+    const none = STYLES_CSS.match(/(?:^|\n)\.label--project-none\s*\{[^}]*\}/);
+    expect(label?.[0]).toContain("border-radius: 999px;");
+    expect(project?.[0]).toContain("color: #303030;");
+    expect(none?.[0]).toContain("color: #555555;");
+    expect(STYLES_CSS).toContain(".project-select");
   });
 
-  it("does not override the cursor on draggable Matrix cards", () => {
-    expect(STYLES_CSS).not.toContain('.task-card[draggable="true"]');
-    const taskCardRules = STYLES_CSS.match(/(?:^|\n)\.task-card[^{]*{[^}]*}/g) ?? [];
-    expect(taskCardRules.some((rule) => /cursor:\s*(grab|grabbing)/.test(rule))).toBe(false);
+  it("keeps the shared context menu and confirmation dialog styles", () => {
+    expect(STYLES_CSS).toContain(".matrix-menu");
+    expect(STYLES_CSS).toContain(".matrix-modal");
+    expect(STYLES_CSS).toContain(".matrix-modal-backdrop");
   });
 
-  it("places the four quadrant areas in their Matrix grid cells", () => {
-    const q1 = STYLES_CSS.match(/(?:^|\n)\.area--q1\s*\{[^}]*\}/);
-    expect(q1?.[0]).toContain("grid-column: 1;");
-    expect(q1?.[0]).toContain("grid-row: 1;");
-
-    const q2 = STYLES_CSS.match(/(?:^|\n)\.area--q2\s*\{[^}]*\}/);
-    expect(q2?.[0]).toContain("grid-column: 1;");
-    expect(q2?.[0]).toContain("grid-row: 2;");
-
-    const q3 = STYLES_CSS.match(/(?:^|\n)\.area--q3\s*\{[^}]*\}/);
-    expect(q3?.[0]).toContain("grid-column: 1;");
-    expect(q3?.[0]).toContain("grid-row: 3;");
-
-    const q4 = STYLES_CSS.match(/(?:^|\n)\.area--q4\s*\{[^}]*\}/);
-    expect(q4?.[0]).toContain("grid-column: 1;");
-    expect(q4?.[0]).toContain("grid-row: 4;");
+  it("keeps the disabled DS composer button label visible", () => {
+    const disabled = STYLES_CSS.match(/(?:^|\n)\.ds__new-add:disabled\s*\{[^}]*\}/);
+    expect(disabled?.[0]).toContain("color: #8a8a8a;");
   });
 
-  it("keeps quadrant areas as flex columns layered above the crosshair", () => {
-    const quadrant = STYLES_CSS.match(/(?:^|\n)\.area--quadrant\s*\{[^}]*\}/);
-    expect(quadrant?.[0]).toContain("display: flex;");
-    expect(quadrant?.[0]).toContain("flex-direction: column;");
-    expect(quadrant?.[0]).toContain("position: relative;");
-    expect(quadrant?.[0]).toContain("z-index: 1;");
+  it("does not change the DS status tab colors on hover", () => {
+    expect(STYLES_CSS).not.toContain(".ds__status-tabs .button.small:hover");
   });
 
-  it("keeps the horizontal axis line centered on the quadrant boundary", () => {
-    const horizontal = STYLES_CSS.match(/(?:^|\n)\.axis-line--horizontal\s*\{[^}]*\}/);
-    expect(horizontal?.[0]).toContain("inset: 50% 20px auto;");
-    expect(horizontal?.[0]).toContain("transform: translateY(-50%);");
+  it("does not keep the removed Matrix layout", () => {
+    expect(STYLES_CSS).not.toContain(".matrix-axis");
+    expect(STYLES_CSS).not.toContain(".area--quadrant");
+    expect(STYLES_CSS).not.toContain(".axis-line");
   });
-
-  it("keeps the vertical axis line centered on the quadrant boundary", () => {
-    const vertical = STYLES_CSS.match(/(?:^|\n)\.axis-line--vertical\s*\{[^}]*\}/);
-    expect(vertical?.[0]).toContain("inset: 72px auto 72px 50%;");
-    expect(vertical?.[0]).toContain("transform: translateX(-50%);");
-  });
-
 });
 
 describe("styles regression guards", () => {
-  it("keeps Matrix rows symmetric so the horizontal axis line lands on the quadrant boundary", () => {
-    expect(STYLES_CSS).toContain("grid-template-rows: repeat(2, minmax(0, 1fr));");
-  });
-
-  it("keeps mobile quadrant cards in the page flow and desktop cards scrollable", () => {
-    expect(STYLES_CSS).toContain("overflow-y: visible;");
-    expect(STYLES_CSS).toContain("overflow-y: auto;");
-  });
-
-  it("lets quadrant content shrink so equal rows are not stretched by card overflow", () => {
-    const quadrant = STYLES_CSS.match(/(?:^|\n)\.area--quadrant\s*\{[^}]*\}/);
-    expect(quadrant?.[0]).toContain("min-height: 0;");
-  });
-
-  it("stacks the Status and Area side panel on narrow screens", () => {
+  it("stacks the side panel on narrow screens", () => {
     expect(STYLES_CSS).toMatch(
       /\.detail-grid\s*\{\s*display: grid;\s*gap: 16px;\s*grid-template-columns: minmax\(0, 1fr\);/,
     );
@@ -107,6 +80,65 @@ describe("styles regression guards", () => {
     const link = STYLES_CSS.match(/(?:^|\n)\.task-row-link\s*\{[^}]*\}/);
     expect(link?.[0]).toContain("grid-template-columns: minmax(0, 1fr);");
     expect(link?.[0]).not.toContain("48px");
+  });
+});
+
+describe("DS project groups", () => {
+  it("draws each project as a bordered box that keeps its natural height", () => {
+    const group = cssBlock(/(?:^|\n)\.ds__group\s*\{[^}]*\}/);
+    expect(group).toContain("border: 2px solid #000;");
+    expect(group).toContain("border-radius: 8px;");
+    expect(group).toContain("overflow: hidden;");
+    expect(group).toContain("gap: 0;");
+    // `overflow: hidden` disables the automatic minimum height of a flex item, so the
+    // box opts out of shrinking or an added task squashes the other projects.
+    expect(group).toContain("flex: 0 0 auto;");
+  });
+
+  it("uses the header as the top edge and the count badge as an outline", () => {
+    const head = cssBlock(/(?:^|\n)\.ds__group-head\s*\{[^}]*\}/);
+    expect(head).toContain("background: #d8d8d8;");
+    expect(head).toContain("color: #303030;");
+    expect(head).toContain("border: 2px solid #1f1f1f;");
+    expect(head).toContain("border-radius: 0;");
+    expect(head).toContain("cursor: pointer;");
+
+    const count = cssBlock(/(?:^|\n)\.ds__group-count\s*\{[^}]*\}/);
+    expect(count).toContain("background: transparent;");
+    expect(count).toContain("border: 1px solid #bdbdbd;");
+    expect(count).toContain("color: #555555;");
+  });
+
+  it("pads the framed body and drops the card shadow", () => {
+    const tasks = cssBlock(/(?:^|\n)\.ds__tasks\s*\{[^}]*\}/);
+    expect(tasks).toContain("padding: 8px;");
+
+    const card = cssBlock(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
+    expect(card).toContain("border: 2px solid #1f1f1f;");
+    expect(card).toContain("border-radius: 10px;");
+    expect(card).not.toContain("box-shadow");
+  });
+
+  it("scrolls the group column", () => {
+    const groups = cssBlock(/(?:^|\n)\.ds__groups\s*\{[^}]*\}/);
+    expect(groups).toContain("overflow: auto;");
+  });
+
+  it("hides the tasks and rotates the caret for a collapsed group", () => {
+    expect(STYLES_CSS).toContain('.ds__group[data-collapsed="true"] .ds__tasks');
+    expect(STYLES_CSS).toContain('.ds__group[data-collapsed="true"] .ds__group-caret');
+  });
+
+  it("defines the DS panes, resizers, settings and memo", () => {
+    expect(STYLES_CSS).toContain(".ds__resizer");
+    expect(STYLES_CSS).toContain(".ds--browser-max");
+    expect(STYLES_CSS).toContain(".ds-settings__card");
+    expect(STYLES_CSS).toContain(".ds__tab2");
+    expect(STYLES_CSS).toContain(".ds-task");
+    expect(STYLES_CSS).toContain(".ds__task-item");
+    expect(STYLES_CSS).toContain(".ds__task-head");
+    expect(STYLES_CSS).toContain(".dsh-card");
+    expect(STYLES_CSS).toContain('.dsh-chat__send[data-state="stop"]');
   });
 });
 
@@ -129,7 +161,7 @@ describe("Idea height cap", () => {
 describe("Idea card description divider", () => {
   it("draws a top border above the description but not on empty cards", () => {
     const description = STYLES_CSS.match(/(?:^|\n)\.idea-card__description\s*\{[^}]*\}/);
-    expect(description?.[0]).toContain("border-top: 1px solid #8b949e;");
+    expect(description?.[0]).toContain("border-top: 1px solid #bdbdbd;");
 
     const empty = STYLES_CSS.match(/(?:^|\n)\.idea-card__description--empty\s*\{[^}]*\}/);
     expect(empty?.[0]).toContain("border-top: 0;");
@@ -139,8 +171,8 @@ describe("Idea card description divider", () => {
 describe("Idea detail description divider", () => {
   it("draws a top border above the detail description but not when empty", () => {
     const description = STYLES_CSS.match(/(?:^|\n)\.idea-detail__description\s*\{[^}]*\}/g);
-    const bordered = description?.find((rule) => rule.includes("border-top: 1px solid #8b949e;"));
-    expect(bordered).toContain("border-top: 1px solid #8b949e;");
+    const bordered = description?.find((rule) => rule.includes("border-top: 1px solid #bdbdbd;"));
+    expect(bordered).toContain("border-top: 1px solid #bdbdbd;");
     expect(bordered).toContain("padding: 12px 0 0;");
 
     const empty = STYLES_CSS.match(/(?:^|\n)\.idea-detail__description--empty\s*\{[^}]*\}/);
@@ -149,14 +181,44 @@ describe("Idea detail description divider", () => {
   });
 });
 
-describe("Matrix drag feedback styles", () => {
-  it("floats the Matrix drag ghost without capturing pointer events", () => {
-    const ghost = STYLES_CSS.match(/(?:^|\n)\.matrix-drag-ghost\s*\{[^}]*\}/);
-    expect(ghost?.[0]).toContain("position: fixed;");
-    expect(ghost?.[0]).toContain("pointer-events: none;");
-    expect(ghost?.[0]).toMatch(/z-index: \d+;/);
+describe("unified palette", () => {
+  it("puts the header on the page tone with a hairline outline", () => {
+    const topbar = STYLES_CSS.match(/(?:^|\n)\.topbar\s*\{[^}]*\}/);
+    expect(topbar?.[0]).toContain("background: #cccccc;");
+    expect(topbar?.[0]).toContain("border: 1px solid #bdbdbd;");
+  });
 
-    const placeholder = STYLES_CSS.match(/(?:^|\n)\.matrix-drag-placeholder\s*\{[^}]*\}/);
-    expect(placeholder?.[0]).toContain("pointer-events: none;");
+  it("renders nav and buttons as outlined pills with inverted active states", () => {
+    const button = STYLES_CSS.match(/(?:^|\n)\.nav a,\s*\n?\.button\s*\{[^}]*\}/);
+    expect(button?.[0]).toContain("background: #e4e4e4;");
+    expect(button?.[0]).toContain("border-radius: 999px;");
+    const active = STYLES_CSS.match(/(?:^|\n)\.nav \.active,\s*\n?\.button\.primary\s*\{[^}]*\}/);
+    expect(active?.[0]).toContain("background: #262626;");
+    const filter = STYLES_CSS.match(/(?:^|\n)\.task-status-filter \.button\.is-active\s*\{[^}]*\}/);
+    expect(filter?.[0]).toContain("background: #262626;");
+  });
+
+  it("keeps done and skip as monochrome accents", () => {
+    const done = STYLES_CSS.match(/(?:^|\n)\.status--done\s*\{[^}]*\}/);
+    expect(done?.[0]).toContain("background: #262626;");
+    expect(done?.[0]).toContain("border: 2px solid #dcdcdc;");
+    expect(done?.[0]).toContain("color: #dcdcdc;");
+    const skip = STYLES_CSS.match(/(?:^|\n)\.status--skip\s*\{[^}]*\}/);
+    expect(skip?.[0]).toContain("border-color: #6b6b6b;");
+  });
+
+  it("uses the monochrome page and surface tones", () => {
+    const ds = STYLES_CSS.match(/(?:^|\n)\.ds\s*\{[^}]*\}/);
+    expect(ds?.[0]).toContain("background: #cccccc;");
+    const login = STYLES_CSS.match(/(?:^|\n)\.login\s*\{[^}]*\}/);
+    expect(login?.[0]).toContain("background: #cccccc;");
+    const list = STYLES_CSS.match(/(?:^|\n)\.list\s*\{[^}]*\}/);
+    expect(list?.[0]).toContain("background: #d8d8d8;");
+  });
+
+  it("no longer carries the old gray and green accents", () => {
+    for (const stale of ["#1f883d", "#2a9147", "#b7e3c3", "#4ac26b", "#aeb8c4", "#e6e9ee", "#3b434d", "#2f6feb", "#eef4ff", "#f5f9ff", "#e8f0ff", "#c7d3e3"]) {
+      expect(STYLES_CSS, stale).not.toContain(stale);
+    }
   });
 });

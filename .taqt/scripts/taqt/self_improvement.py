@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from loop.state import append_event, safe_id, utc_now
+from .run_record import append_event, safe_id, utc_now
 
 from .task_store import DEFAULT_TASK_ROOT, load_task, save_task
 

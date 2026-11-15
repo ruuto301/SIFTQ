@@ -1,5 +1,7 @@
 # ADR 0068: taqt loop の簡略化と検証・再試行方針を定める
 
+> Status: Superseded by [ADR 0075](0075-move-taqt-loop-to-dsh-skill-and-hooks.md).
+
 ## 決定
 
 - checker / post_review を廃止し、loop を implement → verification → fix の単一構造にする。

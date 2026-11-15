@@ -1,34 +1,26 @@
 import type { FC } from "hono/jsx";
 import type { JSX } from "hono/jsx/jsx-runtime";
+import type { Project } from "../project";
 import type { Task, TaskStatus } from "../task";
+import { ProjectOptions } from "./ProjectOptions";
 
-export const TaskMeta: FC<{ task: Task; returnTo?: "matrix" | "tasks"; listStatus?: TaskStatus }> = ({
+export const TaskMeta: FC<{ task: Task; projects: readonly Project[]; listStatus?: TaskStatus }> = ({
   task,
-  returnTo,
+  projects,
   listStatus = "do",
-}) => {
-  if (returnTo === undefined) return <TaskSidePanel task={task} listStatus={listStatus} />;
-  return <TaskSidePanel task={task} returnTo={returnTo} listStatus={listStatus} />;
-};
+}) => <TaskSidePanel task={task} projects={projects} listStatus={listStatus} />;
 
 export const TaskSidePanel: FC<{
   task: Task;
+  projects: readonly Project[];
   className?: string;
   children?: JSX.Element;
-  returnTo?: "matrix" | "tasks";
   listStatus?: TaskStatus;
-}> = ({
-  task,
-  className = "side-panel",
-  children,
-  returnTo = "tasks",
-  listStatus = "do",
-}) => {
-  const statusQuery = returnTo === "matrix" ? "" : `&status=${listStatus}`;
-  const detailPath = `/tasks/${task.id}?from=${returnTo}${statusQuery}`;
-  const statusPath = `/tasks/${task.id}/status/menu?from=${returnTo}${statusQuery}`;
-  const areaPath = `/tasks/${task.id}/area/menu?from=${returnTo}${statusQuery}`;
-  const workingPath = `/tasks/${task.id}/working?from=${returnTo}${statusQuery}`;
+}> = ({ task, projects, className = "side-panel", children, listStatus = "do" }) => {
+  const statusQuery = `&status=${listStatus}`;
+  const detailPath = `/tasks/${task.id}?from=tasks${statusQuery}`;
+  const statusPath = `/tasks/${task.id}/status/menu?from=tasks${statusQuery}`;
+  const projectPath = `/tasks/${task.id}/project?from=tasks${statusQuery}`;
 
   return (
     <aside
@@ -46,22 +38,27 @@ export const TaskSidePanel: FC<{
       >
         {task.status}
       </a>
-      <MetaRow label="Area" path={areaPath} spaced />
-      <a
-        class="status area-badge"
-        href={areaPath}
-        hx-get={areaPath}
+      <div class="meta-row meta-row--spaced">
+        <h2>Project</h2>
+      </div>
+      <select
+        class={task.project === null ? "project-select project-select--none" : "project-select"}
+        name="project"
+        aria-label="Project"
+        hx-post={projectPath}
+        hx-trigger="change"
+        hx-vals={JSON.stringify({ version: task.version })}
         hx-target="#task-meta"
         hx-swap="innerHTML"
       >
-        {task.area}
-      </a>
+        <ProjectOptions projects={projects} selected={task.project} />
+      </select>
       <div class="meta-row meta-row--spaced">
         <h2>Working</h2>
       </div>
       <button
         class={task.working ? "status working-badge" : "status"}
-        hx-post={workingPath}
+        hx-post={`/tasks/${task.id}/working?from=tasks${statusQuery}`}
         hx-vals={JSON.stringify({ working: task.working ? "false" : "true", version: task.version })}
         hx-target="#task-meta"
         hx-swap="innerHTML"

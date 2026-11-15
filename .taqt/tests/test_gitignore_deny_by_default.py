@@ -25,8 +25,8 @@ ALLOWLISTED_PATHS = (
     ".taqt/session-backup/recipient.pub",
     "sessions/codex/2026/09/26/rollout-abc.jsonl.zst.age",
     "sessions/codex/2026/09/26/rollout-abc.jsonl.zst.age.part-000",
-    "sessions/opencode/opencode.db.zst.age",
-    "sessions/opencode/opencode.db.zst.age.part-000",
+    "sessions/dsh/--repo--/session-id/session.jsonl.zst.age",
+    "sessions/dsh/--repo--/session-id/session.jsonl.zst.age.part-000",
     ".aqua/aqua.yaml",
 )
 IGNORED_PATHS = (

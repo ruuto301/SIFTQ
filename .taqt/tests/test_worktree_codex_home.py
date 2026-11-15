@@ -1,4 +1,4 @@
-"""Tests for shared Codex home usage in taqt runs (Issue #273)."""
+"""Tests for shared Codex home and dsh execution in taqt runs."""
 
 import sys
 from pathlib import Path
@@ -10,7 +10,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / ".taqt" / "scripts"))
 
 from taqt.profiles import resolve_codex_home
-from taqt.task_run import main as task_run_main
+from taqt.task_run import _dsh_command, _parse_session_id, main as task_run_main
 from taqt.task_store import create_issue_task
 
 
@@ -19,7 +19,7 @@ def allow_enabled_label(monkeypatch) -> None:
     monkeypatch.setattr("taqt.task_run.enabled_error", lambda _task: None)
 
 
-def test_profiles_have_no_worktree_codex_home_or_qwen_profile() -> None:
+def test_profiles_have_no_worktree_codex_home_or_loop() -> None:
     profiles = yaml.safe_load(
         (REPOSITORY_ROOT / ".taqt" / "config" / "profiles.yaml").read_text(
             encoding="utf-8"
@@ -28,25 +28,43 @@ def test_profiles_have_no_worktree_codex_home_or_qwen_profile() -> None:
 
     assert set(profiles) == {"main"}
     assert all("codex_home" not in profile for profile in profiles.values())
-    assert profiles["main"]["loop"] == "main_loop"
-    assert profiles["main"]["env_keys"] == [
-        "DEEPSEEK_API_KEY",
-        "OPENCODE_API_KEY",
+    assert "loop" not in profiles["main"]
+    assert profiles["main"]["env_keys"] == ["DEEPSEEK_API_KEY"]
+
+
+def test_dsh_command_uses_headless_profile_and_gates() -> None:
+    workspace = Path.cwd()
+
+    command = _dsh_command(workspace, None)
+
+    assert command[:5] == [
+        "dsh",
+        "--profile",
+        "headless",
+        "--patch",
+        ".config/dsh/cordis.patch.yml",
     ]
+    assert "--permission-mode" in command
+    assert command[command.index("--permission-mode") + 1] == "workspace-write"
+    assert command[command.index("--approval-policy") + 1] == "never"
+    assert command[-1] == "-"
 
 
-def test_main_loop_selects_implement_and_fix_models() -> None:
-    loop = yaml.safe_load(
-        (REPOSITORY_ROOT / ".taqt" / "loops" / "main_loop.yaml").read_text(
-            encoding="utf-8"
-        )
+def test_dsh_command_resumes_a_session() -> None:
+    command = _dsh_command(Path.cwd(), "session-123")
+
+    assert command[command.index("--session-id") + 1] == "session-123"
+
+
+def test_parse_session_id_reads_the_json_stream() -> None:
+    stream = "\n".join(
+        [
+            '{"type":"session","sessionId":"session-abc"}',
+            '{"type":"final","text":"done"}',
+        ]
     )
-    agents = loop["agents"]
 
-    assert set(agents) == {"implement", "fix"}
-    for agent_name in ("implement", "fix"):
-        assert agents[agent_name]["adapter"] == "opencode"
-        assert agents[agent_name]["model"] == "opencode-go/deepseek-v4.1-flash"
+    assert _parse_session_id(stream) == "session-abc"
 
 
 def test_resolve_codex_home_uses_shared_default(tmp_path: Path, monkeypatch) -> None:
@@ -61,7 +79,7 @@ def test_resolve_codex_home_preserves_explicit_override(tmp_path: Path) -> None:
     assert resolve_codex_home(override) == override
 
 
-def test_task_run_inherits_shared_home_and_passes_deepseek_keys(
+def test_task_run_passes_deepseek_key_and_verifies(
     tmp_path: Path, monkeypatch
 ) -> None:
     loop_root = tmp_path / "loops"
@@ -72,17 +90,12 @@ def test_task_run_inherits_shared_home_and_passes_deepseek_keys(
             {
                 "profiles": {
                     "deepseek": {
-                        "loop": "sub_loop",
-                        "env_keys": ["DEEPSEEK_API_KEY", "OPENCODE_API_KEY"],
+                        "env_keys": ["DEEPSEEK_API_KEY"],
                     }
                 }
             },
             sort_keys=False,
         ),
-        encoding="utf-8",
-    )
-    (loop_root / "sub_loop.yaml").write_text(
-        "version: 1\nid: test\nsteps:\n  - id: done\n    kind: terminal\n",
         encoding="utf-8",
     )
     task_root = tmp_path / "tasks"
@@ -92,12 +105,20 @@ def test_task_run_inherits_shared_home_and_passes_deepseek_keys(
     )
     calls: list[dict[str, object]] = []
     monkeypatch.setattr(
-        "taqt.task_run.run_loop",
+        "taqt.task_run._run_dsh",
         lambda **kwargs: calls.append(kwargs)
-        or {"status": "done", "run_dir": str(tmp_path / "run")},
+        or {
+            "failed": False,
+            "reason": None,
+            "exit_code": 0,
+            "session_id": "session-123",
+        },
+    )
+    monkeypatch.setattr(
+        "taqt.task_run.run_verification",
+        lambda **kwargs: {"status": "pass", "findings": [], "commands": []},
     )
     monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-key")
-    monkeypatch.setenv("OPENCODE_API_KEY", "opencode-key")
 
     exit_code = task_run_main(
         [
@@ -106,6 +127,8 @@ def test_task_run_inherits_shared_home_and_passes_deepseek_keys(
             str(loop_root),
             "--task-root",
             str(task_root),
+            "--runs-root",
+            str(tmp_path / "runs"),
             "--workspace",
             str(tmp_path),
             "--skip-readiness-check",
@@ -115,7 +138,58 @@ def test_task_run_inherits_shared_home_and_passes_deepseek_keys(
     )
 
     assert exit_code == 0
-    assert calls[0]["child_environment"] == {
-        "DEEPSEEK_API_KEY": "deepseek-key",
-        "OPENCODE_API_KEY": "opencode-key",
-    }
+    assert calls[0]["child_environment"] == {"DEEPSEEK_API_KEY": "deepseek-key"}
+
+
+def test_task_run_blocks_when_verification_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    loop_root = tmp_path / "loops"
+    loop_root.mkdir()
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "profiles.yaml").write_text(
+        yaml.safe_dump(
+            {"profiles": {"main": {"env_keys": ["DEEPSEEK_API_KEY"]}}},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    task_root = tmp_path / "tasks"
+    task_root.mkdir()
+    task_path, _ = create_issue_task(
+        repo="owner/repo", issue_number=273, task_root=task_root
+    )
+    monkeypatch.setattr(
+        "taqt.task_run._run_dsh",
+        lambda **kwargs: {
+            "failed": False,
+            "reason": None,
+            "exit_code": 0,
+            "session_id": "session-123",
+        },
+    )
+    monkeypatch.setattr(
+        "taqt.task_run.run_verification",
+        lambda **kwargs: {"status": "fix", "findings": [], "commands": []},
+    )
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-key")
+
+    exit_code = task_run_main(
+        [
+            str(task_path),
+            "--loop-root",
+            str(loop_root),
+            "--task-root",
+            str(task_root),
+            "--runs-root",
+            str(tmp_path / "runs"),
+            "--workspace",
+            str(tmp_path),
+            "--skip-readiness-check",
+        ]
+    )
+
+    assert exit_code == 0
+    state_path = next((tmp_path / "runs").rglob("state.json"))
+    state = yaml.safe_load(state_path.read_text(encoding="utf-8"))
+    assert state["status"] == "blocked"

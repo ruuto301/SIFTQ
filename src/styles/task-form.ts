@@ -28,7 +28,7 @@ export const TASK_FORM_CSS = `
 }
 
 .meta-row-link:hover {
-  background: #eaeef2;
+  background: #e4e4e4;
   cursor: pointer;
 }
 
@@ -46,15 +46,21 @@ export const TASK_FORM_CSS = `
 }
 
 .meta-row--spaced {
-  border-top: 1px solid #8b949e;
+  border-top: 1px solid #bdbdbd;
   margin-top: 16px;
+  margin-bottom: 8px;
   padding-top: 16px;
+}
+
+/* Right side panel: keep the same gap between every heading row and its control. */
+.side-panel > .meta-row-link {
+  margin-bottom: 8px;
 }
 
 .meta-caret {
   align-items: center;
   border: 0;
-  color: #3f4854;
+  color: #555555;
   display: inline-flex;
   font-size: 20px;
   justify-content: center;
@@ -74,9 +80,10 @@ input,
 textarea,
 select,
 .description-editor {
-  background: #cfd6de;
-  border: 1px solid #8b949e;
+  background: #e4e4e4;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
+  color: #303030;
   font: inherit;
   padding: 9px 10px;
   width: 100%;
@@ -87,7 +94,7 @@ textarea {
 }
 
 .description-editor {
-  background: #c1c9d3;
+  background: #e4e4e4;
   min-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
@@ -157,16 +164,16 @@ textarea[data-description-value] {
 }
 
 .status-option {
-  border: 1px solid #8b949e;
+  border: 1px solid #1f1f1f;
   border-radius: 6px;
   padding: 10px;
 }
 
 .popover {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 12px;
-  box-shadow: 0 16px 36px rgb(31 35 40 / 18%);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 18%);
   display: grid;
   gap: 0;
   margin-top: 10px;
@@ -190,10 +197,10 @@ details:not([open]) .popover {
 }
 
 .status-group-title {
-  background: #f6f8fa;
-  border-bottom: 1px solid #8b949e;
-  border-top: 1px solid #8b949e;
-  color: #3f4854;
+  background: #e1e1e1;
+  border-bottom: 1px solid #bdbdbd;
+  border-top: 1px solid #bdbdbd;
+  color: #555555;
   font-size: 13px;
   font-weight: 700;
   padding: 10px 16px;
@@ -201,6 +208,8 @@ details:not([open]) .popover {
 
 .status-choice {
   align-items: start;
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
   display: grid;
   gap: 10px;
   grid-template-columns: 20px 16px 1fr;
@@ -208,13 +217,11 @@ details:not([open]) .popover {
 }
 
 .status-choice.selected {
-  background: #f6f8fa;
-  box-shadow: inset 4px 0 0 #0f4d24;
+  background: #dcdcdc;
+  box-shadow: inset 4px 0 0 #1f1f1f;
 }
 
 button.status-choice {
-  background: none;
-  border: 0;
   color: inherit;
   cursor: pointer;
   font: inherit;
@@ -224,9 +231,10 @@ button.status-choice {
 
 .check {
   align-items: center;
-  background: #1f883d;
+  background: #262626;
+  border: 2px solid #dcdcdc;
   border-radius: 4px;
-  color: #ffffff;
+  color: #dcdcdc;
   display: inline-flex;
   font-weight: 700;
   height: 20px;
@@ -235,7 +243,7 @@ button.status-choice {
 }
 
 .box {
-  border: 1px solid #8c959f;
+  border: 1px solid #1f1f1f;
   border-radius: 4px;
   display: inline-flex;
   height: 20px;
@@ -251,31 +259,15 @@ button.status-choice {
 }
 
 .status-dot--do {
-  background: #1b1f24;
-}
-
-.status-dot--one {
-  background: #aeb8c4;
-}
-
-.status-dot--two {
-  background: #8b949e;
-}
-
-.status-dot--three {
-  background: #6e7781;
-}
-
-.status-dot--four {
-  background: #57606a;
+  background: #1f1f1f;
 }
 
 .status-dot--done {
-  background: #0f4d24;
+  background: #262626;
 }
 
 .status-dot--skip {
-  background: #4a5260;
+  background: #8a8a8a;
 }
 
 @media (width >= 48rem) {

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from loop.schema import load_document, validate_task
+from .task_document import load_document, validate_task
 
 from .task_lifecycle import complete_task
 from .task_paths import DEFAULT_TASK_ROOT

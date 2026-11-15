@@ -1,14 +1,13 @@
 import type { FC } from "hono/jsx";
-import { TASK_AREAS, TASK_STATUSES } from "../task";
-import type { TaskArea, TaskStatus } from "../task";
-import { AREA_DOT_CLASSES, STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
-
-export type NewTaskFrom = "matrix" | "tasks";
+import { TASK_STATUSES } from "../task";
+import type { TaskStatus } from "../task";
+import type { Project } from "../project";
+import { ProjectOptions } from "./ProjectOptions";
+import { STATUS_DESCRIPTIONS, STATUS_DOT_CLASSES } from "./task-option-data";
 
 export type NewTaskState = {
   status: TaskStatus;
-  area: TaskArea;
-  from: NewTaskFrom;
+  project: string | null;
 };
 
 const NewTaskStatusChoice: FC<{ status: TaskStatus; selected: TaskStatus }> = ({ status, selected }) => (
@@ -23,19 +22,10 @@ const NewTaskStatusChoice: FC<{ status: TaskStatus; selected: TaskStatus }> = ({
   </label>
 );
 
-const NewTaskAreaChoice: FC<{ area: TaskArea; selected: TaskArea }> = ({ area, selected }) => (
-  <label class={`status-choice${area === selected ? " selected" : ""}`}>
-    <input type="radio" name="area" value={area} checked={area === selected} />
-    <span class={AREA_DOT_CLASSES[area]}></span>
-    <span>
-      <strong>{area}</strong>
-      <br />
-      <span class="muted">Matrix quadrant.</span>
-    </span>
-  </label>
-);
-
-export const NewTaskMeta: FC<{ state: NewTaskState }> = ({ state }) => {
+export const NewTaskMeta: FC<{ state: NewTaskState; projects: readonly Project[] }> = ({
+  state,
+  projects,
+}) => {
   return (
     <aside id="new-task-meta" class="side-panel side-panel--popover-open">
       <details data-popover-close="status">
@@ -49,17 +39,16 @@ export const NewTaskMeta: FC<{ state: NewTaskState }> = ({ state }) => {
           <PopoverCancelButton />
         </section>
       </details>
-      <details data-popover-close="area">
-        <summary class="meta-row meta-row-link meta-row--spaced">
-          <h2>Area</h2>
-          <span class="status area-badge">{state.area}</span>
-        </summary>
-        <section class="popover" aria-label="Apply area to this task">
-          <h3>Apply area to this task</h3>
-          {TASK_AREAS.map((area) => <NewTaskAreaChoice key={area} area={area} selected={state.area} />)}
-          <PopoverCancelButton />
-        </section>
-      </details>
+      <div class="meta-row meta-row--spaced">
+        <h2>Project</h2>
+      </div>
+      <select
+        class={state.project === null ? "project-select project-select--none" : "project-select"}
+        name="project"
+        aria-label="Project"
+      >
+        <ProjectOptions projects={projects} selected={state.project} />
+      </select>
     </aside>
   );
 };

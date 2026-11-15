@@ -9,7 +9,7 @@ const SAMPLE_TASK: Task = {
   description: "description",
   status: "do",
   working: true,
-  area: 2,
+  project: "dsh",
   order: 3,
   version: 1,
   created_at: "2026-01-01T00:00:00.000Z",
@@ -23,7 +23,7 @@ const SAMPLE_ROW = {
   description: "description",
   status: "do",
   working: 1,
-  area: 2,
+  project: "dsh",
   order: 3,
   version: 1,
   created_at: "2026-01-01T00:00:00.000Z",
@@ -37,6 +37,10 @@ function columnField(column: string): string {
 describe("D1 task column list", () => {
   it("maps a stored row to a Task", () => {
     expect(toTask(SAMPLE_ROW)).toEqual(SAMPLE_TASK);
+  });
+
+  it("rejects a row with an unknown project id", () => {
+    expect(toTask({ ...SAMPLE_ROW, project: "Bad Id" })).toBeUndefined();
   });
 
   it("covers exactly the Task fields", () => {

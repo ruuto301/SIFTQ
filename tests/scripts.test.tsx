@@ -16,7 +16,7 @@ describe("client asset registry", () => {
 
   it("loads every registered asset from Layout", () => {
     const html = renderToString(
-      <Layout active="matrix">
+      <Layout active="tasks">
         <span>content</span>
       </Layout>,
     );

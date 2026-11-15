@@ -1,23 +1,20 @@
-"""Encrypted session backup for the public repository (Issue #571).
+"""Encrypted session backup for the public repository.
 
 Codex sessions are backed up file by file: every ``*.jsonl`` under the Codex
 sessions root becomes ``sessions/codex/<YYYY>/<MM>/<DD>/<name>.jsonl.zst.age``.
-Opencode sessions are backed up as one consistent SQLite snapshot of
-``opencode.db`` (every table, ``event`` included) at
-``sessions/opencode/opencode.db.zst.age``. Both are zstd-compressed and
-age-encrypted (X25519). The private identity is never read here; only the
-recipient public key is tracked.
+DeepSeek Harness sessions are backed up file by file from
+``$DSH_HOME/sessions`` to ``sessions/dsh/<relative path>.zst.age``. Both are
+zstd-compressed and age-encrypted (X25519). The private identity is never read
+here; only the recipient public key is tracked.
 """
 
 import argparse
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
-from contextlib import closing
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -172,44 +169,55 @@ def backup_codex(
     return created
 
 
-def opencode_data_root(override: Path | None = None) -> Path:
+def dsh_home(override: Path | None = None) -> Path:
     if override is not None:
         return override
-    env = os.environ.get("OPENCODE_DATA_DIR")
-    return Path(env) if env else Path.home() / ".local" / "share" / "opencode"
+    env = os.environ.get("DSH_HOME")
+    return Path(env) if env else Path.home() / ".dsh"
 
 
-def opencode_db_path(data_root: Path | None = None) -> Path:
-    return opencode_data_root(data_root) / "opencode.db"
+def dsh_sessions_root(dsh_home_dir: Path | None = None) -> Path:
+    return (dsh_home_dir or dsh_home()) / "sessions"
 
 
-def opencode_backup_path(output_root: Path = DEFAULT_OUTPUT_ROOT) -> Path:
-    return output_root / "opencode" / "opencode.db.zst.age"
+def dsh_session_files(sessions_root: Path) -> list[Path]:
+    patterns = ("session*.jsonl", "session*.jsonl.zst")
+    files: set[Path] = set()
+    for pattern in patterns:
+        files.update(
+            path for path in sessions_root.rglob(pattern) if path.is_file()
+        )
+    return sorted(files)
 
 
-def snapshot_sqlite(source: Path, target: Path) -> None:
-    with closing(sqlite3.connect(source)) as source_conn:
-        with closing(sqlite3.connect(target)) as target_conn:
-            source_conn.backup(target_conn)
+def dsh_backup_path(sessions_root: Path, source: Path, output_root: Path) -> Path:
+    relative = source.relative_to(sessions_root)
+    return output_root / "dsh" / relative.parent / f"{relative.name}.zst.age"
 
 
-def backup_opencode(
+def backup_dsh(
     *,
-    db_path: Path,
+    sessions_root: Path,
     output_root: Path = DEFAULT_OUTPUT_ROOT,
     recipient_file: Path = DEFAULT_RECIPIENT_FILE,
     part_size: int = DEFAULT_PART_SIZE,
 ) -> list[Path]:
-    if not db_path.is_file():
-        raise SystemExit(f"opencode database not found: {db_path}")
+    if not sessions_root.is_dir():
+        raise SystemExit(f"dsh sessions root not found: {sessions_root}")
     if not recipient_file.is_file():
         raise SystemExit(f"age recipient file not found: {recipient_file}")
 
-    target = opencode_backup_path(output_root)
-    with tempfile.TemporaryDirectory() as temporary_dir:
-        snapshot = Path(temporary_dir) / "opencode.db"
-        snapshot_sqlite(db_path, snapshot)
-        return compress_encrypt(snapshot, target, recipient_file, part_size)
+    created: list[Path] = []
+    for source in dsh_session_files(sessions_root):
+        target = dsh_backup_path(sessions_root, source, output_root)
+        existing = existing_archive(target)
+        if (
+            existing
+            and min(path.stat().st_mtime for path in existing) >= source.stat().st_mtime
+        ):
+            continue
+        created.extend(compress_encrypt(source, target, recipient_file, part_size))
+    return created
 
 
 def decompress_decrypt(
@@ -288,27 +296,44 @@ def restore_codex(
     return restored
 
 
-def restore_opencode(
+def dsh_restore_path(backup_root: Path, source: Path, sessions_root: Path) -> Path:
+    relative = source.relative_to(backup_root / "dsh")
+    name = relative.name[: -len(".zst.age")]
+    return sessions_root / relative.parent / name
+
+
+def restore_dsh(
     *,
     backup_root: Path = DEFAULT_OUTPUT_ROOT,
-    db_path: Path,
+    sessions_root: Path,
     identity: Path | str,
-) -> Path:
-    target = opencode_backup_path(backup_root)
-    sources = existing_archive(target)
-    if not sources:
-        raise SystemExit(f"opencode backup not found: {target}")
-    decompress_decrypt(sources, db_path, identity)
-    return db_path
+) -> list[Path]:
+    dsh_root = backup_root / "dsh"
+    targets = sorted(
+        {
+            archive_target(path)
+            for path in dsh_root.rglob("*")
+            if path.is_file() and ".zst.age" in path.name
+        }
+    )
+    restored: list[Path] = []
+    for target in targets:
+        sources = existing_archive(target)
+        if not sources:
+            continue
+        destination = dsh_restore_path(backup_root, target, sessions_root)
+        decompress_decrypt(sources, destination, identity)
+        restored.append(destination)
+    return restored
 
 
 def add_target_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--codex-home", type=Path)
     parser.add_argument("--sessions-root", type=Path)
-    parser.add_argument("--opencode-db", type=Path)
+    parser.add_argument("--dsh-home", type=Path)
     parser.add_argument(
         "--only",
-        choices=("codex", "opencode", "all"),
+        choices=("codex", "dsh", "all"),
         default="all",
         help="Limit the command to one session source (default: all).",
     )
@@ -323,10 +348,10 @@ def run_backup(args: argparse.Namespace) -> int:
             recipient_file=args.recipient,
         ):
             print(path)
-    if args.only in ("opencode", "all"):
-        db_path = args.opencode_db or opencode_db_path()
-        for path in backup_opencode(
-            db_path=db_path,
+    if args.only in ("dsh", "all"):
+        sessions_root = dsh_sessions_root(args.dsh_home)
+        for path in backup_dsh(
+            sessions_root=sessions_root,
             output_root=args.output_root,
             recipient_file=args.recipient,
         ):
@@ -350,14 +375,14 @@ def run_restore(args: argparse.Namespace) -> int:
             identity=identity,
         ):
             print(path)
-    if args.only in ("opencode", "all"):
-        print(
-            restore_opencode(
-                backup_root=args.backup_root,
-                db_path=args.opencode_db or opencode_db_path(),
-                identity=identity,
-            )
-        )
+    if args.only in ("dsh", "all"):
+        sessions_root = dsh_sessions_root(args.dsh_home)
+        for path in restore_dsh(
+            backup_root=args.backup_root,
+            sessions_root=sessions_root,
+            identity=identity,
+        ):
+            print(path)
     return 0
 
 

@@ -1,6 +1,6 @@
 # セッションの暗号化バックアップと復元
 
-Codex と opencode の会話セッションを公開リポジトリへ保存する手順を定める。判断の理由は [ADR 0069](../adr/0069-encrypt-session-backup-with-age.md) に従う。
+Codex と DeepSeek Harness（dsh）の会話セッションを公開リポジトリへ保存する手順を定める。判断の理由は [ADR 0076](../adr/0076-back-up-dsh-sessions-with-age.md) に従う。
 
 ## 方針
 
@@ -48,13 +48,11 @@ task -t .config/Taskfile.yml session:backup
 ```
 
 - Codex の `*.jsonl` を 1 ファイルずつ `sessions/codex/<YYYY>/<MM>/<DD>/<name>.jsonl.zst.age` へ保存する。
-- opencode の `opencode.db` を整合性のあるスナップショットとして `sessions/opencode/opencode.db.zst.age` へ保存する。
+- dsh の `$DSH_HOME/sessions` 配下のセッションログを、相対パスを保って `sessions/dsh/...zst.age` へ保存する。
 - 入力が変わっていないアーカイブは再作成しない。
-- 対象を限定する場合は `task -t .config/Taskfile.yml session:backup -- --only codex` のように `--only` を渡す。
+- 対象を限定する場合は `task -t .config/Taskfile.yml session:backup -- --only codex` のように `--only` を渡す。dsh だけなら `--only dsh`。
 
-## `event` 包含範囲
-
-opencode の標準 export には `event` テーブルが含まれない。そのためバックアップは `opencode.db` 全体のスナップショットを採用し、`event` を含む全テーブルを保存する。codex は元の `*.jsonl` をそのまま保存する。
+dsh の保存先を変える場合は `--dsh-home` を指定する。既定は `DSH_HOME`、未設定なら `~/.dsh`。
 
 ## 復元
 
@@ -63,18 +61,13 @@ task -t .config/Taskfile.yml session:restore
 ```
 
 - Codex は `sessions/codex/` を展開して元のディレクトリ構成へ戻す。
-- opencode は `sessions/opencode/opencode.db.zst.age` を `opencode.db` へ戻す。
-- 対象を限定する場合は `--only` を渡す。復元先を変える場合は `--sessions-root` や `--opencode-db` を指定する。
-- 復元後に opencode の DB は `PRAGMA integrity_check` が `ok` になることを確認する。
+- dsh は `sessions/dsh/` を展開して `$DSH_HOME/sessions` の構成へ戻す。
+- 対象を限定する場合は `--only` を渡す。復元先を変える場合は `--sessions-root` や `--dsh-home` を指定する。
 
-```bash
-sqlite3 ~/.local/share/opencode/opencode.db 'PRAGMA integrity_check;'
-```
+## 対象外
 
-## 初回サイズと増加
-
-- 初回のバックアップは codex 約 76MB と opencode 約 130–150MB を合わせて約 200–230MB になる見込み。
-- 以降の増加量はバックアップ頻度に比例する。実行頻度をそのままリポジトリ増加量として扱う。
+- dsh の画像などの添付実体はセッションログとは別に保存されるため、このバックアップには含めない。
+- opencode のデータベースバックアップは廃止した。既存の `sessions/opencode/` 配下の暗号文は履歴として残す。
 
 ## 履歴永続の限界
 

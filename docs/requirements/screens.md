@@ -10,31 +10,20 @@
 | id | 画面名 | 概要 |
 | --- | --- | --- |
 | P00 | Login | プレビューへログインする画面 |
-| P01 | Matrix | タスクを4象限のマトリックスでDnDする画面 (do statusのタスクのみを表示) |
 | P02 | Task list | タスク一覧画面。選択したstatusのタスクを表示する |
-| P03 | Task detail | タスク詳細画面 title、description、status、area を確認・編集する |
+| P03 | Task detail | タスク詳細画面 title、description、status、project を確認・編集する |
 | P04 | New task | 新規タスク作成画面 |
 | P05 | Status popover | 新規作成・詳細画面内のステータス選択パネル |
-| P06 | Area popover | 新規作成・詳細画面内のエリア選択パネル |
-| P07 | Delete confirmation dialog | Matrix 上の task を完全削除する確認ダイアログ |
+| P07 | Delete confirmation dialog | Task list 上の選択タスクを完全削除する確認ダイアログ |
 | P08 | Idea list | Ideaをカード一覧で管理する画面 |
 | P09 | Idea detail | Idea詳細画面 title、description、pinned を確認・編集する |
+| P10 | DS | project ごとに区切ったタスク一覧と選択中タスクの title / description 編集、DSH の chat、設定、browser を 1 画面で扱う |
+| P11 | Connections | 連携した MCP クライアント（OAuth）の一覧と失効 |
+| P12 | Consent | MCP クライアントへ権限を委任する同意画面 |
+| P13 | Settings | project の一覧・追加・改名・削除・並べ替えを行う画面 |
+| P14 | MK | メモを色・ピン・画像で整理する画面 |
 
 ## 画面詳細
-
-- `Matrix` (`/matrix`)
-  - `status = do` の task だけを表示する。
-  - task は `area = 1 / 2 / 3 / 4` の象限に分けて表示する。
-  - 縦軸は `重要度`、横軸は `緊急度` とする。
-  - task card は title のみを表示する。
-  - task card は matrix 上で drag and drop できる。
-  - task card を右クリックすると task action menu を表示する。
-  - task action menu の選択肢は `delete`、`skip`、`done` の順で表示する。
-  - `done` を選択すると task の status を `done` に変更し、Matrix から除外する。
-  - `skip` を選択すると task の status を `skip` に変更し、Matrix から除外する。
-  - `delete` を選択すると Delete confirmation dialog を表示する。
-  - task card 以外の空白部分を押下すると、その area を選択済みとして `/tasks/new?area=<area>` へ遷移する。
-  - task action menu は右クリックによるマウス操作だけを対象とする。操作ボタン、キーボード操作、タッチ端末の長押し、スクリーンリーダーは対象外とする。
 
 - `Task list` (`/tasks`)
   - `do`、`done`、`skip` の status 切り替えボタンを表示する。
@@ -43,20 +32,23 @@
   - Task list 以外の画面から `/tasks` へ遷移した場合は `do` を選択する。
   - 選択した status と一致する task だけを表示する。該当 task がない場合は空状態メッセージを表示する。
   - 並びは `updated_at` の降順（新しい順）とする。
-  - 各行は title、area badge、status badge を表示する。
-  - area badge は `1 / 2 / 3 / 4` を表示する。
+  - 各行は title、project ラベル、status badge を表示する。
+  - project ラベルは `#<表示名>` を表示する（表示名が無い場合は id）。未設定の task は淡色で `未分類` を表示する。
   - status badge は `do / done / skip` を表示する。
   - status 絞り込み後の件数を25件単位でページ分割し、一覧下にページナビを表示する。
   - ページナビはページ番号と前へ/次へを持ち、先頭・最終ページは常に表示して間の飛び区間は「…」にまとめる。
   - 25件以下ではページナビを表示しない。
   - ページ指定は `/tasks?status=<status>&page=<page>` で保持する。status 切替時は1ページ目に戻る。
   - 数値以外のページ指定は1ページ目へ、範囲超過は最終ページへ寄せる。
-  - 検索欄は `q` query で保持し、`is:do`、`is:done`、`is:skip`、`label:working` を status・label 絞り込みとして解釈する。
-  - `Labels` メニューから全label表示と `working only` を切り替える。
+  - 検索欄は `q` query で保持し、`is:do`、`is:done`、`is:skip`、`working:on`、`working:off`、`project:<id>`、`project:none` を status・working・project 絞り込みとして解釈する。これら以外の語は title / description の部分一致（フリーワード、複数語は AND）として扱う。
+  - `is:` を省略したときは `status` query（既定 `do`）で絞り込む。
+  - 検索欄の placeholder は `見積もり is:do project:Yoriwake working:on` とする。
+  - 検索欄の右（🔍 の左）に `Filter` ボタンを置き、メニューから全label / `working only` と、Projects 節の全 project / `未分類` / 各 project を選択できる。選択すると検索欄の `project:<id>` を差し替える。絞り込み中は `Filter` を反転表示（黒地 + 軟白縁）にする。
   - 各行に checkbox を表示し、一覧内の全選択と選択件数（`N of M selected`）を提供する。
-  - 選択時は status 切り替えを隠し、`Mark as`（`do`、`done`、`skip`）、`Labels`、`delete` を表示する。
+  - 選択時は status 切り替えを隠し、`Mark as`（`do`、`done`、`skip`）、`Project`（`未分類` と各 project）、`delete` を表示する。
   - bulk 操作は選択中のtaskへ適用し、delete前には選択件数を含む確認ダイアログを表示する。
   - bulk 操作で競合または通信エラーが発生した場合は一覧上にエラーを表示し、競合時は再読み込みを促す。
+  - `New task` は検索で絞り込んだ project を引き継ぎ、`/tasks/new?project=<id>` で既定 project とする。
 
 - `Idea list` (`/ideas`)
   - Task とは独立したIdeaをカード一覧で表示する。
@@ -69,7 +61,12 @@
   - pin操作でカードの固定状態を切り替える。
   - カードをdrag and dropして同じグループ内の`order`を変更する。
   - ピン留め状態を切り替えたカードは移動先グループの末尾へ移動し、グループ内の`order`を振り直す。
+  - カードを右クリックすると、`Matrixに移動` と `削除` をこの順で表示する。
+  - `Matrixに移動` を選択すると Idea を一覧から除外し、同じ title / description の task を `status = do`、`project = 未設定`、`working = false` で末尾に作成する。
+  - カードの `…` メニューは `削除` だけを表示する。
   - 削除操作の確認後、Ideaを一覧から除外する。
+  - Idea 詳細モーダルの表示中、および移動処理中は移動メニューを開かない。
+  - 移動に失敗した場合はカードを変更せず、画面上部に「移動に失敗しました。もう一度お試しください。」を表示する。
 
 - `Idea detail` (`/ideas/:id` と Ideas 一覧から開く詳細モーダル)
   - title と description を編集し、自動保存する。
@@ -83,7 +80,9 @@
   - description 内の http/https URL は編集領域内でリンクとして表示する。
   - URL の通常クリックは同じタブ、Ctrl クリック / Command クリックは別タブで開く。
   - URL のリンク表示は編集用の表示であり、保存する description はプレーンテキストとする。
-  - status と area は右側 metadata として表示する。
+  - status と project は右側 metadata として表示する。
+  - status は Status の popover から選択する。
+  - project は Status の下の `<select>` から選択する。先頭は `未分類` とし、変更すると即時保存する。
   - `Cancel` は遷移前の一覧へ戻る。
   - `Save` は編集内容を保存する。
 
@@ -93,43 +92,137 @@
   - description 内の http/https URL は編集領域内でリンクとして表示する。
   - URL の通常クリックは同じタブ、Ctrl クリック / Command クリックは別タブで開く。
   - URL を貼り付けた場合もリンクとして表示し、保存する description はプレーンテキストとする。
-  - status と area は右側 metadata として表示する。
-  - status と area はそれぞれの popover から選択する。選択内容は `Create` まで保存しない。
-  - 初期値は `status = do`、`area = 1` とする。
-  - `from` query で遷移元を受け取る。`from=matrix` は Matrix、`from=tasks` または省略時は Task list とする。
-  - Matrix の New task と area 新規作成リンクは `from=matrix` を付与し、Task list の New task は `from=tasks` を付与する。
-  - `status` / `area` の query 指定は従来どおり初期値へ反映し、`from` と同時に指定できる。`/tasks/new?area=<area>` は指定 area を初期選択する。
-  - `Status` / `Area` の選択中も `from` を保持する。
-  - `Cancel` は `from` に従い遷移元へ戻る。
-  - `Create` は task を作成して detail へ進む。
+  - status と project は右側 metadata として表示する。
+  - status は popover から選択し、選択内容は `Create` まで保存しない。
+  - project は `<select>` から選択し、選択内容は `Create` まで保存しない。
+  - 初期値は `status = do`、`project = 未分類` とする。
+  - `project` query が指定され、その project が存在する場合は初期選択にする。
+  - `status` query は初期値へ反映する。
+  - `Create` で作成した task は、既存 task の `order` を 1 つずつ繰り下げて先頭（`order = 1`）に置く。DS では該当 project グループの先頭に表示される。
+  - `Cancel` は Task list へ戻る。
+  - `Create` は task を作成して Task list へ進む。
 
 - `Status popover`
   - new task または detail 画面上で status 選択 popover を開いた状態を表す。
   - 選択肢は `do / done / skip` とする。
   - 完成 UI では同じ detail surface 上で開く。
-  - popover と Status / Area サイドパネルの外側を押下すると、現在の選択を保持して通常表示へ戻る。
-
-- `Area popover`
-  - new task または detail 画面上で area 選択 popover を開いた状態を表す。
-  - 選択肢は `1 / 2 / 3 / 4` とする。
-  - 完成 UI では同じ detail surface 上で開く。
-  - popover と Status / Area サイドパネルの外側を押下すると、現在の選択を保持して通常表示へ戻る。
+  - popover と Status サイドパネルの外側を押下すると、現在の選択を保持して通常表示へ戻る。
 
 - `Delete confirmation dialog`
-  - Matrix の中央に表示する。
-  - メッセージは「このタスクを削除しますか？」とする。
+  - Task list 上で選択タスクの `delete` を押すと表示する。
+  - メッセージは「選択した N 件のタスクを削除しますか？」とする。
   - ボタンは `キャンセル` と `削除` とする。
-  - 表示中は画面全体を overlay で覆い、背後の Matrix を操作できないようにする。
+  - 表示中は画面全体を overlay で覆い、背後の一覧を操作できないようにする。
   - `キャンセル` は task を変更せずにダイアログを閉じる。
-  - `削除` は task を完全削除し、Matrix と Task list から除外する。
+  - `削除` は選択タスクを完全削除し、Task list から除外する。
+
+- `DS` (`/ds`)
+  - 3 ペイン構成とし、左に Task list、中央に DSH、右に Browser を表示する。
+  - 左ペインは `do`、`done`、`skip` の status 切り替えボタンを表示する。
+  - status は `/ds?status=<status>` で保持し、未指定または不正な status は `do` とする。
+  - 選択した status と一致する task だけを表示する。
+  - status タブの直下（グループ一覧のスクロール領域の外）に、タスク入力欄と `追加` ボタンを表示する。
+  - 入力欄の下に追加先 project の `select` を表示する。選択肢は project の一覧に `未分類` を加えたもので、`未分類` は最後に置く。
+  - 追加先の既定値は選択中 task の project とし、task 未選択のときは `未分類` とする。タブまたは task を切り替えると既定値へ戻る。
+  - `Enter`、`Ctrl + Enter`（Mac は `⌘ + Enter`）または `追加` で task を作成する。status は選択中のタブ、project は追加先 `select` の値とし、`未分類` は project 未設定として送る。
+  - 作成した task は該当 project グループの先頭へ追加し、その行を強調表示して件数を更新する。グループが折りたたまれている場合は折りたたんだままにする。ページ全体は再読み込みしない。
+  - 入力欄が空のときは `追加` を無効にする。変換確定の `Enter` / `Ctrl + Enter` では送信しない。`Escape` は入力を消す。
+  - task 名が 256 文字を超える場合と作成に失敗した場合は、入力内容を保持したままエラーを表示する。
+  - task は project ごとにグループ化し、`projects.sort_order` の昇順で並べる。project 未設定の task は最後の `未分類` グループに表示する。
+  - 各グループは見出しバー（`▾ project名 件数`）とその下のタスクカードで構成する。グループ全体を 2px の黒枠（角丸 8px）で囲み、見出しバーを枠の上辺にする。
+  - 見出しバーは黒地に白文字とし、件数バッジは背景を持たず枠線のみで表示する。
+  - 枠の内側にはカードとの間に白の余白を置く。枠はグループの中身の高さに追従し、タスクの追加・削除・折りたたみで伸縮する。タスクが増えても他のグループの枠は縮まず、一覧側がスクロールする。
+  - 見出しバーを押すとグループを折りたたみ、折りたたみ状態は再読み込み後も維持する。折りたたむと枠は見出しバー 1 行に縮む。
+  - 各カードは title と `working` badge を表示する。status badge と project ラベルは表示しない。
+  - task 行を右クリックすると action menu を表示する。
+  - action menu は先頭に task 名と `status ・ project` を表示する。選択肢は `status` の `do` / `done` / `skip`（現在値は黒地 + 白文字のピル）、`project`（現在の project 名と `▸`、サブメニューは `未分類` と各 project）、`copy title`、区切りの下に `working`（`on` / `off`）と `delete` とする。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。
+  - status 変更後、選択中 status と一致しない行は一覧から除外する。選択中だった場合は同じ status の一覧へ移動する。
+  - project 変更後は一覧を読み込み直してグループへ反映する。
+  - task カードをドラッグして別の project グループへドロップすると、その task の project を変更する。`未分類` へドロップすると project を未設定へ戻す。
+  - project 見出しをドラッグして別の見出しへドロップすると並び順を変更し、`projects.sort_order` を更新する。`未分類` は並び替えの対象外で常に最後に表示する。
+  - グループ内の task は `order` の昇順（同値は id 順）で表示する。同じ project グループ内で task カードをドラッグ&ドロップすると表示順を変更し、`tasks.order` を更新する。
+  - ドラッグ中は受け入れ可能なターゲットで `dragover` を `preventDefault` し、`dropEffect = "move"` とドロップ位置の表示（枠線・挿入線）を出す。`dragend` または `Escape` で表示を戻す。
+  - 並び替えや project 変更に失敗した場合は元の表示へ戻し、左ペインに失敗を表示する。
+  - 削除は確認後に task を完全削除する。
+  - 削除の確認は、既存の中央モーダル（`.matrix-modal`）を使ったダイアログで表示する。ダイアログはビューポート中央に置き、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。
+  - 中央ペインは `task`、`Chat`、`設定` の順でタブを表示し、初期表示は `task` とする。
+  - 中央ペインはタブ行の直下に選択中 task の title を重複表示しない。title は `task` タブの入力欄にだけ表示する。
+  - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
+  - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
+  - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
+  - `task` タブは選択中 task の title と description を表示し、`保存` で確定する。未選択時は選択を促す案内を表示する。
+  - `task` タブは初期表示から task の title と description を表示する。DSH transport が使える場合は `desc.get` の応答を description に反映する。
+  - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
+  - `task` タブの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。
+  - `task` タブは 409（競合）のとき入力を保持したままエラーを表示する。DSH が description を更新しても、未保存の入力がある間は表示を書き換えない。
+  - `設定` タブは選択中 profile の設定を表示し、保存する。
+  - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
+  - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。
+  - ペイン幅と最大化状態は再読み込み後も維持する。
+
+### P11 Connections
+
+  - 表示項目はクライアント名、client_id、要求スコープ、有効なトークンの有無、発行日時とする。
+  - 各クライアントの `失効` で有効なトークンをすべて revoke し、以後そのクライアントの `/mcp` 呼び出しは 401 になる。
+
+### P12 Consent
+
+  - `GET /oauth/authorize` の検証が通ると、クライアント名と要求スコープ（`read` / `write`）を表示する。`write` は削除を含む旨を明記する。
+  - `許可` で認可コードを発行して `redirect_uri` へ 302 する。`拒否` は `error=access_denied` を返す。
+
+### P13 Settings
+
+- ナビは `Ideas`、`Tasks`、`DS`、`Settings` の順で表示し、`Settings` から開く。
+- Projects 節に project を `sort_order` 昇順で一覧表示する。各行は表示名、id、その project のタスク件数、`↑`、`↓`、`名前を編集`、`削除` を表示する。
+- 一覧の下に `未分類` の件数を固定で表示する。未分類は削除できない。
+- 新しい project は名前を入力して `追加` で作成する。id は名前から自動生成し、使えない場合はランダムな id にする。
+- `名前を編集` は行内の入力欄で変更する。`Enter` で保存し、`Escape` で取り消す。
+- `↑` `↓` で並び順を入れ替える。並びは task list と DS のグループに反映される。
+- `削除` は確認ダイアログを表示する。その project にタスクがあるときは「N 件のタスクは未分類になります」を併記し、確定するとタスクは未分類へ移ってから project を削除する。
+
+### P14 MK
+
+  - ナビは `Ideas`、`MK`、`Tasks`、`DS`、`Settings` の順で表示する。
+  - サイドバー上部に `＋ 新規メモ` を置く。押すとメモ入力欄を開き、title にフォーカスする。
+  - サイドバーは `メモ`、`ピンあり`、`ピンなし` の絞り込みと、その件数を表示する。
+  - 色の絞り込みは `default`、`red`、`orange`、`yellow`、`green`、`blue`、`purple` の 7 つを表示する。選択中の色をもう一度押すと絞り込みを解除する。
+  - 検索は `メモを検索（タイトル / 本文）` を placeholder とし、入力があるときは × で解除できる。
+  - 選択は `☑ 選択` で切り替え、選択中は一括操作（色の変更、ピン、削除、選択解除）を表示する。
+  - メモ入力欄は title の placeholder を `新しいメモのタイトル`、本文を `本文。Ctrl+V で画像を貼り付けできます。` とし、`📋 Ctrl+V で画像を貼り付け` のヒントを表示する。
+  - 色は参照元 MyKeep と同じ 7 色（ライト `#ffffff` / `#ffe9e7` / `#ffeddc` / `#fff5cf` / `#e4f3df` / `#e1efff` / `#efe7fb`）をカード背景とスウォッチに使う。
+  - 期間の絞り込みは 作成日 / 更新日 と 開始日 / 終了日 を指定し、`dateKind`、`from`、`to` query で保持する。終了日はブラウザのタイムゾーンでその日の終わりまで含める。
+  - 並び順は `updated` / `created` と `asc` / `desc` を選び、`sort=updated:desc` 形式の query で保持する。選択はブラウザに保存し、次の `/mk` 表示へ引き継ぐ。
+  - 保存した検索は名前と現在の絞り込み query をブラウザに最大 20 件保存し、読み込み・改名・削除ができる。
+  - 表示テーマは システム / ライト / ダーク を選び、ブラウザに保存する。ダークは `html` の `data-theme` で切り替え、MK 画面だけに適用する。
+  - 本文または title の URL はリンクカードとして表示する。保存時または `🔗` でサーバーがメタデータを取得し、失敗したときは素のリンクだけを表示する。
+
+## MCP
+
+  - `POST /mcp` は Streamable HTTP の JSON-RPC 2.0 を受け付け、`initialize`、`notifications/initialized`、`ping`、`tools/list`、`tools/call` を処理する。
+  - 認可は OAuth のアクセストークン（`Authorization: Bearer`）とし、未認証は 401 と `WWW-Authenticate: Bearer resource_metadata=...` を返す。
+  - `read` スコープは読み取りツールのみ、`write` スコープは tasks / projects / ideas の全操作を実行できる。
+  - 書き込みツールは `version` を必須とし、不一致はエラー結果（`CONFLICT`）を返す。削除系は `destructiveHint` を持つ。
+  - `GET /mcp` は 405 を返す。
 
 ## 画面遷移
 
-共通ナビゲーションは左から `Ideas`、`Matrix`、`Tasks` の順に表示する。一覧、詳細、モバイル表示で同じ順序とする。
+共通ナビゲーションは左から `Ideas`、`Tasks`、`DS` の順に表示する。一覧、詳細、モバイル表示で同じ順序とする。
+`/matrix` へのリクエストは 301 で `/tasks` へ転送する。
 画面遷移は `presentation.json` の `navigation` を正本とする。`task docs:domain:svg` で `domain-model.json` にマージし、図（`nav.svg`）を生成する。
 
 ## モック BE プレビュー
 
 - `bun run preview:mock` で起動する。
 - `http://127.0.0.1:8787` を開き、パスワード `preview` でログインする。
-- Matrix と Task list は固定初期データを表示する。Idea list は固定初期データにブラウザのlocalStorageで作成・編集・削除・ピン留め・並べ替えの変更を重ねる。localStorageを削除するとIdeaだけ初期状態に戻る。
+- `DS` は DSH transport（`dsh siftq`）と browser 実行環境を必要とする。
+- Task list と DS は固定初期データを表示する。Idea list は固定初期データにブラウザのlocalStorageで作成・編集・削除・ピン留め・並べ替えの変更を重ねる。localStorageを削除するとIdeaだけ初期状態に戻る。
+
+## 表示テーマ（モノクロ・快適テーマ）
+
+長時間の利用でも疲れにくいことを目的に、全画面を無彩色（彩度 0）のモノクロームで表示する。
+
+- ページ `#cccccc`、面板 `#d8d8d8`、操作要素 `#e4e4e4`、本文 `#303030`、補助 `#555555`。
+- 黒地の要素（ナビの active、主要ボタン、`done`）は `#262626` の地に 2px `#dcdcdc` の軟白縁。
+- 一覧・パネル・ポップオーバー・操作要素は 2px `#1f1f1f` の黒縁。タスク一覧は**外周 1 枠のみ**で、行間は 1px `#bdbdbd` のヘアライン。
+- `Mark as` / `Project` / `Labels` のドロップダウンは本体 2px・各項目 1px の黒縁。ステータス選択の各項目も 1px の黒縁。
+- 本文は Atkinson Hyperlegible（Latin）と Noto Sans JP（日本語）を優先するフォントスタック、行間 1.7。文字コントラストは 4.5:1 以上、境界は 3:1 以上。外部フォントは読み込まず、OS の日本語 UI フォントへフォールバックする。

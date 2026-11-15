@@ -1,6 +1,8 @@
 import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
-import { pageNavItems } from "../task-list";
+import type { Project } from "../project";
+import { pageNavItems, replaceQueryToken, withQueryToken } from "../task-list";
+import type { TaskWorkingFilter } from "../task-list";
 import { TaskRow } from "../components/TaskRow";
 import { NewTaskLink } from "./navigation";
 
@@ -9,8 +11,16 @@ const TASK_STATUS_OPTIONS: { status: TaskStatus; label: string }[] = TASK_STATUS
   label: status,
 }));
 
-function TaskStatusFilter({ status, workingOnly }: { status: TaskStatus; workingOnly: boolean }) {
-  const workingParam = workingOnly ? "&working=only" : "";
+function TaskStatusFilter({
+  status,
+  working,
+  query,
+}: {
+  status: TaskStatus;
+  working: TaskWorkingFilter | undefined;
+  query: string | undefined;
+}) {
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   return (
     <>
       <nav
@@ -18,16 +28,22 @@ function TaskStatusFilter({ status, workingOnly }: { status: TaskStatus; working
         aria-label="Filter tasks by status"
         data-task-status-tabs
       >
-        {TASK_STATUS_OPTIONS.map((option) => (
-          <a
-            key={option.status}
-            class={option.status === status ? "button small is-active" : "button small"}
-            aria-current={option.status === status ? "true" : undefined}
-            href={`/tasks?status=${option.status}${workingParam}`}
-          >
-            {option.label}
-          </a>
-        ))}
+        {TASK_STATUS_OPTIONS.map((option) => {
+          const nextQuery =
+            query === undefined ? undefined : replaceQueryToken(query, "is:", `is:${option.status}`);
+          const queryParam =
+            nextQuery === undefined ? "" : `&q=${encodeURIComponent(nextQuery)}`;
+          return (
+            <a
+              key={option.status}
+              class={option.status === status ? "button small is-active" : "button small"}
+              aria-current={option.status === status ? "true" : undefined}
+              href={`/tasks?status=${option.status}${workingParam}${queryParam}`}
+            >
+              {option.label}
+            </a>
+          );
+        })}
       </nav>
       <p
         class="task-selection-summary task-selection-summary--toolbar"
@@ -44,15 +60,15 @@ function TaskStatusFilter({ status, workingOnly }: { status: TaskStatus; working
 function PageNavLink({
   status,
   page,
-  workingOnly,
+  working,
   query,
 }: {
   status: TaskStatus;
   page: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
-  const workingParam = workingOnly ? "&working=only" : "";
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   const queryParam = query === undefined ? "" : `&q=${encodeURIComponent(query)}`;
   return (
     <a
@@ -70,14 +86,14 @@ function PageNavItem({
   index,
   status,
   currentPage,
-  workingOnly,
+  working,
   query,
 }: {
   item: number | "ellipsis";
   index: number;
   status: TaskStatus;
   currentPage: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
   if (item === "ellipsis") {
@@ -94,24 +110,24 @@ function PageNavItem({
       </span>
     );
   }
-  return <PageNavLink key={item} status={status} page={item} workingOnly={workingOnly} query={query} />;
+  return <PageNavLink key={item} status={status} page={item} working={working} query={query} />;
 }
 
 function PageNav({
   status,
   currentPage,
   totalPages,
-  workingOnly,
+  working,
   query,
 }: {
   status: TaskStatus;
   currentPage: number;
   totalPages: number;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string | undefined;
 }) {
   if (totalPages <= 1) return null;
-  const workingParam = workingOnly ? "&working=only" : "";
+  const workingParam = working === undefined ? "" : `&working=${working}`;
   const queryParam = query === undefined ? "" : `&q=${encodeURIComponent(query)}`;
   const href = (page: number) => `/tasks?status=${status}${workingParam}${queryParam}&page=${page}`;
   return (
@@ -132,7 +148,7 @@ function PageNav({
           index={index}
           status={status}
           currentPage={currentPage}
-          workingOnly={workingOnly}
+          working={working}
           query={query}
         />
       ))}
@@ -149,40 +165,66 @@ function PageNav({
   );
 }
 
-function queryWithWorkingLabel(query: string, workingOnly: boolean): string {
-  const tokens = query.trim().split(/\s+/).filter((token) => token !== "label:working");
-  if (workingOnly) tokens.push("label:working");
-  return tokens.join(" ");
+function projectSearchToken(project: string | null): string {
+  return project === null ? "project:none" : `project:${project}`;
 }
+
+type TaskListFilterProps = {
+  status: TaskStatus;
+  working: TaskWorkingFilter | undefined;
+  query: string | undefined;
+  projects: readonly Project[];
+  project: string | null | undefined;
+};
 
 function TaskLabelsFilter({
   status,
-  workingOnly,
+  working,
   query,
-}: {
-  status: TaskStatus;
-  workingOnly: boolean;
-  query: string | undefined;
-}) {
-  const allLabelsQuery = query === undefined ? undefined : queryWithWorkingLabel(query, false);
-  const workingQuery = query === undefined ? undefined : queryWithWorkingLabel(query, true);
-  const queryParam = (value: string | undefined) => (value === undefined ? "" : `&q=${encodeURIComponent(value)}`);
+  projects,
+  project,
+}: TaskListFilterProps) {
+  const baseQuery = query ?? `is:${status}`;
+  const noneQuery = withQueryToken(baseQuery, "project:", null);
+  const queryParam = (value: string) => `&q=${encodeURIComponent(value)}`;
+  const labelsHref = (next: TaskWorkingFilter | null) => {
+    const nextQuery = withQueryToken(baseQuery, "working:", next === null ? null : `working:${next}`);
+    const workingParam = next === null ? "" : `&working=${next}`;
+    return `/tasks?status=${status}${workingParam}${queryParam(nextQuery)}`;
+  };
   return (
-    <details class={workingOnly ? "task-label-filter is-active" : "task-label-filter"}>
-      <summary class="button small">Labels</summary>
+    <details class={working !== undefined || project !== undefined ? "task-label-filter is-active" : "task-label-filter"}>
+      <summary class="button small">Filter</summary>
       <div class="task-label-menu">
-        <a
-          class={!workingOnly ? "is-selected" : undefined}
-          href={`/tasks?status=${status}${queryParam(allLabelsQuery)}`}
-        >
+        <div class="task-label-group-title">Labels</div>
+        <a class={working === undefined ? "is-selected" : undefined} href={labelsHref(null)}>
           All labels
         </a>
-        <a
-          class={workingOnly ? "is-selected" : undefined}
-          href={`/tasks?status=${status}&working=only${queryParam(workingQuery)}`}
-        >
-          working only
+        <a class={working === "on" ? "is-selected" : undefined} href={labelsHref("on")}>
+          working:on
         </a>
+        <a class={working === "off" ? "is-selected" : undefined} href={labelsHref("off")}>
+          working:off
+        </a>
+        <div class="task-label-group-title">Projects</div>
+        <a class={project === undefined ? "is-selected" : undefined} href={`/tasks?status=${status}${queryParam(noneQuery)}`}>
+          All projects
+        </a>
+        <a
+          class={project === null ? "is-selected" : undefined}
+          href={`/tasks?status=${status}${queryParam(withQueryToken(baseQuery, "project:", projectSearchToken(null)))}`}
+        >
+          未分類
+        </a>
+        {projects.map((candidate) => (
+          <a
+            key={candidate.id}
+            class={project === candidate.id ? "is-selected" : undefined}
+            href={`/tasks?status=${status}${queryParam(withQueryToken(baseQuery, "project:", projectSearchToken(candidate.id)))}`}
+          >
+            {candidate.name}
+          </a>
+        ))}
       </div>
     </details>
   );
@@ -190,24 +232,27 @@ function TaskLabelsFilter({
 
 function TaskListSearch({
   status,
-  workingOnly,
+  working,
   query,
-}: {
+  projects,
+  project,
+}: Omit<TaskListFilterProps, "status" | "working" | "query"> & {
   status: TaskStatus;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string;
 }) {
   return (
     <form class="task-search" action="/tasks" method="get">
       <input type="hidden" name="status" value={status} />
-      {workingOnly ? <input type="hidden" name="working" value="only" /> : null}
+      {working === undefined ? null : <input type="hidden" name="working" value={working} />}
       <input
         type="search"
         name="q"
         aria-label="Search tasks"
         value={query}
-        placeholder="is:issue state:closed"
+        placeholder="見積もり is:do project:Yoriwake working:on"
       />
+      <TaskLabelsFilter status={status} working={working} query={query} projects={projects} project={project} />
       <button class="button small task-search-button" type="submit" aria-label="Submit search" title="Search">
         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
           <circle cx="8.5" cy="8.5" r="5.5" />
@@ -218,17 +263,46 @@ function TaskListSearch({
   );
 }
 
+function TaskBulkStatusMenu() {
+  return (
+    <details class="task-bulk-menu">
+      <summary class="button small">Mark as</summary>
+      <div class="task-bulk-menu-items">
+        {TASK_STATUSES.map((status) => (
+          <button type="button" data-task-action={status} key={status}>
+            {status}
+          </button>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function TaskBulkProjectMenu({ projects }: { projects: readonly Project[] }) {
+  return (
+    <details class="task-bulk-menu">
+      <summary class="button small">Project</summary>
+      <div class="task-bulk-menu-items">
+        <button type="button" data-task-project="" key="none">
+          未分類
+        </button>
+        {projects.map((candidate) => (
+          <button type="button" data-task-project={candidate.id} key={candidate.id}>
+            {candidate.name}
+          </button>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function TaskListToolbar({
   hasTasks,
   status,
-  workingOnly,
+  working,
   query,
-}: {
-  hasTasks: boolean;
-  status: TaskStatus;
-  workingOnly: boolean;
-  query: string | undefined;
-}) {
+  projects,
+}: { hasTasks: boolean } & Omit<TaskListFilterProps, "project">) {
   return (
     <>
       <div class="task-list-toolbar">
@@ -240,21 +314,12 @@ function TaskListToolbar({
             disabled={!hasTasks}
           />
         </label>
-        <TaskStatusFilter status={status} workingOnly={workingOnly} />
+        <TaskStatusFilter status={status} working={working} query={query} />
         <div class="task-bulk-actions">
           <div data-task-bulk-actions>
-            <details class="task-bulk-menu">
-              <summary class="button small">Mark as</summary>
-              <div class="task-bulk-menu-items">
-                {TASK_STATUSES.map((status) => (
-                  <button type="button" data-task-action={status} key={status}>
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </details>
+            <TaskBulkStatusMenu />
+            <TaskBulkProjectMenu projects={projects} />
           </div>
-          <TaskLabelsFilter status={status} workingOnly={workingOnly} query={query} />
           <button
             class="button small button--danger"
             type="button"
@@ -271,13 +336,31 @@ function TaskListToolbar({
   );
 }
 
-function TaskListRows({ tasks, status }: { tasks: readonly Task[]; status: TaskStatus }) {
+function TaskListRows({
+  tasks,
+  projects,
+  status,
+}: {
+  tasks: readonly Task[];
+  projects: readonly Project[];
+  status: TaskStatus;
+}) {
+  // The row shows the display name, which can differ from the id (for example 生活 / life).
+  const names = new Map(projects.map((project) => [project.id, project.name]));
   return (
     <div class="list" aria-label="Task list">
       {tasks.length === 0 ? (
         <p class="task-list-empty">該当するtaskはありません。</p>
       ) : (
-        tasks.map((task) => <TaskRow key={task.id} task={task} listStatus={status} />)
+        tasks.map((task) => {
+          const name = task.project === null ? undefined : names.get(task.project);
+          // `projectName` is omitted rather than passed as undefined (exactOptionalPropertyTypes).
+          return name === undefined ? (
+            <TaskRow key={task.id} task={task} listStatus={status} />
+          ) : (
+            <TaskRow key={task.id} task={task} listStatus={status} projectName={name} />
+          );
+        })
       )}
     </div>
   );
@@ -286,19 +369,23 @@ function TaskListRows({ tasks, status }: { tasks: readonly Task[]; status: TaskS
 export function TaskListPage({
   tasks,
   status,
-  workingOnly,
+  working,
   query,
   currentPage,
   totalPages,
   queryInUrl,
+  projects,
+  project,
 }: {
   tasks: readonly Task[];
   status: TaskStatus;
-  workingOnly: boolean;
+  working: TaskWorkingFilter | undefined;
   query: string;
   currentPage: number;
   totalPages: number;
   queryInUrl: string | undefined;
+  projects: readonly Project[];
+  project: string | null | undefined;
 }) {
   return (
     <div class="page page--list" data-state="normal">
@@ -307,23 +394,30 @@ export function TaskListPage({
           <h1 class="page-title">Tasks</h1>
           <p class="muted">GitHub Issues-like task list.</p>
         </div>
-        <NewTaskLink from="tasks" />
+        <NewTaskLink project={project} />
       </div>
       <div class="task-list-shell" data-task-list>
-        <TaskListSearch status={status} workingOnly={workingOnly} query={query} />
+        <TaskListSearch
+          status={status}
+          working={working}
+          query={query}
+          projects={projects}
+          project={project}
+        />
         <TaskListToolbar
           hasTasks={tasks.length > 0}
           status={status}
-          workingOnly={workingOnly}
+          working={working}
           query={queryInUrl}
+          projects={projects}
         />
-        <TaskListRows tasks={tasks} status={status} />
+        <TaskListRows tasks={tasks} projects={projects} status={status} />
       </div>
       <PageNav
         status={status}
         currentPage={currentPage}
         totalPages={totalPages}
-        workingOnly={workingOnly}
+        working={working}
         query={queryInUrl}
       />
     </div>

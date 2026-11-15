@@ -1,13 +1,13 @@
 export const TASK_LIST_CSS = `
 .list {
-  background: #aeb8c4;
-  border: 1px solid #8b949e;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
   overflow: hidden;
 }
 
 .task-list-empty {
-  color: #3f4854;
+  color: #555555;
   margin: 0;
   padding: 24px;
   text-align: center;
@@ -15,8 +15,8 @@ export const TASK_LIST_CSS = `
 
 .task-row {
   align-items: center;
+  border: 0;
   border-radius: 0;
-  border-width: 0 0 1px;
   display: grid;
   gap: 10px;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -24,9 +24,19 @@ export const TASK_LIST_CSS = `
   padding: 12px 14px;
 }
 
+/* The list owns the frame; rows are separated by a hairline instead of their own border. */
+.task-row + .task-row {
+  border-top: 1px solid #bdbdbd;
+}
+
+.task-row:hover,
+.task-row-link:hover {
+  background: #e4e4e4;
+}
+
 .task-row.is-selected {
-  background: #aeb8c4;
-  box-shadow: inset 3px 0 0 #0f4d24;
+  background: #dcdcdc;
+  box-shadow: inset 3px 0 0 #1f1f1f;
 }
 
 .task-row-selection {
@@ -38,7 +48,7 @@ export const TASK_LIST_CSS = `
 
 .task-row-selection input,
 .task-select-all input {
-  accent-color: #0f4d24;
+  accent-color: #1f1f1f;
   height: 20px;
   margin: 0;
   width: 20px;
@@ -54,7 +64,7 @@ export const TASK_LIST_CSS = `
 
 .task-row-link:focus-visible,
 .task-row-selection:has(input:focus-visible) {
-  outline: 2px solid #0f4d24;
+  outline: 2px solid #1f1f1f;
   outline-offset: 2px;
 }
 
@@ -81,8 +91,8 @@ export const TASK_LIST_CSS = `
 
 .task-list-toolbar {
   align-items: center;
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
   display: flex;
   gap: 12px;
@@ -124,7 +134,7 @@ export const TASK_LIST_CSS = `
 }
 
 .task-bulk-actions button:disabled {
-  color: #8c959f;
+  color: #8a8a8a;
   cursor: default;
   opacity: 0.7;
 }
@@ -148,16 +158,16 @@ export const TASK_LIST_CSS = `
 }
 
 .task-label-filter.is-active summary {
-  background: #b7e3c3;
-  border-color: #0f4d24;
-  color: #0f4d24;
+  background: #262626;
+  border-color: #dcdcdc;
+  color: #dcdcdc;
 }
 
 .task-label-menu {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #e1e1e1;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   display: grid;
   gap: 2px;
   min-width: 140px;
@@ -169,13 +179,17 @@ export const TASK_LIST_CSS = `
 }
 
 .task-label-menu a {
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
   border-radius: 4px;
+  color: #303030;
+  margin: 2px;
   padding: 7px 8px;
 }
 
 .task-label-menu a:hover,
 .task-label-menu a.is-selected {
-  background: #eaeef2;
+  background: #d8d8d8;
 }
 
 .task-bulk-menu {
@@ -197,10 +211,10 @@ export const TASK_LIST_CSS = `
 }
 
 .task-bulk-menu-items {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #e1e1e1;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   display: grid;
   gap: 2px;
   min-width: 120px;
@@ -212,16 +226,18 @@ export const TASK_LIST_CSS = `
 }
 
 .task-bulk-menu-items button {
-  background: none;
-  border: 0;
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
   border-radius: 4px;
+  color: #303030;
   cursor: pointer;
+  margin: 2px;
   padding: 7px 8px;
   text-align: left;
 }
 
 .task-bulk-menu-items button:hover {
-  background: #eaeef2;
+  background: #d8d8d8;
 }
 
 .task-bulk-actions[hidden],
@@ -230,18 +246,27 @@ export const TASK_LIST_CSS = `
 }
 
 .task-selection-feedback {
-  background: #b7e3c3;
-  border: 1px solid #4ac26b;
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
   border-radius: 6px;
-  color: #0f4d24;
+  color: #303030;
   margin: 0 0 10px;
   padding: 8px 12px;
 }
 
 .task-search {
+  align-items: center;
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.task-search .task-label-filter {
+  flex: 0 0 auto;
+}
+
+.task-search .task-label-filter summary {
+  white-space: nowrap;
 }
 
 .task-search input {
@@ -267,7 +292,7 @@ export const TASK_LIST_CSS = `
 }
 
 .button--danger {
-  color: #1b1f24;
+  color: #303030;
 }
 
 .pagination {
@@ -280,18 +305,18 @@ export const TASK_LIST_CSS = `
 }
 
 .pagination .button.small.is-active {
-  background: #1f883d;
-  border-color: #2a9147;
-  color: #ffffff;
+  background: #262626;
+  border-color: #dcdcdc;
+  color: #dcdcdc;
 }
 
 .pagination .button.small.is-disabled {
-  color: #8c959f;
+  color: #8a8a8a;
   cursor: default;
 }
 
 .pagination-ellipsis {
-  color: #b1bac4;
+  color: #555555;
   font-weight: 700;
   padding: 0 4px;
 }

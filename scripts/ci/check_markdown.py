@@ -32,7 +32,11 @@ def markdown_files() -> list[Path]:
         ],
         text=True,
     ).split("\0")
-    return sorted({ROOT / name for name in tracked + untracked if name})
+    return sorted(
+        path
+        for name in {name for name in tracked + untracked if name}
+        if (path := ROOT / name).is_file()
+    )
 
 
 def main() -> int:

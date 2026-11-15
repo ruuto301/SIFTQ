@@ -9,18 +9,15 @@ async function expectNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-test("keeps Matrix and task forms usable at the responsive widths", async ({ page }) => {
+test("keeps the task list and task forms usable at the responsive widths", async ({ page }) => {
   await installHtmxRoute(page);
   await signIn(page);
 
   for (const width of [320, 360, 390, 412]) {
     await page.setViewportSize({ width, height: 960 });
-    await page.goto("/matrix");
-    await expect(page.getByRole("heading", { name: "Matrix" })).toBeVisible();
+    await page.goto("/tasks");
+    await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
     await expectNoHorizontalOverflow(page);
-    await expect.poll(() => page.locator(".matrix").evaluate((element) =>
-      getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length,
-    )).toBe(1);
 
     await page.goto("/tasks/new");
     await expect(page.getByRole("heading", { name: "New task" })).toBeVisible();

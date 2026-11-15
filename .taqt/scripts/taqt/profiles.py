@@ -28,19 +28,12 @@ def load_profiles(loop_root: Path) -> dict[str, dict[str, Any]]:
             raise ValueError(f"{path} contains an empty profile name")
         if not isinstance(profile, dict):
             raise ValueError(f"{path} profile {name} must be a mapping")
-        if not isinstance(profile.get("loop"), str) or not profile["loop"]:
-            raise ValueError(f"{path} profile {name} requires a loop")
-        if "models" in profile:
-            models = profile["models"]
-            if not isinstance(models, dict):
-                raise ValueError(f"{path} profile {name} models must be a mapping")
-            for agent_id, model in models.items():
-                if not isinstance(agent_id, str) or not agent_id:
-                    raise ValueError(f"{path} profile {name} models keys must be non-empty strings")
-                if not isinstance(model, str) or not model:
-                    raise ValueError(
-                        f"{path} profile {name} models[{agent_id}] must be a non-empty string"
-                    )
+        env_keys = profile.get("env_keys")
+        if env_keys is not None and (
+            not isinstance(env_keys, list)
+            or not all(isinstance(key, str) and key for key in env_keys)
+        ):
+            raise ValueError(f"{path} profile {name} env_keys must be a list of strings")
         normalized[name] = profile
     return normalized
 

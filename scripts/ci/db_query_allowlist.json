@@ -4,5 +4,11 @@
     "pattern": "unbounded_all",
     "reason": "owner_id = ? で利用者単位に絞り込み済みのため、無制限スキャンではない。",
     "removal": "owner_id を複数化または廃止する際に LIMIT を追加する。"
+  },
+  {
+    "path": "src/repository/d1-oauth-repository.ts",
+    "pattern": "unbounded_all",
+    "reason": "listClients は連携アプリ一覧、listTokens は client_id = ? で 1 クライアントに絞り込み済みで、いずれも無制限スキャンではない。",
+    "removal": "クライアント数やトークン数が増えて LIMIT が必要になったときに追加する。"
   }
 ]

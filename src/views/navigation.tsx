@@ -1,5 +1,4 @@
 import type { JSX } from "hono/jsx/jsx-runtime";
-import type { NewTaskFrom } from "../components/NewTaskMeta";
 
 export function pageNav(path: string) {
   return {
@@ -11,9 +10,11 @@ export function pageNav(path: string) {
   };
 }
 
-export function NewTaskLink({ from }: { from: NewTaskFrom }): JSX.Element {
+export function NewTaskLink({ project }: { project: string | null | undefined }): JSX.Element {
+  const href =
+    project === undefined || project === null ? "/tasks/new" : `/tasks/new?project=${encodeURIComponent(project)}`;
   return (
-    <a class="button primary" {...pageNav(`/tasks/new?from=${from}`)}>
+    <a class="button primary" {...pageNav(href)}>
       New task
     </a>
   );

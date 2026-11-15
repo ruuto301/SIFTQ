@@ -1,4 +1,6 @@
-# タスクリプレイ gold（T3）
+# タスクリプレイ gold（T3・履歴）
+
+> 旧 taqt loop エンジンの記録。ADR 0075 で loop エンジンとリプレイハーネスを廃止したため、以下の spec は現在実行できない。
 
 ループ変更の closure と escaped defect をタスク単位で測る。`run_loop` は GitHub に書き込まないため、リプレイに副作用はない。
 

@@ -69,12 +69,8 @@ Return these exact fields:
 - Canonical issue templates: `.github/ISSUE_TEMPLATE/*.md`
 - [label policy](references/issue-label-policy.md)
 
-## 5) Loop changes — effect measurement in AC/DoD
+## 5) Verification changes — keep AC/DoD observable
 
-Applies only when the issue touches loop paths: `.taqt/loops/` or
-`.taqt/scripts/loop/`. Otherwise skip this section.
-
-When it applies, both AC/DoD must require effect measurement with:
-measurement target, harness and command, observed result, and adoption
-criterion. Load the on-demand `loop-effect-measurement` skill for the
-harness commands and adoption criterion details.
+When an issue changes the verification gate or the taqt flow, AC/DoD must
+name the observable result and the command that proves it. Prefer the
+`scripts/flow/verify_gate.py` command or the relevant Taskfile target.

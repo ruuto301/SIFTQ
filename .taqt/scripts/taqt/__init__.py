@@ -1,2 +1,2 @@
-"""taqt task scripts for loop engineering."""
+"""taqt task scripts for the repository flow."""
 

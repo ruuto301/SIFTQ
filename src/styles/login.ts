@@ -1,12 +1,12 @@
 export const COMMON_CSS = `
-.error { color: #1b1f24; font-weight: 700; }
+.error { color: #1f1f1f; font-weight: 700; }
 button { font: inherit; }
 `;
 
 export const LOGIN_CSS = `
 .login {
   align-items: center;
-  background: #3b434d;
+  background: #cccccc;
   display: flex;
   justify-content: center;
   min-height: 100vh;
@@ -14,8 +14,8 @@ export const LOGIN_CSS = `
 }
 
 .login-card {
-  background: #c1c9d3;
-  border: 1px solid #8b949e;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
   display: grid;
   gap: 16px;
@@ -32,8 +32,10 @@ export const LOGIN_CSS = `
 }
 
 .login-card input {
-  border: 1px solid #8b949e;
+  background: #e4e4e4;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
+  color: #303030;
   font: inherit;
   min-height: 34px;
   padding: 6px 10px;

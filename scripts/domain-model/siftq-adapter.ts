@@ -37,7 +37,7 @@ function dbType(model: Model, domain: string): string {
   return LOGICAL_TO_DB[logicalType(model, domain)] ?? "TEXT";
 }
 
-export function parseMigrations(sql: string, into: Migrations): void {
+function parseCreateTables(sql: string, into: Migrations): void {
   const create = /CREATE TABLE (?:IF NOT EXISTS )?([a-z_]+)\s*\(([\s\S]*?)\)\s*;/gi;
   for (let m = create.exec(sql); m !== null; m = create.exec(sql)) {
     const table = m[1];
@@ -50,6 +50,9 @@ export function parseMigrations(sql: string, into: Migrations): void {
       columns[col[1]] = col[2].toUpperCase();
     }
   }
+}
+
+function parseAddedColumns(sql: string, into: Migrations): void {
   const alter = /ALTER TABLE\s+([a-z_]+)\s+ADD COLUMN\s+"?([a-z_]+)"?\s+(TEXT|INTEGER|REAL|BLOB|NUMERIC)/gi;
   for (let m = alter.exec(sql); m !== null; m = alter.exec(sql)) {
     const table = m[1];
@@ -59,6 +62,24 @@ export function parseMigrations(sql: string, into: Migrations): void {
     const columns = (into[table] ??= {});
     columns[name] = type.toUpperCase();
   }
+}
+
+function parseDroppedColumns(sql: string, into: Migrations): void {
+  const drop = /ALTER TABLE\s+([a-z_]+)\s+DROP COLUMN\s+"?([a-z_]+)"?/gi;
+  for (let m = drop.exec(sql); m !== null; m = drop.exec(sql)) {
+    const table = m[1];
+    const name = m[2];
+    if (table === undefined || name === undefined) continue;
+    const columns = into[table];
+    if (columns === undefined || columns[name] === undefined) continue;
+    into[table] = Object.fromEntries(Object.entries(columns).filter(([column]) => column !== name));
+  }
+}
+
+export function parseMigrations(sql: string, into: Migrations): void {
+  parseCreateTables(sql, into);
+  parseAddedColumns(sql, into);
+  parseDroppedColumns(sql, into);
 }
 
 export function checkMigrations(model: Model, migrations: Migrations): string[] {
@@ -209,7 +230,7 @@ function readInvariantTestIds(dir: string): string[] {
 function readMigrations(dir: string): Migrations {
   const migrations: Migrations = {};
   if (!existsSync(dir)) return migrations;
-  for (const name of readdirSync(dir)) {
+  for (const name of readdirSync(dir).sort()) {
     if (name.endsWith(".sql")) parseMigrations(readFileSync(join(dir, name), "utf8"), migrations);
   }
   return migrations;

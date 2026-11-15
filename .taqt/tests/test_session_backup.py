@@ -1,9 +1,8 @@
-"""Tests for encrypted session backup (Issue #571)."""
+"""Tests for encrypted session backup."""
 
 import json
 import os
 import shutil
-import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -16,14 +15,14 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 from scripts.session_backup import (
     DEFAULT_PART_SIZE,
     backup_codex,
-    backup_opencode,
+    backup_dsh,
     compress_encrypt,
     default_identity_file,
+    dsh_backup_path,
     existing_archive,
-    opencode_backup_path,
     resolve_identity,
     restore_codex,
-    restore_opencode,
+    restore_dsh,
 )
 
 GITHUB_FILE_LIMIT = 100 * 1024 * 1024
@@ -83,6 +82,13 @@ def _age_recipient_file(tmp_path: Path) -> tuple[Path, Path]:
 
 def _seed_session(sessions_root: Path, name: str, content: bytes) -> Path:
     source = sessions_root / "2026" / "09" / "26" / name
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(content)
+    return source
+
+
+def _seed_dsh_session(dsh_home: Path, name: str, content: bytes) -> Path:
+    source = dsh_home / "sessions" / "--repo--" / "session-id" / name
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_bytes(content)
     return source
@@ -158,73 +164,46 @@ def test_backup_codex_skips_unchanged_archives(tmp_path: Path) -> None:
     assert second == []
 
 
-def _seed_opencode_db(db_path: Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(db_path)
-    connection.execute("PRAGMA journal_mode=WAL")
-    connection.execute("CREATE TABLE event (id INTEGER PRIMARY KEY, payload TEXT)")
-    connection.execute(
-        "INSERT INTO event (payload) VALUES (?)", ("secret-session-event",)
+def test_backup_dsh_writes_mirrored_encrypted_archive(tmp_path: Path) -> None:
+    content = b"session-log-bytes"
+    dsh_home = tmp_path / "dsh-home"
+    source = _seed_dsh_session(dsh_home, "session.v3.jsonl.zst", content)
+    identity, recipient_file = _age_recipient_file(tmp_path)
+
+    created = backup_dsh(
+        sessions_root=dsh_home / "sessions",
+        output_root=tmp_path / "out",
+        recipient_file=recipient_file,
     )
-    connection.commit()
-    return connection
 
-
-def test_backup_opencode_encrypts_consistent_snapshot_with_events(
-    tmp_path: Path,
-) -> None:
-    db_path = tmp_path / "opencode.db"
-    writer = _seed_opencode_db(db_path)
-    try:
-        identity, recipient_file = _age_recipient_file(tmp_path)
-
-        created = backup_opencode(
-            db_path=db_path,
-            output_root=tmp_path / "out",
-            recipient_file=recipient_file,
-        )
-    finally:
-        writer.close()
-
-    target = tmp_path / "out" / "opencode" / "opencode.db.zst.age"
+    target = (
+        tmp_path
+        / "out"
+        / "dsh"
+        / "--repo--"
+        / "session-id"
+        / "session.v3.jsonl.zst.zst.age"
+    )
     assert created == [target]
-    assert target.is_file()
-    assert b"secret-session-event" not in target.read_bytes()
-
-    restored = tmp_path / "restored.db"
-    restored.write_bytes(_decrypt(target, identity))
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        rows = connection.execute("SELECT payload FROM event").fetchall()
-    assert rows == [("secret-session-event",)]
+    assert target == dsh_backup_path(dsh_home / "sessions", source, tmp_path / "out")
+    assert _decrypt(target, identity) == content
 
 
-def test_backup_opencode_splits_into_parts_under_limit(tmp_path: Path) -> None:
-    db_path = tmp_path / "opencode.db"
-    writer = _seed_opencode_db(db_path)
-    writer.execute("INSERT INTO event (payload) VALUES (?)", (os.urandom(64 * 1024),))
-    writer.commit()
-    try:
-        identity, recipient_file = _age_recipient_file(tmp_path)
-        created = backup_opencode(
-            db_path=db_path,
-            output_root=tmp_path / "out",
-            recipient_file=recipient_file,
-            part_size=8 * 1024,
-        )
-    finally:
-        writer.close()
+def test_backup_dsh_skips_unchanged_archives(tmp_path: Path) -> None:
+    dsh_home = tmp_path / "dsh-home"
+    _seed_dsh_session(dsh_home, "session.jsonl", b"{}\n")
+    _, recipient_file = _age_recipient_file(tmp_path)
+    kwargs = {
+        "sessions_root": dsh_home / "sessions",
+        "output_root": tmp_path / "out",
+        "recipient_file": recipient_file,
+    }
 
-    target = tmp_path / "out" / "opencode" / "opencode.db.zst.age"
-    assert not target.exists()
-    assert len(created) > 1
-    assert all(part.stat().st_size <= 8 * 1024 for part in created)
-    assert all(part.stat().st_size < 100 * 1024 * 1024 for part in created)
+    first = backup_dsh(**kwargs)
+    second = backup_dsh(**kwargs)
 
-    restored = tmp_path / "restored.db"
-    restored.write_bytes(_decrypt_parts(created, identity))
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        assert connection.execute("SELECT COUNT(*) FROM event").fetchone() == (2,)
+    assert len(first) == 1
+    assert second == []
 
 
 def test_compress_encrypt_splits_large_output_into_bounded_parts(
@@ -234,7 +213,7 @@ def test_compress_encrypt_splits_large_output_into_bounded_parts(
     content = os.urandom(4000)
     source.write_bytes(content)
     identity, recipient_file = _age_recipient_file(tmp_path)
-    target = tmp_path / "out" / "opencode" / "opencode.db.zst.age"
+    target = tmp_path / "out" / "dsh" / "snapshot.db.zst.age"
 
     parts = compress_encrypt(source, target, recipient_file, part_size=1000)
 
@@ -254,7 +233,7 @@ def test_compress_encrypt_removes_stale_parts_when_output_shrinks(
     source = tmp_path / "snapshot.db"
     source.write_bytes(os.urandom(4000))
     _, recipient_file = _age_recipient_file(tmp_path)
-    target = tmp_path / "out" / "opencode" / "opencode.db.zst.age"
+    target = tmp_path / "out" / "dsh" / "snapshot.db.zst.age"
 
     split = compress_encrypt(source, target, recipient_file, part_size=1000)
     assert len(split) > 1
@@ -281,26 +260,6 @@ def test_committed_backup_artifacts_stay_under_github_file_limit() -> None:
         if path.is_file() and path.stat().st_size >= GITHUB_FILE_LIMIT
     ]
     assert oversized == []
-
-
-def test_committed_opencode_backup_restores_with_ok_integrity(
-    tmp_path: Path,
-) -> None:
-    backup_root = REPOSITORY_ROOT / "sessions"
-    if not existing_archive(opencode_backup_path(backup_root)):
-        pytest.skip("committed opencode backup is not present")
-    identity = default_identity_file()
-    if not identity.is_file():
-        pytest.skip("age identity is not available")
-
-    restored = tmp_path / "opencode.db"
-    restore_opencode(backup_root=backup_root, db_path=restored, identity=identity)
-
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        assert connection.execute(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
-        ).fetchone()[0] > 0
 
 
 def test_restore_codex_reproduces_original_content(tmp_path: Path) -> None:
@@ -353,163 +312,121 @@ def test_restore_codex_joins_split_parts(tmp_path: Path) -> None:
     assert target.read_bytes() == content
 
 
-def test_restore_opencode_joins_split_parts(tmp_path: Path) -> None:
-    db_path = tmp_path / "opencode.db"
-    writer = _seed_opencode_db(db_path)
-    writer.execute("INSERT INTO event (payload) VALUES (?)", (os.urandom(64 * 1024),))
-    writer.commit()
-    try:
-        identity, recipient_file = _age_recipient_file(tmp_path)
-        backup_root = tmp_path / "out"
-        created = backup_opencode(
-            db_path=db_path,
-            output_root=backup_root,
-            recipient_file=recipient_file,
-            part_size=8 * 1024,
-        )
-    finally:
-        writer.close()
-
-    assert len(created) > 1
-
-    restored = tmp_path / "restored.db"
-    result = restore_opencode(
-        backup_root=backup_root,
-        db_path=restored,
-        identity=identity,
-    )
-
-    assert result == restored
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        assert connection.execute("SELECT COUNT(*) FROM event").fetchone() == (2,)
-
-
-def test_large_input_backup_restore_round_trip_is_consistent(tmp_path: Path) -> None:
-    chunk = os.urandom(8 * 1024 * 1024)
-    payloads = [chunk + bytes([index]) for index in range(4)]
-    db_path = tmp_path / "opencode.db"
-    writer = sqlite3.connect(db_path)
-    writer.execute("CREATE TABLE event (id INTEGER PRIMARY KEY, payload BLOB)")
-    writer.executemany(
-        "INSERT INTO event (payload) VALUES (?)", [(payload,) for payload in payloads]
-    )
-    writer.commit()
-    writer.close()
-
+def test_restore_dsh_reproduces_original_content(tmp_path: Path) -> None:
+    content = b"session-log-round-trip"
+    dsh_home = tmp_path / "dsh-home"
+    _seed_dsh_session(dsh_home, "session.v3.jsonl.zst", content)
     identity, recipient_file = _age_recipient_file(tmp_path)
     backup_root = tmp_path / "out"
-    created = backup_opencode(
-        db_path=db_path,
+    backup_dsh(
+        sessions_root=dsh_home / "sessions",
         output_root=backup_root,
         recipient_file=recipient_file,
-        part_size=8 * 1024 * 1024,
     )
 
-    assert len(created) > 1
-    assert max(part.stat().st_size for part in created) <= 8 * 1024 * 1024
-
-    restored = tmp_path / "restored.db"
-    restore_opencode(backup_root=backup_root, db_path=restored, identity=identity)
-
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        restored_payloads = [
-            row[0]
-            for row in connection.execute("SELECT payload FROM event ORDER BY id")
-        ]
-    assert restored_payloads == payloads
-
-
-def test_restore_opencode_reproduces_queryable_database(tmp_path: Path) -> None:
-    db_path = tmp_path / "opencode.db"
-    writer = _seed_opencode_db(db_path)
-    try:
-        identity, recipient_file = _age_recipient_file(tmp_path)
-        backup_root = tmp_path / "out"
-        backup_opencode(
-            db_path=db_path,
-            output_root=backup_root,
-            recipient_file=recipient_file,
-        )
-    finally:
-        writer.close()
-
-    restored = tmp_path / "restored.db"
-    result = restore_opencode(
+    restored_home = tmp_path / "restored-dsh-home"
+    restored = restore_dsh(
         backup_root=backup_root,
-        db_path=restored,
+        sessions_root=restored_home / "sessions",
         identity=identity,
     )
 
-    assert result == restored
-    with sqlite3.connect(restored) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        rows = connection.execute("SELECT payload FROM event").fetchall()
-    assert rows == [("secret-session-event",)]
+    target = (
+        restored_home
+        / "sessions"
+        / "--repo--"
+        / "session-id"
+        / "session.v3.jsonl.zst"
+    )
+    assert restored == [target]
+    assert target.read_bytes() == content
+
+
+def test_restore_dsh_joins_split_parts(tmp_path: Path) -> None:
+    content = os.urandom(4000)
+    dsh_home = tmp_path / "dsh-home"
+    _seed_dsh_session(dsh_home, "session.jsonl", content)
+    identity, recipient_file = _age_recipient_file(tmp_path)
+    backup_root = tmp_path / "out"
+
+    created = backup_dsh(
+        sessions_root=dsh_home / "sessions",
+        output_root=backup_root,
+        recipient_file=recipient_file,
+        part_size=500,
+    )
+    assert len(created) > 1
+
+    restored_home = tmp_path / "restored-dsh-home"
+    restore_dsh(
+        backup_root=backup_root,
+        sessions_root=restored_home / "sessions",
+        identity=identity,
+    )
+
+    target = restored_home / "sessions" / "--repo--" / "session-id" / "session.jsonl"
+    assert target.read_bytes() == content
 
 
 def test_cli_backup_restore_round_trip(tmp_path: Path) -> None:
-    content = b'{"type":"session","payload":"cli-round-trip"}\n'
+    codex_content = b'{"type":"session","payload":"cli-round-trip"}\n'
+    dsh_content = b"dsh-cli-round-trip"
     codex_home = tmp_path / "codex-home"
-    _seed_session(codex_home / "sessions", "rollout-cli.jsonl", content)
-    db_path = tmp_path / "opencode.db"
-    writer = _seed_opencode_db(db_path)
+    _seed_session(codex_home / "sessions", "rollout-cli.jsonl", codex_content)
+    dsh_home = tmp_path / "dsh-home"
+    _seed_dsh_session(dsh_home, "session.jsonl", dsh_content)
     identity, recipient_file = _age_recipient_file(tmp_path)
     output_root = tmp_path / "out"
     restored_codex_home = tmp_path / "restored-codex-home"
-    restored_db = tmp_path / "restored.db"
+    restored_dsh_home = tmp_path / "restored-dsh-home"
     script = REPOSITORY_ROOT / "scripts" / "session_backup.py"
 
-    try:
-        subprocess.run(
-            [
-                sys.executable,
-                str(script),
-                "backup",
-                "--codex-home",
-                str(codex_home),
-                "--opencode-db",
-                str(db_path),
-                "--output-root",
-                str(output_root),
-                "--recipient",
-                str(recipient_file),
-            ],
-            cwd=REPOSITORY_ROOT,
-            check=True,
-            capture_output=True,
-        )
-        subprocess.run(
-            [
-                sys.executable,
-                str(script),
-                "restore",
-                "--codex-home",
-                str(restored_codex_home),
-                "--opencode-db",
-                str(restored_db),
-                "--backup-root",
-                str(output_root),
-                "--identity-file",
-                str(identity),
-            ],
-            cwd=REPOSITORY_ROOT,
-            check=True,
-            capture_output=True,
-        )
-    finally:
-        writer.close()
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "backup",
+            "--codex-home",
+            str(codex_home),
+            "--dsh-home",
+            str(dsh_home),
+            "--output-root",
+            str(output_root),
+            "--recipient",
+            str(recipient_file),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "restore",
+            "--codex-home",
+            str(restored_codex_home),
+            "--dsh-home",
+            str(restored_dsh_home),
+            "--backup-root",
+            str(output_root),
+            "--identity-file",
+            str(identity),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+    )
 
     restored_session = (
         restored_codex_home / "sessions" / "2026" / "09" / "26" / "rollout-cli.jsonl"
     )
-    assert restored_session.read_bytes() == content
+    assert restored_session.read_bytes() == codex_content
 
-    with sqlite3.connect(restored_db) as connection:
-        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
-        rows = connection.execute("SELECT payload FROM event").fetchall()
-    assert rows == [("secret-session-event",)]
+    restored_dsh = (
+        restored_dsh_home / "sessions" / "--repo--" / "session-id" / "session.jsonl"
+    )
+    assert restored_dsh.read_bytes() == dsh_content
 
 
 def test_taskfile_exposes_session_backup_and_restore() -> None:

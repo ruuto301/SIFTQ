@@ -1,39 +1,27 @@
 import type { Context, Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   applyIdeaPatch,
   isIdeaDescriptionValid,
   isIdeaRecord,
   isIdeaOrderValid,
   isIdeaTitleValid,
-  nextIdeaOrder,
   parseIdeaPatch,
   type Idea,
 } from "../idea";
+import { createIdea, moveIdeaToTask } from "../idea-tasks";
+import type { DomainError, Result, Task } from "../task";
+import { errorStatus, findOwned, problem, readJsonRecord } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { IdeaOrderUpdate, IdeaRepository, IdeaRepositoryError } from "../repository/idea-repository";
 
 const OWNER_ID = "local";
 type Repository = (c: Context<AppEnv>) => IdeaRepository;
-
-function problem(c: Context<AppEnv>, status: ContentfulStatusCode, code: string) {
-  return c.json({ code }, status);
-}
-
-async function readJsonRecord(c: Context<AppEnv>): Promise<Record<string, unknown> | null> {
-  try {
-    const value = await c.req.json<unknown>();
-    return isIdeaRecord(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function errorStatus(code: string): ContentfulStatusCode {
-  if (code === "NOT_FOUND") return 404;
-  if (code === "CONFLICT") return 409;
-  return 400;
-}
+type TaskSideEffects = {
+  list(): Promise<Result<Task[], DomainError>>;
+  insert(task: Task): Promise<Result<Task, DomainError>>;
+  remove(id: string, owner_id: string, version: number): Promise<Result<null, DomainError>>;
+};
+type TaskSideEffectFactory = (c: Context<AppEnv>) => TaskSideEffects;
 
 function readOrder(value: unknown): number | null {
   return typeof value === "number" && isIdeaOrderValid(value) ? value : null;
@@ -42,12 +30,14 @@ function readOrder(value: unknown): number | null {
 type IdeaLookup = { ok: true; value: Idea } | { ok: false; error: IdeaRepositoryError };
 
 async function findIdea(c: Context<AppEnv>, repository: Repository, id: string): Promise<IdeaLookup> {
-  const result = await repository(c).find(id, OWNER_ID);
-  if (!result.ok) return result;
-  return result.value === undefined ? { ok: false, error: { code: "NOT_FOUND" } } : { ok: true, value: result.value };
+  return findOwned(repository(c).find(id, OWNER_ID), { code: "NOT_FOUND" });
 }
 
-export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository) {
+export function registerIdeaApiRoutes(
+  app: Hono<AppEnv>,
+  repository: Repository,
+  taskRepository: TaskSideEffectFactory,
+) {
   app.get("/api/ideas", async (c) => {
     const result = await repository(c).list(OWNER_ID);
     if (!result.ok) return problem(c, 500, result.error.code);
@@ -55,7 +45,7 @@ export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository)
   });
 
   app.post("/api/ideas", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     if (body === null) return problem(c, 400, "INVALID_INPUT");
     const title = typeof body["title"] === "string" ? body["title"].trim() : "";
     const description = typeof body["description"] === "string" ? body["description"] : "";
@@ -63,16 +53,14 @@ export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository)
     if (!isIdeaDescriptionValid(description)) return problem(c, 400, "INVALID_DESCRIPTION");
     const current = await repository(c).list(OWNER_ID);
     if (!current.ok) return problem(c, 500, current.error.code);
-    const pinned = body["pinned"] === true;
-    const order = nextIdeaOrder(current.value, pinned);
-    const idea: Idea = { id: crypto.randomUUID(), owner_id: OWNER_ID, title, description, order, pinned };
+    const idea = createIdea(current.value, { title, description, pinned: body["pinned"] === true });
     const inserted = await repository(c).insert(idea);
     if (!inserted.ok) return problem(c, errorStatus(inserted.error.code), inserted.error.code);
     return c.json(inserted.value, 201);
   });
 
   app.post("/api/ideas/reorder", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     const rawIdeas = body?.["ideas"];
     if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) return problem(c, 400, "INVALID_INPUT");
     const updates: IdeaOrderUpdate[] = [];
@@ -88,7 +76,7 @@ export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository)
   });
 
   app.patch("/api/ideas/:id", async (c) => {
-    const body = await readJsonRecord(c);
+    const body = await readJsonRecord(c, isIdeaRecord);
     if (body === null) return problem(c, 400, "INVALID_INPUT");
     const found = await findIdea(c, repository, c.req.param("id"));
     if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);
@@ -103,5 +91,30 @@ export function registerIdeaApiRoutes(app: Hono<AppEnv>, repository: Repository)
     const removed = await repository(c).remove(c.req.param("id"), OWNER_ID);
     if (!removed.ok) return problem(c, errorStatus(removed.error.code), removed.error.code);
     return c.body(null, 204);
+  });
+
+  registerIdeaMoveRoute(app, repository, taskRepository);
+}
+
+function registerIdeaMoveRoute(
+  app: Hono<AppEnv>,
+  repository: Repository,
+  taskRepository: TaskSideEffectFactory,
+) {
+  app.post("/api/ideas/:id/move-to-task", async (c) => {
+    const found = await findIdea(c, repository, c.req.param("id"));
+    if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);
+    const tasks = await taskRepository(c).list();
+    if (!tasks.ok) return problem(c, 500, tasks.error.code);
+    const task = moveIdeaToTask(found.value, tasks.value);
+    if (!task.ok) return problem(c, 400, task.error.code);
+    const inserted = await taskRepository(c).insert(task.value);
+    if (!inserted.ok) return problem(c, 500, inserted.error.code);
+    const removed = await repository(c).remove(found.value.id, OWNER_ID);
+    if (!removed.ok) {
+      await taskRepository(c).remove(inserted.value.id, OWNER_ID, inserted.value.version);
+      return problem(c, errorStatus(removed.error.code), removed.error.code);
+    }
+    return c.json(inserted.value, 200);
   });
 }
