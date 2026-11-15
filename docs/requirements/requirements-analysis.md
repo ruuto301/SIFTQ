@@ -54,6 +54,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-027 | ユーザーは、Tasks の連続した複数をまとめて選択したい。 | screens.md |
 | REQ-TM-028 | ユーザーは、Tasks の選択チェックボックスを押し間違えずに操作したい。 | screens.md |
 | REQ-TM-029 | ユーザーは、メモを開いてタイトル・本文・色・ラベル・画像をまとめて直したい。 | screens.md |
+| REQ-TM-030 | ユーザーは、Cloudflare 障害や誤削除に備えて D1 を退避しておきたい。 | docs/ops/d1-backup-restore.md |
 
 ## 仕様
 
@@ -99,6 +100,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-036 | REQ-TM-027 | Tasks 一覧の checkbox は、直前にクリックした行を起点として Shift + クリックで起点から対象行までの範囲をまとめて選択する。範囲は対象行の新しい状態（選択 / 解除）に揃え、起点が無いときは通常の 1 件トグルとして扱う。全選択の変更と一括操作の完了で起点をリセットする。範囲選択は checkbox のみを対象とし、ページをまたがない。 | BDD-TM-042 |
 | SPEC-TM-037 | REQ-TM-028 | Tasks の選択 checkbox は当たり判定を 44×44px、チェック本体を 24px とし、hover で背景 `#dcdcdc` を表示する。一覧の checkbox 列は 44px 幅で、タイトルのリンクと重ならない。ツールバーの全選択 checkbox も 44×44px で、一覧の checkbox と同じ中心 x に揃える。行の余白（`a, button, input, label, summary, details` 以外）のクリックで選択をトグルし、ページ遷移しない。 | BDD-TM-043 |
 | SPEC-TM-038 | REQ-TM-029 | MK のカード押下で中央の詳細ダイアログを開く。ダイアログはメモの色で表示し、タイトル・本文・色・ラベル・画像・ピン・アーカイブ・ゴミ箱・削除を編集できる。編集は自動保存し、閉じても破棄しない。 | BDD-TM-044 |
+| SPEC-TM-039 | REQ-TM-030 | Worker の Cron Trigger（毎日 03:00 JST）が D1 を SQL ダンプにし、gzip 後 AES-256-GCM で暗号化して R2 `siftq-backups` の `d1/<YYYY>/<MM>/<DD>/siftq.sql.gz.enc` へ保存する。鍵は `SESSION_SECRET` から HKDF-SHA256 で導出し、追加の secret を持たない。`d1/manifest.json` に keyId・IV・平文 sha256・行数を記録し、30 日より古いアーカイブは削除する。復元は手元で復号し、既定はローカル・本番は明示指定と確認を必須とする。 | BDD-TM-046 |
 
 ## BDD 候補
 
@@ -147,6 +149,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-043 | SPEC-TM-037 | Tasks 一覧で行の checkbox の当たり判定が 44×44px・本体が 24px で、全選択の checkbox と同じ中心に並ぶ。行の右余白をクリックすると選択がトグルされ、遷移しない。 | 正常 |
 | BDD-TM-044 | SPEC-TM-038 | メモのカードを押すと詳細ダイアログが開き、編集した内容が保存されて再読み込み後も反映される。 | 正常 |
 | BDD-TM-045 | SPEC-TM-038 | MK のツールバーに一括選択の切替が無く、検索欄がツールバーの幅いっぱいに広がる。 | 正常 |
+| BDD-TM-046 | SPEC-TM-039 | 日次実行で暗号化アーカイブと manifest が作成され、復号すると元の SQL と sha256 が一致する。30 日を超えたアーカイブは削除される。 | 正常 |
 
 ## 未決事項
 

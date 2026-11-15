@@ -10,5 +10,17 @@
     "pattern": "unbounded_all",
     "reason": "listClients は連携アプリ一覧、listTokens は client_id = ? で 1 クライアントに絞り込み済みで、いずれも無制限スキャンではない。",
     "removal": "クライアント数やトークン数が増えて LIMIT が必要になったときに追加する。"
+  },
+  {
+    "path": "src/backup.ts",
+    "pattern": "unbounded_all",
+    "reason": "日次バックアップは全テーブル・全行のダンプが目的の管理ジョブ（リクエスト経路ではない）ため、無制限取得が要件。",
+    "removal": "データ量が増えて分割取得が必要になったときに LIMIT / cursor を追加する。"
+  },
+  {
+    "path": "src/backup.ts",
+    "pattern": "select_star",
+    "reason": "ダンプは全列を復元するため SELECT * が必要。",
+    "removal": "列単位のバックアップに切り替えるときに列を明示する。"
   }
 ]
