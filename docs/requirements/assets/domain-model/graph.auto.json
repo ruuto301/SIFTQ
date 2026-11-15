@@ -270,6 +270,105 @@
         {
           "status": 404,
           "code": "NOT_FOUND"
+        },
+        {
+          "status": 409,
+          "code": "INVALID_STATE"
+        }
+      ]
+    },
+    "mk_notes_id_labels": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/mk/notes/{id}/labels",
+      "operation": "notes-id-labels",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_LABEL"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "mk_labels": {
+      "kind": "api",
+      "method": "GET",
+      "path": "/api/mk/labels",
+      "operation": "labels",
+      "success": 200,
+      "errors": [
+        {
+          "status": 500
+        }
+      ]
+    },
+    "mk_labels_post": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/mk/labels",
+      "operation": "labels",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_LABEL_NAME"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
+    "mk_labels_id": {
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/api/mk/labels/{id}",
+      "operation": "labels-id",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_LABEL_NAME"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 409,
+          "code": "CONFLICT"
+        }
+      ]
+    },
+    "mk_labels_id_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/mk/labels/{id}",
+      "operation": "labels-id-delete",
+      "success": 204,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
         }
       ]
     },
@@ -948,6 +1047,27 @@
       "view": "screen:P13",
       "gateway": "mk-scripts.ts",
       "api": "mk_notes_bulk"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_labels_post"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_labels_id"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_labels_id_delete"
     },
     {
       "screen": "P03",
