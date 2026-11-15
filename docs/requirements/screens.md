@@ -146,13 +146,13 @@
   - 削除は確認後に task を完全削除する。
   - 削除の確認は、既存の中央モーダル（`.matrix-modal`）を使ったダイアログで表示する。ダイアログはビューポート中央に置き、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。
   - 中央ペインは `task`、`Chat`、`設定` の順でタブを表示し、初期表示は `task` とする。
-  - 中央ペインはタブ行の直下に選択中 task の title を表示する。未選択時は表示せず、長い title は省略せず折り返して全文を表示する。
+  - 中央ペインはタブ行の直下に選択中 task の title を重複表示しない。title は `task` タブの入力欄にだけ表示する。
   - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
   - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
   - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
   - `task` タブは選択中 task の title と description を表示し、`保存` で確定する。未選択時は選択を促す案内を表示する。
   - `task` タブは初期表示から task の title と description を表示する。DSH transport が使える場合は `desc.get` の応答を description に反映する。
-  - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
+  - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
   - `task` タブの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。
   - `task` タブは 409（競合）のとき入力を保持したままエラーを表示する。DSH が description を更新しても、未保存の入力がある間は表示を書き換えない。
   - `設定` タブは選択中 profile の設定を表示し、保存する。

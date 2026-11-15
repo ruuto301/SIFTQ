@@ -181,18 +181,22 @@ describe("DsPage task list", () => {
     expect(html).toContain('data-ds-pane="task"');
   });
 
-  it("shows the selected task title between the tabs and the chat (BDD-TM-027)", () => {
+  it("shows the selected task title only in the task tab (BDD-TM-027)", () => {
     const selected = taskFixture({ id: "t1", title: "チャットのタイトルを表示する", project: "Yoriwake" });
     const html = renderToString(page([selected], selected));
 
-    expect(html).toContain('class="ds__chat-title__text">チャットのタイトルを表示する<');
-    expect(html).not.toContain("ds__chat-title__label");
+    // The title lives in the task tab input; there is no duplicate strip above the panes.
+    expect(html).not.toContain("ds__chat-title");
+    expect(html).toContain('id="ds-task-title"');
+    expect(html).toContain('value="チャットのタイトルを表示する"');
+    expect(html).toContain("Ctrl + S で保存 / Esc で取り消し");
   });
 
-  it("hides the title row when no task is selected", () => {
+  it("does not render a title strip when no task is selected", () => {
     const html = renderToString(page([], undefined));
 
     expect(html).not.toContain("ds__chat-title");
+    expect(html).toContain("左のタスクを選択してください。");
   });
 
   it("renders the do, done and skip tabs with the active status", () => {
