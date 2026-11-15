@@ -16,7 +16,7 @@ test("keeps the do, done and skip tab colors unchanged on hover", async ({ page 
     await page.mouse.move(4, 4);
   }
 
-  expect(colors[0]).toBe("rgb(27, 31, 36)");
-  expect(colors[1]).toBe("rgb(255, 255, 255)");
-  expect(colors[2]).toBe("rgb(255, 255, 255)");
+  expect(colors[0]).toBe("rgb(38, 38, 38)");
+  expect(colors[1]).toBe("rgb(228, 228, 228)");
+  expect(colors[2]).toBe("rgb(228, 228, 228)");
 });

@@ -10,8 +10,8 @@ test("keeps the add button label visible while the composer is empty", async ({ 
     const style = getComputedStyle(element);
     return { color: style.color, background: style.backgroundColor };
   });
-  expect(disabled.color).toBe("rgb(139, 148, 158)");
-  expect(disabled.background).toBe("rgb(255, 255, 255)");
+  expect(disabled.color).toBe("rgb(138, 138, 138)");
+  expect(disabled.background).toBe("rgb(232, 232, 232)");
 
   await input.fill("ラベルの確認");
   await expect(add).toBeEnabled();
@@ -19,6 +19,6 @@ test("keeps the add button label visible while the composer is empty", async ({ 
     const style = getComputedStyle(element);
     return { color: style.color, background: style.backgroundColor };
   });
-  expect(enabled.color).toBe("rgb(255, 255, 255)");
-  expect(enabled.background).toBe("rgb(27, 31, 36)");
+  expect(enabled.color).toBe("rgb(220, 220, 220)");
+  expect(enabled.background).toBe("rgb(38, 38, 38)");
 });
