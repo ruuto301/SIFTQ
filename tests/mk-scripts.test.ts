@@ -7,11 +7,19 @@ describe("MK browser script", () => {
     expect(scriptDiagnostics(MK_SCRIPT)).toEqual([]);
   });
 
-  it("persists the theme, sort, and saved searches in localStorage", () => {
-    expect(MK_SCRIPT).toContain("mk-theme:v1");
+  it("persists the sort and saved searches in localStorage", () => {
     expect(MK_SCRIPT).toContain("mk-sort:v1");
     expect(MK_SCRIPT).toContain("mk-saved-searches:v1");
-    expect(MK_SCRIPT).toContain("data-theme");
+    // The theme switch is gone: the memo colors are fixed.
+    expect(MK_SCRIPT).not.toContain("mk-theme:v1");
+    expect(MK_SCRIPT).not.toContain("data-theme");
+  });
+
+  it("opens the detail dialog from a card and autosaves the text", () => {
+    expect(MK_SCRIPT).toContain("data-mk-detail");
+    expect(MK_SCRIPT).toContain("mkDetailOpen");
+    expect(MK_SCRIPT).toContain('mkApi("/api/mk/notes/" + encodeURIComponent(id), { method: "PATCH"');
+    expect(MK_SCRIPT).toContain("setTimeout(function () { mkDetailSave(root); }, 400)");
   });
 
   it("converts the date range to browser-local bounds and fetches previews", () => {

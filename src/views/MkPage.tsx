@@ -1,4 +1,4 @@
-import { MK_COLORS, MK_DATE_KINDS, MK_DEFAULT_SORT, MK_FILTERS, mkSortParts } from "../mk";
+import { MK_COLORS, MK_DATE_KINDS, MK_DEFAULT_SORT, mkSortParts } from "../mk";
 import type { MkColor, MkCounts, MkDateKind, MkFilter, MkImage, MkLabel, MkNote, MkSort } from "../mk";
 import { extractMkPreviewUrl } from "../mk-link-preview";
 
@@ -107,7 +107,7 @@ function MkComposer({ labels }: { readonly labels: readonly MkLabel[] }) {
   return (
     <div class="mk-composer" data-mk-composer data-mk-composer-open="false" data-mk-color="default">
       <button class="mk-composer__trigger" type="button" data-mk-composer-trigger aria-expanded="false">
-        <span>＋ 新規メモ</span>
+        <span>メモを取る...</span>
       </button>
       <div class="mk-composer__editor" data-mk-composer-editor hidden>
         <input
@@ -194,10 +194,12 @@ type SidebarProps = {
   readonly state: MkState;
 };
 
+const MK_NAV_FILTERS = ["notes", "archived", "trash"] as const satisfies readonly MkFilter[];
+
 function MkFilterLinks({ counts, state }: SidebarProps) {
   return (
     <nav class="mk-filters" aria-label="メモの絞り込み">
-      {MK_FILTERS.map((candidate) => (
+      {MK_NAV_FILTERS.map((candidate) => (
         <a
           key={candidate}
           class={candidate === state.filter ? "mk-filter is-active" : "mk-filter"}
@@ -382,17 +384,52 @@ function MkLabelSection({ counts, labels, state }: SidebarProps) {
 function MkSidebar({ counts, labels, state }: SidebarProps) {
   return (
     <aside class="mk-sidebar">
-      <button class="mk-side-new" type="button" data-mk-side-new>
-        ＋ 新規メモ
-      </button>
       <MkFilterLinks counts={counts} labels={labels} state={state} />
-      <MkColorFilters counts={counts} labels={labels} state={state} />
-      <MkDateRange counts={counts} labels={labels} state={state} />
-      <MkSortControl counts={counts} labels={labels} state={state} />
-      <MkSavedSearches />
       <MkLabelSection counts={counts} labels={labels} state={state} />
       <MkLabelManager labels={labels} />
     </aside>
+  );
+}
+
+/** Keep の「⋯」に相当する、検索欄の右に置く絞り込みメニュー。 */
+function MkFilterMenu({ counts, labels, state }: SidebarProps) {
+  return (
+    <details class="mk-menu" data-mk-filter-menu>
+      <summary class="button small">絞り込み</summary>
+      <div class="mk-menu__panel">
+        <MkColorFilters counts={counts} labels={labels} state={state} />
+        <MkDateRange counts={counts} labels={labels} state={state} />
+        <MkSortControl counts={counts} labels={labels} state={state} />
+        <MkSavedSearches />
+      </div>
+    </details>
+  );
+}
+
+/** ラベルを選ぶ select。一括操作と詳細ダイアログで同じ中身を使う。 */
+function MkLabelSelect({
+  labels,
+  attribute,
+  placeholder,
+  ariaLabel,
+  className,
+}: {
+  readonly labels: readonly MkLabel[];
+  readonly attribute: "data-mk-bulk-label" | "data-mk-detail-label-add";
+  readonly placeholder: string;
+  readonly ariaLabel: string;
+  readonly className?: string;
+}) {
+  const attrs: Record<string, string> = { [attribute]: "" };
+  return (
+    <select class={className} aria-label={ariaLabel} {...attrs}>
+      <option value="">{placeholder}</option>
+      {labels.map((label) => (
+        <option key={label.id} value={label.id}>
+          {label.name}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -432,14 +469,13 @@ function MkBulkBar({ labels }: { readonly labels: readonly MkLabel[] }) {
         完全削除
       </button>
       <div class="mk-bulk-bar__labels">
-        <select class="mk-bulk-bar__label-select" data-mk-bulk-label aria-label="ラベルを選択">
-          <option value="">ラベル</option>
-          {labels.map((label) => (
-            <option key={label.id} value={label.id}>
-              {label.name}
-            </option>
-          ))}
-        </select>
+        <MkLabelSelect
+          labels={labels}
+          attribute="data-mk-bulk-label"
+          placeholder="ラベル"
+          ariaLabel="ラベルを選択"
+          className="mk-bulk-bar__label-select"
+        />
         <button class="button small" type="button" data-mk-bulk-label-add>
           追加
         </button>
@@ -570,11 +606,25 @@ function MkCard({
       data-mk-color={note.color}
       data-mk-pinned={note.pinned ? "true" : "false"}
       data-mk-labels={labels.map((label) => label.id).join(",")}
+      data-mk-title={note.title}
+      data-mk-body={note.body}
+      data-mk-images={JSON.stringify(
+        images.map((image) => ({
+          link: image.id,
+          src: `/api/images/${encodeURIComponent(image.image_id)}`,
+        })),
+      )}
+      data-mk-open
     >
       <label class="mk-card__select-label">
         <input class="mk-card__select" type="checkbox" data-mk-select aria-label={`${note.title} を選択`} />
       </label>
       <MkCardActions note={note} />
+      {note.pinned ? (
+        <span class="mk-card__pin-badge" aria-hidden="true">
+          📌
+        </span>
+      ) : null}
       <h2 class="mk-card__title">{note.title}</h2>
       <MkCardImage image={images[0]} />
       {note.body === "" ? null : <p class="mk-card__body">{note.body}</p>}
@@ -618,16 +668,104 @@ function MkSearch({ state }: { readonly state: MkState }) {
   );
 }
 
-function MkThemeToggle() {
+/** Keep の「⋯」: ゴミ箱へ / 削除 / ラベル追加。 */
+function MkDetailMoreMenu({ labels }: { readonly labels: readonly MkLabel[] }) {
   return (
-    <label class="mk-theme">
-      <span class="mk-theme__label">表示</span>
-      <select class="mk-theme__select" data-mk-theme aria-label="表示テーマ">
-        <option value="system">システム</option>
-        <option value="light">ライト</option>
-        <option value="dark">ダーク</option>
-      </select>
-    </label>
+    <details class="mk-detail__more">
+      <summary class="mk-detail__icon" aria-label="その他">
+        ⋯
+      </summary>
+      <div class="mk-detail__menu">
+        <button type="button" data-mk-detail-trash>
+          ゴミ箱へ
+        </button>
+        <button type="button" data-mk-detail-delete>
+          削除
+        </button>
+        <MkLabelSelect
+          labels={labels}
+          attribute="data-mk-detail-label-add"
+          placeholder="ラベルを追加"
+          ariaLabel="ラベルを追加"
+        />
+      </div>
+    </details>
+  );
+}
+
+function MkDetailSwatches() {
+  return (
+    <div class="mk-detail__swatches" data-mk-detail-swatches hidden>
+      {MK_COLORS.map((color) => (
+        <button
+          key={color}
+          class={`mk-swatch mk-swatch--${color}`}
+          type="button"
+          data-mk-detail-color={color}
+          aria-label={`${color} に変更`}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Keep のノート画面に合わせた詳細ダイアログ。実際の値はカードから JS が流し込む。
+ */
+function MkDetailDialog({ labels }: { readonly labels: readonly MkLabel[] }) {
+  return (
+    <div class="mk-detail" data-mk-detail hidden>
+      <div class="mk-detail__backdrop" data-mk-detail-backdrop />
+      <div
+        class="mk-detail__dialog"
+        data-mk-detail-dialog
+        role="dialog"
+        aria-modal="true"
+        aria-label="メモの詳細"
+      >
+        <div class="mk-detail__head">
+          <input
+            class="mk-detail__title"
+            type="text"
+            maxlength={256}
+            aria-label="メモのタイトル"
+            data-mk-detail-title
+          />
+          <button
+            class="mk-detail__pin"
+            type="button"
+            data-mk-detail-pin
+            aria-pressed="false"
+            aria-label="ピン"
+          >
+            📌
+          </button>
+        </div>
+        <textarea
+          class="mk-detail__text"
+          rows={8}
+          maxlength={16384}
+          aria-label="メモの本文"
+          data-mk-detail-body
+        />
+        <div class="mk-detail__images" data-mk-detail-images />
+        <div class="mk-detail__labels" data-mk-detail-labels />
+        <div class="mk-detail__bar">
+          <button class="mk-detail__icon" type="button" data-mk-detail-archive aria-label="アーカイブ">
+            🗄
+          </button>
+          <MkDetailMoreMenu labels={labels} />
+          <button class="mk-detail__icon" type="button" data-mk-detail-palette aria-label="背景色">
+            🎨
+          </button>
+          <MkDetailSwatches />
+          <button class="mk-detail__close" type="button" data-mk-detail-close>
+            閉じる
+          </button>
+        </div>
+        <p class="mk-detail__error" data-mk-detail-error role="alert" hidden />
+      </div>
+    </div>
   );
 }
 
@@ -647,9 +785,7 @@ function MkHeader() {
     <div class="page-header">
       <div>
         <h1 class="page-title">MK</h1>
-        <p class="muted">メモを色とピンとラベルで整理する。</p>
       </div>
-      <MkThemeToggle />
     </div>
   );
 }
@@ -702,6 +838,7 @@ export function MkPage({
         <section class="mk-main">
           <div class="mk-toolbar">
             <MkSearch state={state} />
+            <MkFilterMenu counts={counts} labels={labels} state={state} />
             <button class="button small" type="button" data-mk-selection-toggle aria-pressed="false">
               ☑ 選択
             </button>
@@ -711,6 +848,7 @@ export function MkPage({
           <MkGrid notes={notes} labelsByNote={labelsByNote} images={images} />
         </section>
       </div>
+      <MkDetailDialog labels={labels} />
       <MkSnackbar />
     </div>
   );

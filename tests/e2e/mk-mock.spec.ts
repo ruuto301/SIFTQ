@@ -5,6 +5,8 @@ test("shows the seven colors, the new memo button and the agreed wording (BDD-TM
   await signIn(page);
   await page.goto("/mk");
 
+  // The colour filters live in the "絞り込み" menu that opens next to the search.
+  await page.locator("[data-mk-filter-menu] summary").click();
   await expect(page.locator("[data-mk-color-filter]")).toHaveCount(7);
   await expect(page.locator('[data-mk-color-filter="all"]')).toHaveCount(0);
 
@@ -14,10 +16,13 @@ test("shows the seven colors, the new memo button and the agreed wording (BDD-TM
   );
   await expect(page.locator("[data-mk-selection-toggle]")).toHaveText("☑ 選択");
 
-  // The sidebar entry opens the composer and focuses the title.
-  await page.locator("[data-mk-side-new]").click();
+  // Close the menu so its panel does not cover the composer.
+  await page.locator("[data-mk-filter-menu] summary").click();
+
+  // Keep's single "take a note" card opens the composer and focuses the title.
+  await page.locator("[data-mk-composer-trigger]").click();
   await expect(page.locator("[data-mk-composer-editor]")).toBeVisible();
-  await expect(page.getByLabel("メモのタイトル")).toBeFocused();
+  await expect(page.locator("[data-mk-composer]").getByLabel("メモのタイトル")).toBeFocused();
   await expect(page.getByPlaceholder("新しいメモのタイトル")).toBeVisible();
   await expect(page.getByPlaceholder("本文。Ctrl+V で画像を貼り付けできます。")).toBeVisible();
   await expect(page.getByText("📋 Ctrl+V で画像を貼り付け")).toBeVisible();
@@ -27,9 +32,11 @@ test("clears the color filter when the active color is pressed again (BDD-TM-037
   await signIn(page);
   await page.goto("/mk");
 
+  await page.locator("[data-mk-filter-menu] summary").click();
   await page.locator('[data-mk-color-filter="red"]').click();
   await expect(page).toHaveURL(/[?&]color=red/);
 
+  await page.locator("[data-mk-filter-menu] summary").click();
   await page.locator('[data-mk-color-filter="red"]').click();
   await expect(page).not.toHaveURL(/[?&]color=red/);
   await expect(page.locator("[data-mk-color-filter]")).toHaveCount(7);

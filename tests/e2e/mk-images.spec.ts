@@ -13,7 +13,7 @@ test("attaches an image to an MK note and removes it", async ({ page }) => {
 
   const title = `MK image e2e ${Date.now()}`;
   await page.locator("[data-mk-composer-trigger]").click();
-  await page.getByLabel("メモのタイトル").fill(title);
+  await page.locator("[data-mk-composer]").getByLabel("メモのタイトル").fill(title);
   await page.locator("[data-mk-composer-file]").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PIXEL_PNG });
 
   const pending = page.locator("[data-mk-composer-image]");
