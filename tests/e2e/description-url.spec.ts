@@ -56,6 +56,7 @@ test("linkifies pasted URLs and submits plain text", async ({ page }) => {
   await page.getByRole("button", { name: "Create" }).click();
   await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
+  await showDescriptionEditor(page);
 
   await expect(descriptionEditor(page).locator("a")).toHaveAttribute("href", taskUrl);
   await expect(page.locator('textarea[data-description-value]')).toHaveValue(description);

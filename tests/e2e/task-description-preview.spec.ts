@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { signIn, descriptionEditor, createTask, openTaskFromList } from "./task-helpers";
+import { signIn, descriptionEditor, createTask, openTaskFromList, waitForPageSettle } from "./task-helpers";
 import { expect, test } from "./fixtures";
 
 const MARKDOWN_DESCRIPTION = [
@@ -19,6 +19,8 @@ const MARKDOWN_DESCRIPTION = [
 
 async function createTaskWithDescription(page: Page, title: string, description: string) {
   await page.getByRole("link", { name: "New task" }).click();
+  await page.getByLabel("Title").waitFor();
+  await waitForPageSettle(page);
   await page.getByLabel("Title").fill(title);
   await descriptionEditor(page).fill(description);
   await page.getByRole("button", { name: "Create" }).click();
@@ -30,6 +32,7 @@ test("previews a markdown description on the task detail screen", async ({ page 
   await signIn(page);
   await createTaskWithDescription(page, title, MARKDOWN_DESCRIPTION);
   await openTaskFromList(page, title, "do");
+  await waitForPageSettle(page);
 
   const preview = page.locator("[data-description-preview]");
   await expect(page.getByRole("tab", { name: "プレビュー" })).toHaveAttribute("aria-selected", "true");
@@ -49,6 +52,7 @@ test("switches the description tabs with the arrow keys", async ({ page }) => {
   await signIn(page);
   await createTaskWithDescription(page, title, "**keyboard** preview");
   await openTaskFromList(page, title, "do");
+  await waitForPageSettle(page);
 
   const editTab = page.getByRole("tab", { name: "編集" });
   const previewTab = page.getByRole("tab", { name: "プレビュー" });
@@ -69,6 +73,7 @@ test("previews the edited description on the task detail screen", async ({ page 
   await signIn(page);
   await createTask(page, title);
   await openTaskFromList(page, title, "do");
+  await waitForPageSettle(page);
 
   await descriptionEditor(page).fill("~~removed~~ **kept**");
   await page.getByRole("tab", { name: "プレビュー" }).click();
@@ -84,6 +89,7 @@ test("opens the editor when the task description is empty", async ({ page }) => 
   await signIn(page);
   await createTask(page, title);
   await openTaskFromList(page, title, "do");
+  await waitForPageSettle(page);
 
   await expect(page.getByRole("tab", { name: "編集" })).toHaveAttribute("aria-selected", "true");
   await expect(descriptionEditor(page)).toBeVisible();
@@ -95,6 +101,8 @@ test("previews the description while creating a task", async ({ page }) => {
 
   await signIn(page);
   await page.getByRole("link", { name: "New task" }).click();
+  await page.getByLabel("Title").waitFor();
+  await waitForPageSettle(page);
   await page.getByLabel("Title").fill(title);
   await descriptionEditor(page).fill("**form bold** and `form code`");
   await page.getByRole("tab", { name: "プレビュー" }).click();

@@ -13,7 +13,9 @@ export function descriptionEditor(page: Page) {
 
 /** Task detail opens on プレビュー when a description exists, so switch to 編集 before typing. */
 export async function showDescriptionEditor(page: Page) {
-  await page.getByRole("tab", { name: "編集" }).click();
+  await waitForPageSettle(page);
+  const editTab = page.getByRole("tab", { name: "編集" });
+  await editTab.click();
   await expect(descriptionEditor(page)).toBeVisible();
 }
 
