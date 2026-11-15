@@ -49,6 +49,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-022 | ユーザーは、メモ画面を参照元と同じ色数と導線で使いたい。 | screens.md |
 | REQ-TM-023 | ユーザーは、長時間の利用でも目が疲れにくい画面で SIFTQ を使いたい。 | screens.md |
 | REQ-TM-024 | ユーザーは、作成したタスクを DS の同じプロジェクトの先頭で見つけたい。 | screens.md |
+| REQ-TM-025 | ユーザーは、Tasks のラベル絞り込みを検索と同じ場所から使いたい。 | screens.md |
 
 ## 仕様
 
@@ -89,6 +90,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-031 | REQ-TM-022 | MK 画面の色絞り込みは 7 色のみとし、選択中の色をもう一度押すと解除する。サイドバーに `＋ 新規メモ` を置き、検索は `メモを検索（タイトル / 本文）` と解除の × を、選択は `☑ 選択` を、入力欄は `新しいメモのタイトル` と `本文。Ctrl+V で画像を貼り付けできます。` を表示する。 | BDD-TM-037 |
 | SPEC-TM-032 | REQ-TM-023 | 全画面は無彩色（彩度 0）のモノクロームとし、ページ `#cccccc`、面板 `#d8d8d8`、操作要素 `#e4e4e4`、本文 `#303030`、補助 `#555555` を使う。一覧・パネル・ポップオーバー・操作要素は 2px `#1f1f1f` の黒縁、黒地の要素は `#262626` + 2px `#dcdcdc` の軟白縁、タスク一覧は外周 1 枠で行間は 1px `#bdbdbd` のヘアライン、ドロップダウンは本体 2px・項目 1px の黒縁とする。本文は Atkinson Hyperlegible と Noto Sans JP を優先するフォントスタック、行間 1.7 とし、文字コントラスト 4.5:1 以上・境界 3:1 以上を満たす（外部フォントは読み込まない）。 | BDD-TM-038 |
 | SPEC-TM-033 | REQ-TM-024 | task の作成は、既存 task の `order` を 1 つずつ繰り下げてから新しい task を `order = 1` で挿入する。`/tasks` の新規作成フォームと `POST /api/tasks` の `position: "first"` で同じ並びになる。 | BDD-TM-039 |
+| SPEC-TM-034 | REQ-TM-025 | Tasks のラベル絞り込みは `Filter` という表示名で、検索入力欄と 🔍 の間（🔍 の左）に置く。`All labels` / `working:on` / `working:off` と Projects 節の選択肢は変えない。絞り込み中は `Filter` を黒地 `#262626` + 2px `#dcdcdc` 縁 + `#dcdcdc` 文字で反転表示する。絞り込みは検索と同じ 1 行に収まり、入力欄が縮んで並ぶ。 | BDD-TM-040 |
 
 ## BDD 候補
 
@@ -131,6 +133,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-037 | SPEC-TM-031 | MK 画面に色が 7 つ並び、`＋ 新規メモ` から入力欄が開き、検索・選択・入力欄の文言が合意どおりである。 | 正常 |
 | BDD-TM-038 | SPEC-TM-032 | Tasks・New task・DS・ログインのいずれでもモノクロームの色・2px 黒縁・1 枠のタスク一覧・黒縁のドロップダウンが適用され、フォントスタックに Atkinson Hyperlegible と Noto Sans JP が含まれる。 | 正常 |
 | BDD-TM-039 | SPEC-TM-033 | `/tasks` から新規作成した task が、DS の同じ project グループの先頭に表示される。 | 正常 |
+| BDD-TM-040 | SPEC-TM-034 | Tasks 画面の検索行が 入力欄 → `Filter` → 🔍 の順で並び、ツールバーには `Filter` が無い。`working:on` を選ぶと `Filter` が反転表示になる。 | 正常 |
 
 ## 未決事項
 

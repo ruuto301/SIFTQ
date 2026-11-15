@@ -43,9 +43,9 @@
   - 検索欄は `q` query で保持し、`is:do`、`is:done`、`is:skip`、`working:on`、`working:off`、`project:<id>`、`project:none` を status・working・project 絞り込みとして解釈する。これら以外の語は title / description の部分一致（フリーワード、複数語は AND）として扱う。
   - `is:` を省略したときは `status` query（既定 `do`）で絞り込む。
   - 検索欄の placeholder は `見積もり is:do project:Yoriwake working:on` とする。
-  - `Labels` メニューから全label / `working only` と、Projects 節の全 project / `未分類` / 各 project を選択できる。選択すると検索欄の `project:<id>` を差し替える。
+  - 検索欄の右（🔍 の左）に `Filter` ボタンを置き、メニューから全label / `working only` と、Projects 節の全 project / `未分類` / 各 project を選択できる。選択すると検索欄の `project:<id>` を差し替える。絞り込み中は `Filter` を反転表示（黒地 + 軟白縁）にする。
   - 各行に checkbox を表示し、一覧内の全選択と選択件数（`N of M selected`）を提供する。
-  - 選択時は status 切り替えを隠し、`Mark as`（`do`、`done`、`skip`）、`Project`（`未分類` と各 project）、`Labels`、`delete` を表示する。
+  - 選択時は status 切り替えを隠し、`Mark as`（`do`、`done`、`skip`）、`Project`（`未分類` と各 project）、`delete` を表示する。
   - bulk 操作は選択中のtaskへ適用し、delete前には選択件数を含む確認ダイアログを表示する。
   - bulk 操作で競合または通信エラーが発生した場合は一覧上にエラーを表示し、競合時は再読み込みを促す。
   - `New task` は検索で絞り込んだ project を引き継ぎ、`/tasks/new?project=<id>` で既定 project とする。
