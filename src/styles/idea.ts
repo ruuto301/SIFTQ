@@ -1,7 +1,7 @@
 export const IDEAS_CSS = `
 .page--ideas {
   background: transparent;
-  color: #1b1f24;
+  color: #303030;
   max-width: none;
   min-height: calc(100vh - 63px);
   padding: 48px 16px;
@@ -16,11 +16,11 @@ export const IDEAS_CSS = `
 }
 
 .ideas-composer {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
-  box-shadow: 0 1px 2px rgb(31 35 40 / 8%);
-  color: #3f4854;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  color: #303030;
   margin: 0 auto 28px;
   width: min(100%, 1008px);
 }
@@ -42,17 +42,17 @@ export const IDEAS_CSS = `
 }
 
 .ideas-composer__line {
-  border-bottom: 2px solid #3f4854;
-  border-top: 2px solid #3f4854;
+  border-bottom: 2px solid #303030;
+  border-top: 2px solid #303030;
   height: 8px;
   opacity: 0.7;
   width: 18px;
 }
 
 .ideas-composer--open {
-  background: #fff;
-  border: 1px solid #d8dde3;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   padding: 0;
 }
 
@@ -74,7 +74,7 @@ export const IDEAS_CSS = `
 .ideas-composer__description {
   background: transparent;
   border: 0;
-  color: #1b1f24;
+  color: #303030;
   font: inherit;
   outline: 0;
   padding: 0;
@@ -98,7 +98,7 @@ export const IDEAS_CSS = `
 
 .ideas-composer__title:focus,
 .ideas-composer__description:focus {
-  box-shadow: 0 2px 0 #1b1f24;
+  box-shadow: 0 2px 0 #1f1f1f;
 }
 
 .ideas-composer__actions {
@@ -110,7 +110,7 @@ export const IDEAS_CSS = `
   background: transparent;
   border: 0;
   border-radius: 6px;
-  color: #3f4854;
+  color: #555555;
   cursor: pointer;
   font: inherit;
   padding: 8px 16px;
@@ -118,8 +118,8 @@ export const IDEAS_CSS = `
 
 .ideas-composer__close:hover,
 .ideas-composer__close:focus-visible {
-  background: #f3f6fa;
-  color: #1b1f24;
+  background: #e4e4e4;
+  color: #303030;
 }
 
 .ideas-grid {
@@ -143,10 +143,10 @@ export const IDEAS_CSS = `
 }
 
 .idea-card {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   display: flex;
   flex-direction: column;
   max-height: 672px;
@@ -158,16 +158,16 @@ export const IDEAS_CSS = `
 }
 
 .idea-card:nth-child(3n + 2) {
-  background: #fff;
+  background: #d8d8d8;
 }
 
 .idea-card:nth-child(3n + 3) {
-  background: #fff;
+  background: #d8d8d8;
 }
 
 .idea-card:hover {
-  border-color: #1b1f24;
-  box-shadow: 0 4px 12px rgb(31 35 40 / 14%);
+  border-color: #1f1f1f;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 14%);
   transform: translateY(-1px);
 }
 
@@ -181,7 +181,7 @@ export const IDEAS_CSS = `
 }
 
 .idea-card.drop-target {
-  border-color: #1b1f24;
+  border-color: #1f1f1f;
 }
 
 .idea-card__link {
@@ -195,21 +195,21 @@ export const IDEAS_CSS = `
 .idea-card__pin {
   cursor: pointer;
   display: block;
-  fill: #ffffff;
+  fill: #d8d8d8;
   grid-column: 1;
   height: 18px;
-  stroke: #1b1f24;
+  stroke: #1f1f1f;
   stroke-width: 1.5;
   width: 18px;
 }
 
 .idea-card[data-pinned="true"] .idea-card__pin {
-  fill: #1b1f24;
+  fill: #1f1f1f;
   stroke: none;
 }
 
 .idea-card h2 {
-  color: #1b1f24;
+  color: #303030;
   font-size: 17px;
   line-height: 1.4;
   grid-column: 2;
@@ -220,8 +220,8 @@ export const IDEAS_CSS = `
 }
 
 .idea-card__description {
-  border-top: 1px solid #8b949e;
-  color: #3f4854;
+  border-top: 1px solid #bdbdbd;
+  color: #303030;
   font-size: 14px;
   grid-column: 1 / -1;
   line-height: 1.55;
@@ -242,11 +242,11 @@ export const IDEAS_CSS = `
 }
 
 .ideas-empty {
-  background: #fff;
-  border: 1px dashed #d8dde3;
+  background: #d8d8d8;
+  border: 2px dashed #1f1f1f;
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
-  color: #1b1f24;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  color: #303030;
   align-items: center;
   display: flex;
   flex: 1;
@@ -285,7 +285,7 @@ export const IDEAS_CSS = `
 .idea-detail__title {
   background: transparent;
   border: 0;
-  color: #1b1f24;
+  color: #303030;
   flex: 1;
   font-size: 22px;
   font-weight: 700;
@@ -295,14 +295,14 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail__title:focus {
-  box-shadow: 0 2px 0 #1b1f24;
+  box-shadow: 0 2px 0 #1f1f1f;
 }
 
 .idea-detail__pin {
   align-items: center;
   background: transparent;
   border: 0;
-  color: #1b1f24;
+  color: #303030;
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
@@ -320,15 +320,15 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail__pin[aria-pressed="true"] {
-  color: #1b1f24;
+  color: #1f1f1f;
 }
 
 .idea-detail__pin[aria-pressed="false"] {
-  color: #ffffff;
+  color: #cccccc;
 }
 
 .idea-detail__pin[aria-pressed="false"] svg {
-  stroke: #1b1f24;
+  stroke: #1f1f1f;
   stroke-width: 1.5;
 }
 
@@ -337,7 +337,7 @@ export const IDEAS_CSS = `
   background: transparent;
   border: 0;
   border-radius: 6px;
-  color: #3f4854;
+  color: #555555;
   display: inline-flex;
   font: inherit;
   justify-content: center;
@@ -347,9 +347,9 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail-modal {
-  background: #fff;
-  color: #1b1f24;
-  border: 0;
+  background: #d8d8d8;
+  color: #303030;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
   max-height: calc(100vh - 48px);
   max-width: 720px;
@@ -358,11 +358,11 @@ export const IDEAS_CSS = `
 }
 
 .idea-detail-modal::backdrop {
-  background: rgb(31 35 40 / 65%);
+  background: rgb(0 0 0 / 65%);
 }
 
 .idea-detail-modal .idea-detail__form {
-  background: #fff;
+  background: #d8d8d8;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -382,22 +382,22 @@ export const IDEAS_CSS = `
 
 .idea-detail__close:hover,
 .idea-detail__close:focus-visible {
-  background: #f3f6fa;
-  color: #1b1f24;
+  background: #e4e4e4;
+  color: #303030;
 }
 
 .idea-detail__form {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   padding: 24px;
 }
 
 .idea-detail__description {
   background: transparent;
   border: 0;
-  border-top: 1px solid #8b949e;
+  border-top: 1px solid #bdbdbd;
   box-shadow: none;
   line-height: 1.55;
   max-height: calc(100vh - 180px);

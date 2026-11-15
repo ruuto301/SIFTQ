@@ -9,6 +9,12 @@ export const StandalonePage: FC<{ children?: Child }> = ({ children }) => (
       <meta charset="UTF-8" />
       <title>{BRAND_NAME}</title>
       <link rel="icon" type="image/svg+xml" href={FAVICON_HREF} />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+      />
       <link rel="stylesheet" href="/styles.css" />
     </head>
     <body>{children}</body>

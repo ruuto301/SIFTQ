@@ -20,6 +20,12 @@ export const Layout: FC<{ active: ActiveKey; children?: JSX.Element }> = ({
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>{BRAND_NAME}</title>
       <link rel="icon" type="image/svg+xml" href={FAVICON_HREF} />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+      />
       {STYLE_ASSETS.map((asset) => (
         <link rel="stylesheet" href={asset.path} key={asset.path} />
       ))}

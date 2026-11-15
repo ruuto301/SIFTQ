@@ -1,7 +1,7 @@
 export const MK_CSS = `
 .page--mk {
   background: transparent;
-  color: #1b1f24;
+  color: #303030;
   min-height: calc(100vh - 63px);
   padding: 24px 16px 48px;
 }
@@ -32,7 +32,7 @@ export const MK_CSS = `
 .mk-filter {
   align-items: center;
   border-radius: 999px;
-  color: #1b1f24;
+  color: #303030;
   display: flex;
   gap: 8px;
   justify-content: space-between;
@@ -42,12 +42,13 @@ export const MK_CSS = `
 
 .mk-filter:hover,
 .mk-filter:focus-visible {
-  background: #f3f6fa;
+  background: #e4e4e4;
 }
 
 .mk-filter.is-active {
-  background: #1b1f24;
-  color: #fff;
+  background: #262626;
+  border: 2px solid #dcdcdc;
+  color: #dcdcdc;
 }
 
 .mk-filter__count {
@@ -62,54 +63,56 @@ export const MK_CSS = `
 }
 
 .mk-color-filter {
-  border: 1px solid #d8dde3;
+  border: 2px solid #1f1f1f;
   border-radius: 999px;
   display: inline-flex;
   padding: 3px;
 }
 
 .mk-color-filter.is-active {
-  border-color: #1b1f24;
+  background: #262626;
+  border-color: #dcdcdc;
 }
 
 .mk-color-filter__dot {
-  border: 1px solid #d8dde3;
+  border: 1px solid #1f1f1f;
   border-radius: 50%;
   display: block;
   height: 18px;
   width: 18px;
 }
 
+/* Note tones become a grey ladder: the darkest step stays legible under body text. */
 .mk-color-filter__dot--all {
-  background: linear-gradient(135deg, #ffe9e7, #ffeddc, #fff5cf, #e4f3df, #e1efff, #efe7fb);
+  background: linear-gradient(135deg, #e8e8e8, #e4e4e4, #dcdcdc, #d9d9d9, #d8d8d8, #cccccc, #bdbdbd);
 }
 
 .mk-color-filter__dot--default {
-  background: #ffffff;
+  background: #e8e8e8;
 }
 
 .mk-color-filter__dot--red {
-  background: #ffe9e7;
+  background: #e4e4e4;
 }
 
 .mk-color-filter__dot--orange {
-  background: #ffeddc;
+  background: #dcdcdc;
 }
 
 .mk-color-filter__dot--yellow {
-  background: #fff5cf;
+  background: #d9d9d9;
 }
 
 .mk-color-filter__dot--green {
-  background: #e4f3df;
+  background: #d8d8d8;
 }
 
 .mk-color-filter__dot--blue {
-  background: #e1efff;
+  background: #cccccc;
 }
 
 .mk-color-filter__dot--purple {
-  background: #efe7fb;
+  background: #bdbdbd;
 }
 
 .mk-main {
@@ -132,26 +135,26 @@ export const MK_CSS = `
 }
 
 .mk-search input[type="search"] {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #e4e4e4;
+  border: 2px solid #1f1f1f;
   border-radius: 999px;
-  color: #1b1f24;
+  color: #303030;
   font: inherit;
   min-width: 200px;
   padding: 6px 14px;
 }
 
 .mk-composer {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 .mk-composer__trigger {
   background: transparent;
   border: 0;
-  color: #3f4854;
+  color: #555555;
   cursor: text;
   display: block;
   font: inherit;
@@ -180,7 +183,7 @@ export const MK_CSS = `
 .mk-composer__body {
   background: transparent;
   border: 0;
-  color: #1b1f24;
+  color: #303030;
   font: inherit;
   outline: 0;
   padding: 0;
@@ -230,7 +233,7 @@ export const MK_CSS = `
 }
 
 .mk-composer__image-thumb {
-  border: 1px solid #d8dde3;
+  border: 1px solid #bdbdbd;
   border-radius: 6px;
   display: block;
   height: 72px;
@@ -239,10 +242,10 @@ export const MK_CSS = `
 }
 
 .mk-composer__image-remove {
-  background: #1b1f24;
-  border: 0;
+  background: #262626;
+  border: 2px solid #dcdcdc;
   border-radius: 50%;
-  color: #fff;
+  color: #dcdcdc;
   cursor: pointer;
   font: inherit;
   height: 20px;
@@ -255,7 +258,7 @@ export const MK_CSS = `
 }
 
 .mk-composer__error {
-  color: #b42318;
+  color: #1f1f1f;
   font-size: 13px;
   margin: 0;
 }
@@ -287,10 +290,10 @@ export const MK_CSS = `
 }
 
 .mk-card__image-remove {
-  background: rgb(27 31 36 / 70%);
-  border: 0;
+  background: #262626;
+  border: 2px solid #dcdcdc;
   border-radius: 50%;
-  color: #fff;
+  color: #dcdcdc;
   cursor: pointer;
   font: inherit;
   height: 22px;
@@ -303,7 +306,7 @@ export const MK_CSS = `
 }
 
 .mk-swatch {
-  border: 1px solid #d8dde3;
+  border: 1px solid #1f1f1f;
   border-radius: 50%;
   cursor: pointer;
   height: 24px;
@@ -312,43 +315,43 @@ export const MK_CSS = `
 }
 
 .mk-swatch[aria-pressed="true"] {
-  border-color: #1b1f24;
-  outline: 2px solid #1b1f24;
+  border-color: #1f1f1f;
+  outline: 2px solid #1f1f1f;
   outline-offset: 1px;
 }
 
 .mk-swatch--default {
-  background: #ffffff;
+  background: #e8e8e8;
 }
 
 .mk-swatch--red {
-  background: #ffe9e7;
+  background: #e4e4e4;
 }
 
 .mk-swatch--orange {
-  background: #ffeddc;
+  background: #dcdcdc;
 }
 
 .mk-swatch--yellow {
-  background: #fff5cf;
+  background: #d9d9d9;
 }
 
 .mk-swatch--green {
-  background: #e4f3df;
+  background: #d8d8d8;
 }
 
 .mk-swatch--blue {
-  background: #e1efff;
+  background: #cccccc;
 }
 
 .mk-swatch--purple {
-  background: #efe7fb;
+  background: #bdbdbd;
 }
 
 .mk-bulk-bar {
   align-items: center;
-  background: #f3f6fa;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
   display: flex;
   flex-wrap: wrap;
@@ -388,9 +391,10 @@ export const MK_CSS = `
 }
 
 .mk-card {
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(31 35 40 / 8%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   break-inside: avoid;
   margin: 0 0 16px;
   padding: 12px 14px;
@@ -398,7 +402,9 @@ export const MK_CSS = `
 }
 
 .mk-card.is-selected {
-  border-color: #1b1f24;
+  background: #dcdcdc;
+  border-color: #1f1f1f;
+  box-shadow: inset 4px 0 0 #1f1f1f, 0 1px 3px rgb(0 0 0 / 8%);
 }
 
 .mk-card__select-label {
@@ -431,7 +437,7 @@ export const MK_CSS = `
   background: transparent;
   border: 0;
   border-radius: 4px;
-  color: #3f4854;
+  color: #555555;
   cursor: pointer;
   font: inherit;
   padding: 2px 6px;
@@ -441,8 +447,8 @@ export const MK_CSS = `
 .mk-card__delete:hover,
 .mk-card__pin:focus-visible,
 .mk-card__delete:focus-visible {
-  background: rgb(255 255 255 / 60%);
-  color: #1b1f24;
+  background: #e4e4e4;
+  color: #303030;
 }
 
 .mk-card__pin svg {
@@ -465,7 +471,7 @@ export const MK_CSS = `
 }
 
 .mk-card__body {
-  color: #3f4854;
+  color: #555555;
   font-size: 14px;
   line-height: 1.55;
   margin: 8px 0 0;
@@ -475,34 +481,34 @@ export const MK_CSS = `
 }
 
 .mk-card--default {
-  background: #ffffff;
+  background: #e8e8e8;
 }
 
 .mk-card--red {
-  background: #ffe9e7;
+  background: #e4e4e4;
 }
 
 .mk-card--orange {
-  background: #ffeddc;
+  background: #dcdcdc;
 }
 
 .mk-card--yellow {
-  background: #fff5cf;
+  background: #d9d9d9;
 }
 
 .mk-card--green {
-  background: #e4f3df;
+  background: #d8d8d8;
 }
 
 .mk-card--blue {
-  background: #e1efff;
+  background: #cccccc;
 }
 
 .mk-card--purple {
-  background: #efe7fb;
+  background: #bdbdbd;
 }
 
 .mk-empty {
-  color: #3f4854;
+  color: #555555;
 }
 `;
