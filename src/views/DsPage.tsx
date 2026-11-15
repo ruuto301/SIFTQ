@@ -142,11 +142,11 @@ function ChatHeader() {
   return (
     <div class="ds__pane-head">
       <div class="ds__tabs" role="tablist">
-        <button type="button" class="ds__tab active" data-ds-tab="chat" role="tab">
-          Chat
+        <button type="button" class="ds__tab active" data-ds-tab="task" role="tab">
+          task
         </button>
-        <button type="button" class="ds__tab" data-ds-tab="desc" role="tab">
-          description
+        <button type="button" class="ds__tab" data-ds-tab="chat" role="tab">
+          Chat
         </button>
         <button type="button" class="ds__tab" data-ds-tab="settings" role="tab">
           設定
@@ -176,6 +176,7 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
       class="dsh-chat"
       id="dsh-chat"
       data-ds-pane="chat"
+      hidden
       data-task-id={selected.id}
       data-ws-url={wsUrl}
       data-workspace={workspace}
@@ -203,13 +204,53 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
   );
 }
 
-function DescPane() {
-  return (
-    <div class="dsh-desc" id="dsh-desc" data-ds-pane="desc" hidden>
-      <div class="dsh-desc__bar">
-        <span class="dsh-desc__title">description</span>
+/**
+ * Task pane: edits the selected task title and description. Saving is explicit
+ * because the DSH agent writes the same description through its own session.
+ */
+function TaskEditPane({ selected }: { selected: Task | undefined }) {
+  if (selected === undefined) {
+    return (
+      <div class="ds-task" id="ds-task" data-ds-pane="task">
+        <p class="ds__empty">左のタスクを選択してください。</p>
       </div>
-      <div class="dsh-desc__view" id="dsh-desc-view"></div>
+    );
+  }
+  return (
+    <div
+      class="ds-task"
+      id="ds-task"
+      data-ds-pane="task"
+      data-task-id={selected.id}
+      data-task-version={selected.version}
+    >
+      <div class="ds-task__body">
+        <label class="ds-task__label" for="ds-task-title">
+          title
+        </label>
+        <input
+          class="ds-task__title"
+          id="ds-task-title"
+          type="text"
+          name="title"
+          maxlength={256}
+          value={selected.title}
+        />
+        <label class="ds-task__label" for="ds-task-description">
+          description
+        </label>
+        <textarea class="ds-task__description" id="ds-task-description" name="description" rows={12}>
+          {selected.description}
+        </textarea>
+      </div>
+      <div class="ds-task__foot">
+        <span class="ds-task__status" id="ds-task-status"></span>
+        <span class="ds-task__hint">Ctrl + Enter で保存 / Esc で取り消し</span>
+        <button type="button" class="button ds-task__save" id="ds-task-save">
+          保存
+        </button>
+      </div>
+      <p class="ds-task__error" id="ds-task-error" role="alert" hidden></p>
     </div>
   );
 }
@@ -295,8 +336,8 @@ export const DsPage: FC<{
             <span class="ds__chat-title__text">{selected.title}</span>
           </div>
         )}
+        <TaskEditPane selected={selected} />
         <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
-        {selected === undefined ? null : <DescPane />}
         <SettingsPane />
       </section>
 

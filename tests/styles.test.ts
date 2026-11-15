@@ -134,7 +134,7 @@ describe("DS project groups", () => {
     expect(STYLES_CSS).toContain(".ds--browser-max");
     expect(STYLES_CSS).toContain(".ds-settings__card");
     expect(STYLES_CSS).toContain(".ds__tab2");
-    expect(STYLES_CSS).toContain(".dsh-desc");
+    expect(STYLES_CSS).toContain(".ds-task");
     expect(STYLES_CSS).toContain(".ds__task-item");
     expect(STYLES_CSS).toContain(".ds__task-head");
     expect(STYLES_CSS).toContain(".dsh-card");
