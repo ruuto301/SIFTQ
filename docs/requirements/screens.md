@@ -157,6 +157,7 @@
   - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
   - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
   - `task` タブは選択中 task の title と description を表示し、`保存` で確定する。未選択時は選択を促す案内を表示する。
+  - `task` タブの description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。タブは `←` / `→` キーでも切り替えられる。
   - `task` タブは初期表示から task の title と description を表示する。DSH transport が使える場合は `desc.get` の応答を description に反映する。
   - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
   - `task` タブの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。

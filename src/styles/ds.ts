@@ -448,6 +448,14 @@ export const DS_CSS = `
   color: #303030;
   resize: none;
 }
+.ds-task__description-field {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ds-task__description-field .description-tabs__panel { gap: 4px; }
 .ds-task__title:focus-visible,
 .ds-task__description:focus-visible { outline: 2px solid #1f1f1f; outline-offset: 2px; }
 .ds-task__foot { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
