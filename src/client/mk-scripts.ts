@@ -208,6 +208,9 @@ function mkSetNoteLabels(noteId, labelIds) {
     body: JSON.stringify({ labelIds: labelIds }),
   });
 }
+function mkRequestPreview(noteId) {
+  return mkApi("/api/mk/notes/" + encodeURIComponent(noteId) + "/preview", { method: "POST" });
+}
 function saveMkComposer(composer) {
   var title = composer.querySelector("[data-mk-composer-title]");
   var body = composer.querySelector("[data-mk-composer-body]");
@@ -219,6 +222,9 @@ function saveMkComposer(composer) {
   }).then(function (note) {
     return mkSetNoteLabels(note.id, mkComposerLabelIds(composer)).then(function () {
       return mkLinkComposerImages(composer, note.id);
+    }).then(function () {
+      // 本文に URL があればプレビューを先に取得する。失敗しても作成は成功として扱う。
+      return mkRequestPreview(note.id).catch(function () { return null; });
     });
   }).then(function () {
     // 作成したメモが必ず見えるよう、絞り込み・検索・色の条件を外した一覧へ戻る。
@@ -549,6 +555,188 @@ function initializeMkPaste(page) {
     imageFiles.forEach(function (file) { mkUploadComposerImage(composer, file); });
   });
 }
+var MK_THEME_KEY = "mk-theme:v1";
+var MK_SORT_KEY = "mk-sort:v1";
+var MK_SAVED_KEY = "mk-saved-searches:v1";
+var MK_SAVED_MAX = 20;
+function mkStore(key, value) {
+  try { window.localStorage.setItem(key, value); } catch (error) { return; }
+}
+function mkRead(key) {
+  try { return window.localStorage.getItem(key); } catch (error) { return null; }
+}
+function mkResolveTheme(mode) {
+  if (mode === "dark" || mode === "light") return mode;
+  var query = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  return query && query.matches ? "dark" : "light";
+}
+function mkApplyTheme(mode) { document.documentElement.setAttribute("data-theme", mkResolveTheme(mode)); }
+function initializeMkTheme(page) {
+  var select = page.querySelector("[data-mk-theme]");
+  if (!select) return;
+  var stored = mkRead(MK_THEME_KEY) || "system";
+  select.value = stored;
+  mkApplyTheme(stored);
+  select.addEventListener("change", function () {
+    mkStore(MK_THEME_KEY, select.value);
+    mkApplyTheme(select.value);
+  });
+}
+function mkUrlWith(params) {
+  var search = params.toString();
+  return search === "" ? "/mk" : "/mk?" + search;
+}
+function mkNavigateWith(name, value) {
+  var params = new URLSearchParams(window.location.search);
+  if (value === "") params.delete(name); else params.set(name, value);
+  window.location.assign(mkUrlWith(params));
+}
+function mkCurrentSort(page) {
+  var field = page.querySelector("[data-mk-sort-field]");
+  var direction = page.querySelector("[data-mk-sort-direction]");
+  if (field && direction) return field.value + ":" + direction.value;
+  return page.getAttribute("data-mk-sort") || "updated:desc";
+}
+function initializeMkSort(page) {
+  var field = page.querySelector("[data-mk-sort-field]");
+  var direction = page.querySelector("[data-mk-sort-direction]");
+  if (!field || !direction) return;
+  var params = new URLSearchParams(window.location.search);
+  var stored = mkRead(MK_SORT_KEY);
+  if (!params.has("sort") && stored && stored !== mkCurrentSort(page)) {
+    mkNavigateWith("sort", stored);
+    return;
+  }
+  mkStore(MK_SORT_KEY, mkCurrentSort(page));
+  var change = function () {
+    var value = mkCurrentSort(page);
+    mkStore(MK_SORT_KEY, value);
+    mkNavigateWith("sort", value);
+  };
+  field.addEventListener("change", change);
+  direction.addEventListener("change", change);
+}
+function mkLocalBound(value, endOfDay) {
+  if (!value) return "";
+  var date = new Date(value + (endOfDay ? "T23:59:59.999" : "T00:00:00.000"));
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+function initializeMkDates(page) {
+  var form = page.querySelector("[data-mk-date-form]");
+  if (!form) return;
+  form.addEventListener("submit", function () {
+    var from = form.querySelector("[data-mk-date-from]");
+    var fromValue = form.querySelector("[data-mk-date-from-value]");
+    var to = form.querySelector("[data-mk-date-to]");
+    var toValue = form.querySelector("[data-mk-date-to-value]");
+    if (from && fromValue) fromValue.value = mkLocalBound(from.value, false);
+    if (to && toValue) toValue.value = mkLocalBound(to.value, true);
+  });
+}
+function mkSavedParse() {
+  var raw = null;
+  try { raw = JSON.parse(mkRead(MK_SAVED_KEY) || "[]"); } catch (error) { return []; }
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(function (item) {
+    return item && typeof item.id === "string" && typeof item.name === "string" && typeof item.search === "string";
+  }).slice(0, MK_SAVED_MAX);
+}
+function mkSavedWrite(list) { mkStore(MK_SAVED_KEY, JSON.stringify(list.slice(0, MK_SAVED_MAX))); }
+function mkSavedItem(item) {
+  var row = document.createElement("li");
+  row.className = "mk-saved__row";
+  row.setAttribute("data-mk-saved-row", item.id);
+  var link = document.createElement("a");
+  link.className = "mk-saved__name";
+  link.href = "/mk" + item.search;
+  link.textContent = item.name;
+  link.setAttribute("data-mk-saved-load", item.id);
+  var rename = document.createElement("button");
+  rename.type = "button";
+  rename.className = "mk-saved__action";
+  rename.textContent = "改名";
+  rename.setAttribute("data-mk-saved-rename", item.id);
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "mk-saved__action";
+  remove.textContent = "×";
+  remove.setAttribute("data-mk-saved-delete", item.id);
+  remove.setAttribute("aria-label", item.name + " を削除");
+  row.appendChild(link);
+  row.appendChild(rename);
+  row.appendChild(remove);
+  return row;
+}
+function mkSavedRender() {
+  var list = document.querySelector("[data-mk-saved-list]");
+  var empty = document.querySelector("[data-mk-saved-empty]");
+  if (!list) return;
+  var saved = mkSavedParse();
+  list.textContent = "";
+  saved.forEach(function (item) { list.appendChild(mkSavedItem(item)); });
+  if (empty) empty.hidden = saved.length > 0;
+}
+function mkSavedSave(name) {
+  var saved = mkSavedParse();
+  if (saved.length >= MK_SAVED_MAX) return false;
+  saved.push({ id: String(Date.now()) + "-" + String(saved.length), name: name, search: window.location.search || "" });
+  mkSavedWrite(saved);
+  mkSavedRender();
+  return true;
+}
+function mkSavedCurrent(list, id) {
+  var found = null;
+  list.forEach(function (item) { if (item.id === id) found = item; });
+  return found;
+}
+function mkSavedRename(id) {
+  var saved = mkSavedParse();
+  var current = mkSavedCurrent(saved, id);
+  if (!current) return;
+  var name = window.prompt("検索名", current.name);
+  if (!name || !name.trim()) return;
+  current.name = name.trim();
+  mkSavedWrite(saved);
+  mkSavedRender();
+}
+function mkSavedDelete(id) {
+  mkSavedWrite(mkSavedParse().filter(function (item) { return item.id !== id; }));
+  mkSavedRender();
+}
+function initializeMkSaved(page) {
+  var form = page.querySelector("[data-mk-saved-create]");
+  var input = page.querySelector("[data-mk-saved-name]");
+  if (form) {
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var name = input ? input.value.trim() : "";
+      if (!name) return;
+      if (!mkSavedSave(name)) { window.alert("保存した検索は" + MK_SAVED_MAX + "件までです。"); return; }
+      if (input) input.value = "";
+    });
+  }
+  page.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var rename = target.closest("[data-mk-saved-rename]");
+    if (rename) { event.preventDefault(); mkSavedRename(rename.getAttribute("data-mk-saved-rename") || ""); return; }
+    var remove = target.closest("[data-mk-saved-delete]");
+    if (remove) { event.preventDefault(); mkSavedDelete(remove.getAttribute("data-mk-saved-delete") || ""); }
+  });
+  mkSavedRender();
+}
+function initializeMkPreview(page) {
+  page.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    if (!target.closest("[data-mk-preview-fetch]")) return;
+    var card = target.closest("[data-mk-id]");
+    var id = card ? mkCardId(card) : "";
+    if (!id) return;
+    event.preventDefault();
+    mkRun("/api/mk/notes/" + encodeURIComponent(id) + "/preview", { method: "POST" });
+  });
+}
 function initializeMk() {
   var page = mkPage();
   if (!page || page.getAttribute("data-mk-initialized") === "true") return;
@@ -559,6 +747,11 @@ function initializeMk() {
   initializeMkToolbar(page);
   initializeMkLabelManager(page);
   initializeMkPaste(page);
+  initializeMkTheme(page);
+  initializeMkSort(page);
+  initializeMkDates(page);
+  initializeMkSaved(page);
+  initializeMkPreview(page);
   syncMkSelection();
 }
 document.addEventListener("DOMContentLoaded", initializeMk);

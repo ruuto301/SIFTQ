@@ -7,6 +7,8 @@ import {
   MK_MAX_LABELS_PER_NOTE,
   MK_TITLE_MAX_CODE_POINTS,
   applyMkNotePatch,
+  applyMkNotePreview,
+  compareMkNotes,
   createMkImage,
   createMkLabel,
   createMkNote,
@@ -15,19 +17,26 @@ import {
   isDeleted,
   isMkBodyValid,
   isMkColor,
+  isMkDateKind,
   isMkImage,
   isMkImagePositionValid,
   isMkLabel,
   isMkLabelNameTaken,
   isMkLabelNameValid,
+  isMkNote,
   isMkTitleValid,
+  matchesMkDateRange,
   mkLabelNameKey,
+  mkSortParts,
+  normalizeMkDateBound,
   noteMatchesFilter,
   parseMkLabelIds,
   parseMkNotePatch,
+  parseMkSort,
   setNoteArchived,
   setNoteDeleted,
   sortMkNotes,
+  sortMkNotesByQuery,
 } from "../src/mk";
 import type { MkImage, MkLabel, MkNote } from "../src/mk";
 
@@ -43,6 +52,11 @@ function noteFixture(overrides: Partial<MkNote> = {}): MkNote {
     updated_at: "2026-01-01T00:00:00.000Z",
     archived_at: null,
     deleted_at: null,
+    preview_title: null,
+    preview_description: null,
+    preview_image: null,
+    preview_domain: null,
+    preview_fetched_at: null,
     ...overrides,
   };
 }
@@ -294,5 +308,96 @@ describe("createMkImage", () => {
   it("rejects an empty image id and a non-positive position", () => {
     expect(createMkImage(imageFixture({ image_id: "" }))).toEqual({ ok: false, error: { code: "INVALID_IMAGE" } });
     expect(createMkImage(imageFixture({ position: 0 }))).toEqual({ ok: false, error: { code: "INVALID_IMAGE" } });
+  });
+});
+
+describe("MK date range", () => {
+  it("normalizes date-only bounds to the whole day", () => {
+    expect(normalizeMkDateBound("2026-01-02", false)).toBe("2026-01-02T00:00:00.000Z");
+    expect(normalizeMkDateBound("2026-01-02", true)).toBe("2026-01-02T23:59:59.999Z");
+    expect(normalizeMkDateBound("2026-01-02T03:00:00.000Z", false)).toBe("2026-01-02T03:00:00.000Z");
+    expect(normalizeMkDateBound("not a date", false)).toBeNull();
+    expect(normalizeMkDateBound("", false)).toBeNull();
+  });
+
+  it("includes both bounds and follows the chosen timestamp", () => {
+    const note = noteFixture({ created_at: "2026-01-10T00:00:00.000Z", updated_at: "2026-02-10T00:00:00.000Z" });
+
+    expect(matchesMkDateRange(note, "created", "2026-01-10T00:00:00.000Z", "2026-01-10T00:00:00.000Z")).toBe(true);
+    expect(matchesMkDateRange(note, "created", "2026-01-11T00:00:00.000Z", undefined)).toBe(false);
+    expect(matchesMkDateRange(note, "updated", "2026-02-10T00:00:00.000Z", undefined)).toBe(true);
+    expect(matchesMkDateRange(note, "updated", undefined, "2026-01-31T00:00:00.000Z")).toBe(false);
+  });
+
+  it("filters notes through the query", () => {
+    const notes = [
+      noteFixture({ id: "old", created_at: "2025-12-01T00:00:00.000Z" }),
+      noteFixture({ id: "new", created_at: "2026-06-01T00:00:00.000Z" }),
+    ];
+
+    expect(filterMkNotes(notes, { dateKind: "created", from: "2026-01-01T00:00:00.000Z" }).map((note) => note.id)).toEqual([
+      "new",
+    ]);
+    expect(isMkDateKind("updated")).toBe(true);
+    expect(isMkDateKind("deleted")).toBe(false);
+  });
+});
+
+describe("MK sort order", () => {
+  it("parses a field and direction", () => {
+    expect(parseMkSort("updated:desc")).toBe("updated:desc");
+    expect(parseMkSort("created")).toBe("created:desc");
+    expect(parseMkSort("created:asc")).toBe("created:asc");
+    expect(parseMkSort("updated:sideways")).toBeNull();
+    expect(parseMkSort("deleted:asc")).toBeNull();
+    expect(parseMkSort(undefined)).toBeNull();
+    expect(mkSortParts("created:asc")).toEqual({ field: "created", direction: "asc" });
+  });
+
+  it("keeps pinned notes first and orders the rest by the requested sort", () => {
+    const notes = [
+      noteFixture({ id: "a", created_at: "2026-01-01T00:00:00.000Z" }),
+      noteFixture({ id: "b", created_at: "2026-01-03T00:00:00.000Z" }),
+      noteFixture({ id: "c", created_at: "2026-01-02T00:00:00.000Z", pinned: true }),
+    ];
+
+    expect(sortMkNotesByQuery(notes, "created:asc").map((note) => note.id)).toEqual(["c", "a", "b"]);
+    expect(sortMkNotesByQuery(notes, "created:desc").map((note) => note.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("compares two notes in both directions", () => {
+    const older = noteFixture({ id: "older", updated_at: "2026-01-01T00:00:00.000Z" });
+    const newer = noteFixture({ id: "newer", updated_at: "2026-01-02T00:00:00.000Z" });
+
+    expect(compareMkNotes(older, newer, "updated:asc")).toBeLessThan(0);
+    expect(compareMkNotes(older, newer, "updated:desc")).toBeGreaterThan(0);
+  });
+});
+
+describe("MK link preview fields", () => {
+  it("applies fetched metadata and keeps empty values null", () => {
+    const note = noteFixture();
+    const previewed = applyMkNotePreview(
+      note,
+      { title: "T", description: "", image: null, domain: "example.com" },
+      "2026-03-01T00:00:00.000Z",
+    );
+
+    expect(previewed).toEqual(
+      noteFixture({
+        preview_title: "T",
+        preview_description: null,
+        preview_image: null,
+        preview_domain: "example.com",
+        preview_fetched_at: "2026-03-01T00:00:00.000Z",
+      }),
+    );
+    expect(previewed.updated_at).toBe(note.updated_at);
+  });
+
+  it("validates the preview columns on a note record", () => {
+    expect(isMkNote(noteFixture({ preview_title: "T", preview_image: "https://example.com/a.png" }))).toBe(true);
+    expect(isMkNote({ ...noteFixture(), preview_title: 1 })).toBe(false);
+    expect(isMkNote({ ...noteFixture(), preview_fetched_at: 1 })).toBe(false);
   });
 });
