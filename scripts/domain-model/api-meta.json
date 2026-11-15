@@ -364,6 +364,18 @@
       }
     ]
   },
+  "markdown_preview": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_DESCRIPTION"
+      }
+    ]
+  },
   "mk_notes": {
     "errors": [
       {

@@ -185,6 +185,23 @@
         }
       ]
     },
+    "markdown_preview": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/markdown/preview",
+      "operation": "preview",
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_DESCRIPTION"
+        }
+      ]
+    },
     "html_mcp": {
       "kind": "html",
       "method": "POST",
@@ -1111,6 +1128,20 @@
       "view": "screen:P04",
       "gateway": "task-form-scripts.ts",
       "api": "images_create"
+    },
+    {
+      "screen": "P03",
+      "trigger": "POST",
+      "view": "screen:P03",
+      "gateway": "task-form-scripts.ts",
+      "api": "markdown_preview"
+    },
+    {
+      "screen": "P04",
+      "trigger": "POST",
+      "view": "screen:P04",
+      "gateway": "task-form-scripts.ts",
+      "api": "markdown_preview"
     },
     {
       "screen": "P02",

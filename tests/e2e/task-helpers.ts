@@ -11,6 +11,12 @@ export function descriptionEditor(page: Page) {
   return page.getByRole("textbox", { name: "Description" });
 }
 
+/** Task detail opens on プレビュー when a description exists, so switch to 編集 before typing. */
+export async function showDescriptionEditor(page: Page) {
+  await page.getByRole("tab", { name: "編集" }).click();
+  await expect(descriptionEditor(page)).toBeVisible();
+}
+
 export async function hasDraft(page: Page, title: string, description: string): Promise<boolean> {
   return page.evaluate(({ title, description }) => {
     for (let index = 0; index < localStorage.length; index += 1) {
