@@ -16,7 +16,7 @@ import { NewTaskForm, TaskDetailPage, TaskVersionInput } from "../views/TaskForm
 import { pageNav } from "../views/navigation";
 import { NAV_SCREENS } from "../screens";
 import type { ActiveKey } from "../screens";
-import { changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, nextTaskOrder } from "../task";
+import { FIRST_TASK_ORDER, changeTaskProject, changeTaskStatus, changeTaskWorking, createTask, err, isTaskStatus, tasksShiftedForFirstPlace } from "../task";
 import type { DomainError, Result, Task, TaskStatus } from "../task";
 import type { Project } from "../project";
 import {
@@ -313,7 +313,12 @@ function registerTaskCreateRoute(
     if (!created.ok) return c.text(`Invalid task: ${created.error.code}`, 400);
     const listed = await repository(c).list();
     if (!listed.ok) return c.text("Internal Server Error", 500);
-    const inserted = await repository(c).insert({ ...created.value, order: nextTaskOrder(listed.value) });
+    // New tasks take the first position so DS shows them at the top of their project group.
+    if (listed.value.length > 0) {
+      const shifted = await repository(c).move(tasksShiftedForFirstPlace(listed.value));
+      if (!shifted.ok) return c.text("Internal Server Error", 500);
+    }
+    const inserted = await repository(c).insert({ ...created.value, order: FIRST_TASK_ORDER });
     if (!inserted.ok) return c.text("Internal Server Error", 500);
     c.header("HX-Redirect", "/tasks");
     return c.body(null, 201);
