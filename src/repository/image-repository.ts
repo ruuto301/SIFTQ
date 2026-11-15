@@ -26,16 +26,28 @@ export function createMemoryImageRepository(): ImageRepository {
   };
 }
 
-function toStoredImage(value: unknown): StoredImage | undefined {
+/** D1 は環境によって BLOB を ArrayBuffer / Uint8Array のどちらでも返すため、ArrayBuffer に正規化する。 */
+function toImageData(value: unknown): ArrayBuffer | undefined {
+  if (value instanceof ArrayBuffer) return value;
+  if (ArrayBuffer.isView(value)) {
+    const view = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    return view.slice().buffer;
+  }
+  if (Array.isArray(value)) return new Uint8Array(value).buffer;
+  return undefined;
+}
+
+export function toStoredImage(value: unknown): StoredImage | undefined {
   if (!isRecord(value)) return undefined;
   const { id, owner_id, content_type, data, created_at } = value;
   if (typeof id !== "string") return undefined;
   if (typeof owner_id !== "string") return undefined;
   if (typeof content_type !== "string") return undefined;
   if (!isImageContentType(content_type)) return undefined;
-  if (!(data instanceof ArrayBuffer)) return undefined;
+  const bytes = toImageData(data);
+  if (bytes === undefined) return undefined;
   if (typeof created_at !== "string") return undefined;
-  return { id, owner_id, content_type, data, created_at };
+  return { id, owner_id, content_type, data: bytes, created_at };
 }
 
 export function createD1ImageRepository(db: D1Database): ImageRepository {

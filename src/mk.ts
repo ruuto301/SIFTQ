@@ -9,6 +9,7 @@ export type MkFilter = (typeof MK_FILTERS)[number];
 
 export const MK_TITLE_MAX_CODE_POINTS = TASK_TITLE_MAX_CODE_POINTS;
 export const MK_BODY_MAX_CODE_POINTS = TASK_DESCRIPTION_MAX_CODE_POINTS;
+export const MK_MAX_IMAGES = 10;
 
 export type MkNote = {
   id: string;
@@ -21,6 +22,15 @@ export type MkNote = {
   updated_at: string;
 };
 
+export type MkImage = {
+  id: string;
+  note_id: string;
+  owner_id: string;
+  image_id: string;
+  position: number;
+  created_at: string;
+};
+
 export type MkErrorCode =
   | "INVALID_TITLE"
   | "INVALID_BODY"
@@ -28,6 +38,8 @@ export type MkErrorCode =
   | "INVALID_FILTER"
   | "INVALID_PINNED"
   | "INVALID_BULK_INPUT"
+  | "INVALID_IMAGE"
+  | "IMAGE_LIMIT_EXCEEDED"
   | "NOT_FOUND";
 
 export type MkError = { code: MkErrorCode };
@@ -56,6 +68,45 @@ export function isMkNote(value: unknown): value is MkNote {
 
 export function isMkFilter(value: unknown): value is MkFilter {
   return typeof value === "string" && MK_FILTERS.some((filter) => filter === value);
+}
+
+/** Image positions are 1-based slots so the first attached image sorts first. */
+export function isMkImagePositionValid(position: number): boolean {
+  return Number.isInteger(position) && position >= 1;
+}
+
+export function isMkImage(value: unknown): value is MkImage {
+  if (!isMkRecord(value)) return false;
+  const { id, note_id, owner_id, image_id, position, created_at } = value;
+  return (
+    typeof id === "string" &&
+    id !== "" &&
+    typeof note_id === "string" &&
+    note_id !== "" &&
+    typeof owner_id === "string" &&
+    owner_id !== "" &&
+    typeof image_id === "string" &&
+    image_id !== "" &&
+    typeof position === "number" &&
+    isMkImagePositionValid(position) &&
+    typeof created_at === "string" &&
+    created_at !== ""
+  );
+}
+
+export type CreateMkImageInput = {
+  id: string;
+  note_id: string;
+  owner_id: string;
+  image_id: string;
+  position: number;
+  created_at: string;
+};
+
+/** The link row that attaches an uploaded image to a note. */
+export function createMkImage(input: CreateMkImageInput): Result<MkImage, MkError> {
+  if (!isMkImage(input)) return err({ code: "INVALID_IMAGE" });
+  return ok(input);
 }
 
 export function isMkTitleValid(title: string): boolean {

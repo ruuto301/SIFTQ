@@ -319,6 +319,26 @@
         }
       ]
     },
+    "mk_notes_id_images": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/mk/notes/{id}/images",
+      "operation": "notes-id-images",
+      "success": 200
+    },
+    "mk_images_id_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/mk/images/{id}",
+      "operation": "images-id-delete",
+      "success": 204,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
     "html_mk_page": {
       "kind": "html",
       "method": "GET",
@@ -871,7 +891,21 @@
       "trigger": "POST",
       "view": "screen:P13",
       "gateway": "mk-scripts.ts",
+      "api": "images_create"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
       "api": "mk_notes_post"
+    },
+    {
+      "screen": "P13",
+      "trigger": "POST",
+      "view": "screen:P13",
+      "gateway": "mk-scripts.ts",
+      "api": "mk_images_id_delete"
     },
     {
       "screen": "P13",

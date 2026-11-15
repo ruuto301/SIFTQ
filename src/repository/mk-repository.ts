@@ -1,4 +1,4 @@
-import type { MkColor, MkError, MkNote, MkNoteQuery } from "../mk";
+import type { MkColor, MkError, MkImage, MkNote, MkNoteQuery } from "../mk";
 import type { Result } from "../task";
 
 export type MkRepositoryError = MkError;
@@ -16,4 +16,8 @@ export interface MkRepository {
   ): Promise<Result<MkNote[], MkRepositoryError>>;
   bulkPin(ids: readonly string[], owner_id: string, pinned: boolean): Promise<Result<MkNote[], MkRepositoryError>>;
   bulkRemove(ids: readonly string[], owner_id: string): Promise<Result<null, MkRepositoryError>>;
+  listImages(note_id: string, owner_id: string): Promise<Result<MkImage[], MkRepositoryError>>;
+  insertImage(link: MkImage): Promise<Result<MkImage, MkRepositoryError>>;
+  removeImage(id: string, owner_id: string): Promise<Result<null, MkRepositoryError>>;
+  countImages(note_id: string, owner_id: string): Promise<Result<number, MkRepositoryError>>;
 }

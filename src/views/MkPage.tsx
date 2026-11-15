@@ -1,5 +1,5 @@
 import { MK_COLORS } from "../mk";
-import type { MkColor, MkFilter, MkNote } from "../mk";
+import type { MkColor, MkFilter, MkImage, MkNote } from "../mk";
 
 export type MkNoteCounts = { all: number; pinned: number; unpinned: number };
 
@@ -15,6 +15,42 @@ export function mkListHref(filter: MkFilter, query: string, color: MkColor | und
   if (query.trim() !== "") params.set("q", query);
   if (color !== undefined) params.set("color", color);
   return `/mk?${params.toString()}`;
+}
+
+function MkComposerColors() {
+  return (
+    <div class="mk-composer__colors" role="group" aria-label="メモの色">
+      {MK_COLORS.map((color) => (
+        <button
+          key={color}
+          class={`mk-swatch mk-swatch--${color}`}
+          type="button"
+          data-mk-composer-color={color}
+          aria-label={`${color} の色`}
+          aria-pressed={color === "default" ? "true" : "false"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MkComposerAttachments() {
+  return (
+    <div class="mk-composer__attachments">
+      <button class="button small" type="button" data-mk-composer-image-add>
+        画像を追加
+      </button>
+      <input
+        class="mk-composer__file"
+        type="file"
+        accept="image/png,image/webp,image/jpeg"
+        multiple
+        tabindex={-1}
+        aria-hidden="true"
+        data-mk-composer-file
+      />
+    </div>
+  );
 }
 
 function MkComposer() {
@@ -42,18 +78,12 @@ function MkComposer() {
           aria-label="メモの本文"
           data-mk-composer-body
         ></textarea>
-        <div class="mk-composer__colors" role="group" aria-label="メモの色">
-          {MK_COLORS.map((color) => (
-            <button
-              key={color}
-              class={`mk-swatch mk-swatch--${color}`}
-              type="button"
-              data-mk-composer-color={color}
-              aria-label={`${color} の色`}
-              aria-pressed={color === "default" ? "true" : "false"}
-            />
-          ))}
+        <MkComposerColors />
+        <div class="mk-composer__images" data-mk-composer-images hidden>
+          <ul class="mk-composer__image-list" data-mk-composer-image-list></ul>
         </div>
+        <p class="mk-composer__error" data-mk-composer-error role="status" hidden></p>
+        <MkComposerAttachments />
         <div class="mk-composer__actions">
           <button class="button small" type="button" data-mk-composer-cancel data-cancel>
             キャンセル
@@ -155,7 +185,8 @@ function MkBulkBar() {
   );
 }
 
-function MkCard({ note }: { readonly note: MkNote }) {
+function MkCard({ note, images }: { readonly note: MkNote; readonly images: readonly MkImage[] }) {
+  const firstImage = images[0];
   return (
     <article
       class={`mk-card mk-card--${note.color}`}
@@ -183,6 +214,24 @@ function MkCard({ note }: { readonly note: MkNote }) {
         </button>
       </div>
       <h2 class="mk-card__title">{note.title}</h2>
+      {firstImage === undefined ? null : (
+        <div class="mk-card__image-wrap">
+          <img
+            class="mk-card__image"
+            src={`/api/images/${encodeURIComponent(firstImage.image_id)}`}
+            alt=""
+            loading="lazy"
+          />
+          <button
+            class="mk-card__image-remove"
+            type="button"
+            data-mk-image-remove={firstImage.id}
+            aria-label="画像を削除"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {note.body === "" ? null : <p class="mk-card__body">{note.body}</p>}
     </article>
   );
@@ -214,12 +263,14 @@ export function MkPage({
   filter,
   query,
   color,
+  images,
 }: {
   readonly notes: readonly MkNote[];
   readonly counts: MkNoteCounts;
   readonly filter: MkFilter;
   readonly query: string;
   readonly color: MkColor | undefined;
+  readonly images: Readonly<Record<string, readonly MkImage[]>>;
 }) {
   return (
     <div class="page page--mk" data-mk-page data-mk-selecting="false">
@@ -247,7 +298,7 @@ export function MkPage({
           ) : null}
           <div class="mk-grid" data-mk-grid>
             {notes.map((note) => (
-              <MkCard key={note.id} note={note} />
+              <MkCard key={note.id} note={note} images={images[note.id] ?? []} />
             ))}
           </div>
         </section>

@@ -24,6 +24,7 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerTaskApiRoutes } from "./routes/task-api";
 import { registerIdeaApiRoutes } from "./routes/idea-api";
 import { registerMkApiRoutes } from "./routes/mk-api";
+import { registerMkImageApiRoutes } from "./routes/mk-image-api";
 import { registerImageApiRoutes } from "./routes/image-api";
 import { registerTaskScreenRoutes } from "./routes/task-screens";
 import { registerMkScreenRoutes } from "./routes/mk-screens";
@@ -139,6 +140,7 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
 registerTaskApiRoutes(app, repository, ideaRepository, projectRepository);
 registerIdeaApiRoutes(app, ideaRepository, repository);
 registerMkApiRoutes(app, mkRepository);
+registerMkImageApiRoutes(app, mkRepository, imageRepository);
 registerImageApiRoutes(app, imageRepository);
 registerTaskScreenRoutes(app, repository, ideaRepository, projectRepository);
 registerMkScreenRoutes(app, mkRepository);
