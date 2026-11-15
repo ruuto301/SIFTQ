@@ -3,6 +3,12 @@ import { TASK_STATUSES } from "../task";
 import type { Task, TaskStatus } from "../task";
 import type { Project } from "../project";
 import type { TaskGroup } from "../task-list";
+import {
+  DescriptionTabList,
+  descriptionDefaultTab,
+  descriptionPanelId,
+  descriptionTabId,
+} from "../components/DescriptionTabs";
 import { PROJECT_NONE_LABEL } from "../components/task-option-data";
 import { ProjectOptions } from "../components/ProjectOptions";
 
@@ -204,6 +210,40 @@ function ChatPane({ selected, wsUrl, workspace }: ChatPaneProps) {
   );
 }
 
+/** Description 編集 / プレビュー tabs; the preview reuses the DS description field tone. */
+function TaskDescriptionField({ task }: { task: Task }) {
+  const selected = descriptionDefaultTab(task.description);
+  return (
+    <div class="ds-task__description-field" data-description-tabs data-default-tab={selected}>
+      <DescriptionTabList prefix="ds-description" selected={selected} />
+      <div
+        id={descriptionPanelId("ds-description", "edit")}
+        class="description-tabs__panel"
+        role="tabpanel"
+        aria-labelledby={descriptionTabId("ds-description", "edit")}
+        data-description-panel="edit"
+        hidden={selected !== "edit"}
+      >
+        <label class="ds-task__label" for="ds-task-description">
+          description
+        </label>
+        <textarea class="ds-task__description" id="ds-task-description" name="description" data-description-value rows={12}>
+          {task.description}
+        </textarea>
+      </div>
+      <div
+        id={descriptionPanelId("ds-description", "preview")}
+        class="description-tabs__panel description-preview ds-task__description"
+        role="tabpanel"
+        aria-labelledby={descriptionTabId("ds-description", "preview")}
+        data-description-panel="preview"
+        data-description-preview
+        hidden={selected !== "preview"}
+      ></div>
+    </div>
+  );
+}
+
 /**
  * Task pane: edits the selected task title and description. Saving is explicit
  * because the DSH agent writes the same description through its own session.
@@ -236,12 +276,7 @@ function TaskEditPane({ selected }: { selected: Task | undefined }) {
           maxlength={256}
           value={selected.title}
         />
-        <label class="ds-task__label" for="ds-task-description">
-          description
-        </label>
-        <textarea class="ds-task__description" id="ds-task-description" name="description" rows={12}>
-          {selected.description}
-        </textarea>
+        <TaskDescriptionField task={selected} />
       </div>
       <div class="ds-task__foot">
         <span class="ds-task__status" id="ds-task-status"></span>

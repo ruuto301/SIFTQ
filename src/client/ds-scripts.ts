@@ -1,3 +1,5 @@
+import { DESCRIPTION_TABS_SCRIPT } from "./description-tabs-scripts";
+
 /** DS browser pane: CDP screencast canvas, tabs and history controls. */
 export const DS_SCRIPT = `(function () {
   var root = document.getElementById("ds-root");
@@ -1241,4 +1243,10 @@ export const DS_SCRIPT = `(function () {
       refresh();
     });
     refresh();
-  })();`;
+  })();
+
+  // Description 編集 / プレビュー tabs: the same script the task form uses.
+  (function () {
+    ${DESCRIPTION_TABS_SCRIPT}
+  })();
+`;
