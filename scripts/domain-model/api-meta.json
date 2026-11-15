@@ -454,22 +454,6 @@
       }
     ]
   },
-  "mk_notes_id_labels": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_LABEL"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      }
-    ]
-  },
   "mk_notes_id_preview": {
     "errors": [
       {
@@ -483,60 +467,6 @@
       {
         "status": 502,
         "code": "PREVIEW_FAILED"
-      }
-    ]
-  },
-  "mk_labels": {
-    "errors": [
-      {
-        "status": 500
-      }
-    ]
-  },
-  "mk_labels_post": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_LABEL_NAME"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      },
-      {
-        "status": 500
-      }
-    ]
-  },
-  "mk_labels_id": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_LABEL_NAME"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
-  "mk_labels_id_delete": {
-    "errors": [
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
       }
     ]
   },

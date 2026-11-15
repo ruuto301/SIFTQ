@@ -3,8 +3,8 @@ import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
 import { createMemoryMkRepository } from "../../src/preview/MemoryMkRepository";
 import { createMemoryImageRepository } from "../../src/repository/image-repository";
-import { MK_MAX_IMAGES, isMkLabel, isMkNote } from "../../src/mk";
-import type { MkLabel, MkNote } from "../../src/mk";
+import { MK_MAX_IMAGES, isMkNote } from "../../src/mk";
+import type { MkNote } from "../../src/mk";
 import type { MkRepository } from "../../src/repository/mk-repository";
 import type { ImageRepository } from "../../src/repository/image-repository";
 
@@ -45,24 +45,6 @@ async function readNotes(response: Response): Promise<MkNote[]> {
   const value: unknown = await response.json();
   if (!Array.isArray(value)) throw new Error("expected MK notes");
   return value.filter(isMkNote);
-}
-
-async function readLabel(response: Response): Promise<MkLabel> {
-  const value: unknown = await response.json();
-  if (!isMkLabel(value)) throw new Error("expected an MK label");
-  return value;
-}
-
-async function readLabels(response: Response): Promise<MkLabel[]> {
-  const value: unknown = await response.json();
-  if (!Array.isArray(value)) throw new Error("expected MK labels");
-  return value.filter(isMkLabel);
-}
-
-async function createLabel(name: string): Promise<MkLabel> {
-  const response = await jsonRequest("/api/mk/labels", "POST", { name });
-  expect(response.status).toBe(201);
-  return readLabel(response);
 }
 
 async function createNote(title: string, body = "", color = "default"): Promise<MkNote> {
@@ -144,81 +126,6 @@ describe("MK notes bulk API", () => {
   });
 });
 
-describe("MK labels API", () => {
-  it("creates, lists, renames, and deletes labels", async () => {
-    const work = await createLabel("  仕事  ");
-    expect(work.name).toBe("仕事");
-
-    const renamed = await jsonRequest(`/api/mk/labels/${work.id}`, "PATCH", { name: "私用" });
-    expect(renamed.status).toBe(200);
-    expect(await readLabel(renamed)).toEqual(expect.objectContaining({ id: work.id, name: "私用" }));
-
-    expect(await readLabels(await request("/api/mk/labels"))).toEqual([expect.objectContaining({ id: work.id, name: "私用" })]);
-
-    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(204);
-    expect(await readLabels(await request("/api/mk/labels"))).toEqual([]);
-    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(404);
-  });
-
-  it("rejects invalid names and case-insensitive duplicates", async () => {
-    const work = await createLabel("Work");
-
-    expect((await jsonRequest("/api/mk/labels", "POST", { name: "   " })).status).toBe(400);
-    expect((await jsonRequest("/api/mk/labels", "POST", { name: "a".repeat(101) })).status).toBe(400);
-    expect((await jsonRequest("/api/mk/labels", "POST", { name: "work" })).status).toBe(409);
-    expect((await jsonRequest(`/api/mk/labels/${work.id}`, "PATCH", { name: "WORK" })).status).toBe(200);
-    expect((await jsonRequest("/api/mk/labels/missing", "PATCH", { name: "x" })).status).toBe(404);
-
-    const other = await createLabel("Other");
-    expect((await jsonRequest(`/api/mk/labels/${other.id}`, "PATCH", { name: "work" })).status).toBe(409);
-  });
-
-  it("sets note labels, filters by label, and renders chips", async () => {
-    const note = await createNote("ラベル付き");
-    const work = await createLabel("仕事");
-    const home = await createLabel("家");
-
-    const attached = await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id] });
-    expect(attached.status).toBe(200);
-    expect(await readLabels(attached)).toEqual([expect.objectContaining({ id: work.id })]);
-
-    expect((await readNotes(await request(`/api/mk/notes?label=${work.id}`))).map((item) => item.id)).toEqual([note.id]);
-    expect(await readNotes(await request(`/api/mk/notes?label=${home.id}`))).toEqual([]);
-
-    const both = await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id, home.id] });
-    expect(await readLabels(both)).toEqual([
-      expect.objectContaining({ id: work.id }),
-      expect.objectContaining({ id: home.id }),
-    ]);
-
-    const rendered = await (await request(`/mk?label=${work.id}`)).text();
-    expect(rendered).toContain(`data-mk-card-label="${work.id}"`);
-    expect(rendered).toContain(`data-mk-label-link="${work.id}"`);
-    expect(rendered).toContain(`data-mk-label-count="${work.id}"`);
-    expect(rendered).toContain(`data-mk-composer-label`);
-  });
-
-  it("rejects unknown notes, unknown labels, and malformed label ids", async () => {
-    const note = await createNote("ラベル検証");
-
-    expect((await jsonRequest("/api/mk/notes/missing/labels", "POST", { labelIds: [] })).status).toBe(404);
-    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: ["missing"] })).status).toBe(404);
-    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: "work" })).status).toBe(400);
-    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: ["a", "a"] })).status).toBe(400);
-  });
-
-  it("detaches a deleted label from its notes", async () => {
-    const note = await createNote("ラベル削除");
-    const work = await createLabel("仕事");
-    await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id] });
-
-    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(204);
-    expect(await readNotes(await request(`/api/mk/notes?label=${work.id}`))).toEqual([]);
-    const rendered = await (await request("/mk")).text();
-    expect(rendered).not.toContain(`data-mk-card-label="${work.id}"`);
-  });
-});
-
 describe("MK archive and trash API", () => {
   it("archives and restores notes", async () => {
     const kept = await createNote("残す");
@@ -268,19 +175,16 @@ describe("MK archive and trash API", () => {
     expect((await request(`/api/images/${image.id}`)).status).toBe(200);
   });
 
-  it("counts notes per view and per label", async () => {
-    const label = await createLabel("集計");
-    const active = await createNote("active");
+  it("counts notes per view", async () => {
+    await createNote("active");
     const archived = await createNote("archived");
     const trashed = await createNote("trashed");
     await bulk("archive", [archived.id]);
     await bulk("trash", [trashed.id]);
-    await jsonRequest(`/api/mk/notes/${active.id}/labels`, "POST", { labelIds: [label.id] });
-
     const counts = await repo.counts("local");
     expect(counts.ok).toBe(true);
     if (!counts.ok) return;
-    expect(counts.value).toEqual({ notes: 1, pinned: 0, unpinned: 1, archived: 1, trash: 1, labels: { [label.id]: 1 } });
+    expect(counts.value).toEqual({ notes: 1, pinned: 0, unpinned: 1, archived: 1, trash: 1 });
   });
 });
 
@@ -325,7 +229,6 @@ describe("MK client script", () => {
     const body = await response.text();
     expect(body).toContain("/api/mk/notes");
     expect(body).toContain("/api/mk/notes/bulk");
-    expect(body).toContain("/api/mk/labels");
     expect(body).toContain("/api/mk/images/");
     expect(body).toContain("/api/images");
   });
@@ -637,5 +540,28 @@ describe("MK toolbar without bulk selection (BDD-TM-045)", () => {
     expect(html).not.toContain("data-mk-selection-toggle");
     expect(html).not.toContain("data-mk-select=");
     expect(html).not.toContain("data-mk-bulk-bar");
+  });
+});
+
+describe("MK without labels (BDD-TM-047)", () => {
+  it("renders no label UI on the screen", async () => {
+    const note = await createNote("ラベルなし");
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain(`data-mk-id="${note.id}"`);
+    expect(html).not.toContain("mk-label-manager");
+    expect(html).not.toContain("data-mk-card-label");
+    expect(html).not.toContain("data-mk-detail-label-add");
+    expect(html).not.toContain("data-mk-composer-labels");
+    expect(html).not.toContain("新しいラベル");
+  });
+
+  it("returns 404 for every label endpoint", async () => {
+    expect((await request("/api/mk/labels")).status).toBe(404);
+    expect((await jsonRequest("/api/mk/labels", "POST", { name: "x" })).status).toBe(404);
+    expect((await jsonRequest("/api/mk/labels/l1", "PATCH", { name: "x" })).status).toBe(404);
+    expect((await request("/api/mk/labels/l1", { method: "DELETE" })).status).toBe(404);
+    const note = await createNote("ラベル API なし");
+    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [] })).status).toBe(404);
   });
 });
