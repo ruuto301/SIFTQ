@@ -123,6 +123,33 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("このタスクを削除しますか？");
   });
 
+  it("saves the task pane title and description through the task API (BDD-TM-036)", () => {
+    for (const hook of [
+      'getElementById("ds-task-title")',
+      'getElementById("ds-task-description")',
+      'getElementById("ds-task-save")',
+      'getElementById("ds-task-status")',
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+    expect(DS_SCRIPT).toContain('fetch("/api/tasks/" + encodeURIComponent');
+    expect(DS_SCRIPT).toContain('method: "PATCH"');
+    expect(DS_SCRIPT).toContain("version: Number(pane.getAttribute(\"data-task-version\"))");
+  });
+
+  it("keeps unsaved edits, reports conflicts and updates the left card (BDD-TM-036)", () => {
+    // The chat script reads this flag before applying agent updates.
+    expect(DS_SCRIPT).toContain('pane.setAttribute("data-dirty", "true")');
+    expect(DS_SCRIPT).toContain("他の更新と衝突しました");
+    expect(DS_SCRIPT).toContain("未保存の変更");
+    expect(DS_SCRIPT).toContain("保存しました");
+    // Escape restores the baseline, Ctrl/Cmd + Enter saves.
+    expect(DS_SCRIPT).toContain('event.key === "Escape"');
+    expect(DS_SCRIPT).toContain('event.key === "Enter" && (event.ctrlKey || event.metaKey)');
+    expect(DS_SCRIPT).toContain('row.querySelector(".ds__task-title")');
+    expect(DS_SCRIPT).toContain('addEventListener("ds-task-description"');
+  });
+
   it("rejects non-http URLs and ignores frames from inactive tabs", () => {
     expect(DS_SCRIPT).toContain("http(s) の URL のみ開けます");
     expect(DS_SCRIPT).toContain("tabId");

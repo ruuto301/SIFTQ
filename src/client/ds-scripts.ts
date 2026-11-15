@@ -1122,4 +1122,115 @@ export const DS_SCRIPT = `(function () {
     bridge.send("browser.start", { sessionId: bridge.getSessionId() });
   }
   start();
-})();`;
+})();
+
+  // Task pane: edit the selected task title and description, then save with optimistic locking.
+  (function () {
+    var pane = document.getElementById("ds-task");
+    if (!pane) return;
+    var titleInput = document.getElementById("ds-task-title");
+    var descriptionInput = document.getElementById("ds-task-description");
+    var status = document.getElementById("ds-task-status");
+    var saveButton = document.getElementById("ds-task-save");
+    var error = document.getElementById("ds-task-error");
+    if (!titleInput || !descriptionInput) return;
+    var baselineTitle = titleInput.value;
+    var baselineDescription = descriptionInput.value;
+
+    function setStatus(text, kind) {
+      if (!status) return;
+      status.textContent = text;
+      status.className = kind === undefined ? "ds-task__status" : "ds-task__status ds-task__status--" + kind;
+    }
+    function setError(text) {
+      if (!error) return;
+      error.textContent = text;
+      error.hidden = text === "";
+    }
+    function dirty() {
+      return titleInput.value.trim() !== baselineTitle || descriptionInput.value !== baselineDescription;
+    }
+    function refresh() {
+      var changed = dirty();
+      if (changed) {
+        pane.setAttribute("data-dirty", "true");
+        setStatus("未保存の変更", "dirty");
+      } else {
+        pane.removeAttribute("data-dirty");
+      }
+      return changed;
+    }
+    function revert() {
+      titleInput.value = baselineTitle;
+      descriptionInput.value = baselineDescription;
+      refresh();
+      setStatus("", undefined);
+      setError("");
+    }
+    function updateRow(task) {
+      var row = document.querySelector('.ds__task-item[data-task-id="' + task.id + '"]');
+      if (!row) return;
+      row.setAttribute("data-task-version", String(task.version));
+      var title = row.querySelector(".ds__task-title");
+      if (title) title.textContent = task.title;
+    }
+    function save() {
+      var title = titleInput.value.trim();
+      if (title === "") { setError("title を入力してください。"); return; }
+      setError("");
+      if (saveButton) saveButton.disabled = true;
+      fetch("/api/tasks/" + encodeURIComponent(pane.getAttribute("data-task-id") || ""), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title,
+          description: descriptionInput.value,
+          version: Number(pane.getAttribute("data-task-version")),
+        }),
+      })
+        .then(function (response) {
+          if (response.status === 409) {
+            setError("他の更新と衝突しました。内容を確認してから再読み込みしてください。");
+            return null;
+          }
+          if (!response.ok) { setError("保存に失敗しました。"); return null; }
+          return response.json();
+        })
+        .then(function (task) {
+          if (task === null || task === undefined) return;
+          pane.setAttribute("data-task-version", String(task.version));
+          baselineTitle = task.title;
+          baselineDescription = task.description;
+          titleInput.value = task.title;
+          descriptionInput.value = task.description;
+          refresh();
+          setStatus("保存しました", "saved");
+          updateRow(task);
+        })
+        .catch(function () { setError("保存に失敗しました。"); })
+        .then(function () { if (saveButton) saveButton.disabled = false; });
+    }
+
+    titleInput.addEventListener("input", function () {
+      if (refresh()) return;
+      setStatus("", undefined);
+    });
+    descriptionInput.addEventListener("input", function () {
+      if (refresh()) return;
+      setStatus("", undefined);
+    });
+    if (saveButton) saveButton.addEventListener("click", save);
+    pane.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); save(); return; }
+      if (event.key === "Escape") { event.preventDefault(); revert(); }
+    });
+    // The chat pane forwards the agent description; keep whatever the user typed.
+    pane.addEventListener("ds-task-description", function (event) {
+      var text = event.detail && typeof event.detail.text === "string" ? event.detail.text : "";
+      if (dirty()) return;
+      baselineDescription = text;
+      descriptionInput.value = text;
+      refresh();
+    });
+    refresh();
+  })();`;

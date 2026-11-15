@@ -437,23 +437,51 @@ export const DS_CSS = `
 .ds__pane--chat .dsh-chat__form { padding: 10px 12px 12px; border-top: 1px solid #eef1f4; }
 
 /* Description pane. */
-.dsh-desc { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; }
-.dsh-desc__bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px 0; }
-.dsh-desc__title { font-size: 12px; font-weight: 600; color: #57606a; }
-.dsh-desc__view {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 12px 16px 20px;
+.ds-task { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; }
+.ds-task__body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 8px; }
+.ds-task__label { font-size: 11px; font-weight: 700; color: #57606a; }
+.ds-task__title {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
   font-size: 13px;
-  line-height: 1.8;
   color: #1b1f24;
-  white-space: pre-wrap;
 }
-.dsh-desc__view:empty::before { content: "説明はまだありません。"; color: #8b949e; }
-.dsh-desc__view .dsh-code { padding: 10px 12px; overflow: auto; border-radius: 8px; background: #fff; border: 1px solid #d8dde3; font-size: 12px; }
-.dsh-desc__view code { padding: 1px 5px; border-radius: 5px; background: #fff; border: 1px solid #d8dde3; font-size: 12px; }
-.dsh-chat[hidden], .dsh-desc[hidden] { display: none !important; }
+.ds-task__description {
+  flex: 1;
+  min-height: 160px;
+  padding: 10px 12px;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #1b1f24;
+  resize: none;
+}
+.ds-task__title:focus-visible,
+.ds-task__description:focus-visible { border-color: #1b1f24; outline: 2px solid rgb(27 31 36 / 35%); outline-offset: 1px; }
+.ds-task__foot { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
+.ds-task__status { font-size: 11px; color: #57606a; }
+.ds-task__status--dirty { color: #9a6700; font-weight: 700; }
+.ds-task__status--saved { color: #1a7f37; font-weight: 700; }
+.ds-task__hint { font-size: 11px; color: #8b949e; }
+.ds-task__save { margin-left: auto; }
+.ds-task__error {
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border: 1px solid #f3c2c2;
+  border-radius: 8px;
+  background: #fdf3f3;
+  color: #b3261e;
+  font-size: 12px;
+}
+.ds-task__error[hidden] { display: none; }
+.dsh-chat[hidden], .ds-task[hidden] { display: none !important; }
 
 /* Right pane: browser. */
 .ds__pane--browser { min-height: 0; }
