@@ -45,7 +45,7 @@ async function openList(page: Page) {
   return boxes;
 }
 
-test("selects a contiguous range with shift + click (BDD-TM-041)", async ({ page }) => {
+test("selects a contiguous range with shift + click (BDD-TM-042)", async ({ page }) => {
   const boxes = await openList(page);
   await boxes.nth(1).click();
   await boxes.nth(4).click({ modifiers: ["Shift"] });
@@ -57,7 +57,7 @@ test("selects a contiguous range with shift + click (BDD-TM-041)", async ({ page
   expect(state.summaryHidden).toBe(false);
 });
 
-test("extends the range upwards and clears it again (BDD-TM-041)", async ({ page }) => {
+test("extends the range upwards and clears it again (BDD-TM-042)", async ({ page }) => {
   const boxes = await openList(page);
   await boxes.nth(4).click();
   await boxes.nth(1).click({ modifiers: ["Shift"] });
@@ -69,7 +69,7 @@ test("extends the range upwards and clears it again (BDD-TM-041)", async ({ page
   expect(cleared.selectedRows).toBe(2);
 });
 
-test("starts a fresh range after select all (BDD-TM-041)", async ({ page }) => {
+test("starts a fresh range after select all (BDD-TM-042)", async ({ page }) => {
   const boxes = await openList(page);
   const selectAll = page.locator("[data-task-list] [data-task-select-all]");
 

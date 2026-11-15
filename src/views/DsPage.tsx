@@ -245,7 +245,7 @@ function TaskEditPane({ selected }: { selected: Task | undefined }) {
       </div>
       <div class="ds-task__foot">
         <span class="ds-task__status" id="ds-task-status"></span>
-        <span class="ds-task__hint">Ctrl + Enter で保存 / Esc で取り消し</span>
+        <span class="ds-task__hint">Ctrl + S で保存 / Esc で取り消し</span>
         <button type="button" class="button ds-task__save" id="ds-task-save">
           保存
         </button>
@@ -331,11 +331,6 @@ export const DsPage: FC<{
 
       <section class="ds__pane ds__pane--chat">
         <ChatHeader />
-        {selected === undefined ? null : (
-          <div class="ds__chat-title">
-            <span class="ds__chat-title__text">{selected.title}</span>
-          </div>
-        )}
         <TaskEditPane selected={selected} />
         <ChatPane selected={selected} wsUrl={wsUrl} workspace={workspace} />
         <SettingsPane />
