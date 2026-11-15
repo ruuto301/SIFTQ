@@ -17,8 +17,8 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
 
   const title = `MK e2e ${Date.now()}`;
   await page.locator("[data-mk-composer-trigger]").click();
-  await page.getByLabel("メモのタイトル").fill(title);
-  await page.getByLabel("メモの本文").fill("e2e body");
+  await page.locator("[data-mk-composer]").getByLabel("メモのタイトル").fill(title);
+  await page.locator("[data-mk-composer]").getByLabel("メモの本文").fill("e2e body");
   await page.locator('[data-mk-composer-color="blue"]').click();
   await actAndWaitForReload(page, () => page.locator("[data-mk-composer-save]").click());
 
@@ -27,6 +27,7 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await expect(card).toHaveAttribute("data-mk-color", "blue");
   await expect(card.locator(".mk-card__body")).toHaveText("e2e body");
 
+  await card.hover();
   await actAndWaitForReload(page, () => card.locator("[data-mk-pin]").click());
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-pinned", "true");
 
@@ -44,23 +45,10 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-color", "red");
 
   await page.goto("/mk");
+  await page.locator(".mk-card").filter({ hasText: title }).hover();
   await page.locator(".mk-card").filter({ hasText: title }).locator("[data-mk-delete]").click();
   await expect(page.locator(".matrix-modal")).toContainText("このメモを削除しますか？");
   await actAndWaitForReload(page, () => page.locator(".matrix-modal-button--danger").click());
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveCount(0);
 });
 
-test("switches the MK screen to the dark theme", async ({ page }) => {
-  await signIn(page);
-  await page.goto("/mk");
-
-  const shell = page.locator("[data-mk-page]");
-  const before = await shell.evaluate((element) => getComputedStyle(element).backgroundColor);
-
-  await page.locator("[data-mk-theme]").selectOption("dark");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-
-  const after = await shell.evaluate((element) => getComputedStyle(element).backgroundColor);
-  expect(after).not.toBe(before);
-  expect(after).toBe("rgb(24, 25, 27)");
-});

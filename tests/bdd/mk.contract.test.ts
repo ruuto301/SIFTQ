@@ -296,8 +296,6 @@ describe("MK page", () => {
     expect(body).toContain(`data-mk-id="${note.id}"`);
     expect(body).toContain("mk-card mk-card--purple");
     expect(body).toContain("ページ表示");
-    expect(body).toContain("ピンあり");
-    expect(body).toContain("ピンなし");
     expect(body).toContain("アーカイブ");
     expect(body).toContain("ゴミ箱");
     expect(body).toContain('data-mk-count="notes"');
@@ -426,11 +424,12 @@ describe("MK screen follows the agreed mock (BDD-TM-037)", () => {
     expect(html).toContain('aria-label="red の絞り込みを解除"');
   });
 
-  it("renders the sidebar new-memo button, search, selection and composer wording", async () => {
+  it("renders the Keep-style composer, search and selection wording", async () => {
     const html = await (await request("/mk")).text();
 
-    expect(html).toContain("data-mk-side-new");
-    expect(html).toContain("＋ 新規メモ");
+    // Keep puts a single "take a note" card at the top of the list.
+    expect(html).toContain("メモを取る...");
+    expect(html).not.toContain("data-mk-side-new");
     expect(html).toContain('placeholder="メモを検索（タイトル / 本文）"');
     expect(html).toContain("☑ 選択");
     expect(html).toContain('placeholder="新しいメモのタイトル"');
@@ -555,14 +554,15 @@ describe("MK link preview API", () => {
 });
 
 describe("MK phase 3 screen controls", () => {
-  it("renders the date range, sort, saved search, and theme controls", async () => {
+  it("keeps the date range, sort and saved search inside the filter menu", async () => {
     const html = await (await request("/mk")).text();
 
+    expect(html).toContain("data-mk-filter-menu");
     expect(html).toContain("data-mk-date-form");
     expect(html).toContain("data-mk-date-kind");
     expect(html).toContain("data-mk-sort-field");
     expect(html).toContain("data-mk-saved-searches");
-    expect(html).toContain("data-mk-theme");
+    expect(html).not.toContain("data-mk-theme");
     expect(html).toContain('data-mk-sort="updated:desc"');
   });
 
@@ -585,7 +585,46 @@ describe("MK phase 3 screen controls", () => {
 
     expect(body).toContain("/preview");
     expect(body).toContain("mk-saved-searches:v1");
-    expect(body).toContain("mk-theme:v1");
+    expect(body).not.toContain("mk-theme:v1");
     expect(body).toContain("data-mk-date-form");
+    expect(body).toContain("data-mk-detail");
+  });
+});
+
+describe("MK detail dialog (BDD-TM-044)", () => {
+  it("renders the Keep-style detail dialog with every editable control", async () => {
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain("data-mk-detail");
+    expect(html).toContain("data-mk-detail-dialog");
+    expect(html).toContain("data-mk-detail-title");
+    expect(html).toContain("data-mk-detail-body");
+    expect(html).toContain("data-mk-detail-pin");
+    expect(html).toContain("data-mk-detail-color=");
+    expect(html).toContain("data-mk-detail-archive");
+    expect(html).toContain("data-mk-detail-trash");
+    expect(html).toContain("data-mk-detail-delete");
+    expect(html).toContain("data-mk-detail-close");
+  });
+
+  it("gives each card the data the dialog needs to open", async () => {
+    const note = await createNote("ダイアログ用", "本文です", "green");
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain(`data-mk-id="${note.id}"`);
+    expect(html).toContain('data-mk-open');
+    expect(html).toContain('data-mk-title="ダイアログ用"');
+    expect(html).toContain('data-mk-body="本文です"');
+    expect(html).toContain("data-mk-images=");
+  });
+
+  it("drops the theme switch and keeps the memo colours fixed", async () => {
+    const html = await (await request("/mk")).text();
+    const css = await (await request("/styles.css")).text();
+
+    expect(html).not.toContain("data-mk-theme");
+    expect(css).not.toContain('html[data-theme="dark"]');
+    expect(css).toMatch(/\.mk-card--default\s*\{\s*background: #2c2e31;/);
+    expect(css).toMatch(/\.mk-card--blue\s*\{\s*background: #2c4059;/);
   });
 });

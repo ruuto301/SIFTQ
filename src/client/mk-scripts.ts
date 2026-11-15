@@ -555,7 +555,6 @@ function initializeMkPaste(page) {
     imageFiles.forEach(function (file) { mkUploadComposerImage(composer, file); });
   });
 }
-var MK_THEME_KEY = "mk-theme:v1";
 var MK_SORT_KEY = "mk-sort:v1";
 var MK_SAVED_KEY = "mk-saved-searches:v1";
 var MK_SAVED_MAX = 20;
@@ -564,23 +563,6 @@ function mkStore(key, value) {
 }
 function mkRead(key) {
   try { return window.localStorage.getItem(key); } catch (error) { return null; }
-}
-function mkResolveTheme(mode) {
-  if (mode === "dark" || mode === "light") return mode;
-  var query = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  return query && query.matches ? "dark" : "light";
-}
-function mkApplyTheme(mode) { document.documentElement.setAttribute("data-theme", mkResolveTheme(mode)); }
-function initializeMkTheme(page) {
-  var select = page.querySelector("[data-mk-theme]");
-  if (!select) return;
-  var stored = mkRead(MK_THEME_KEY) || "system";
-  select.value = stored;
-  mkApplyTheme(stored);
-  select.addEventListener("change", function () {
-    mkStore(MK_THEME_KEY, select.value);
-    mkApplyTheme(select.value);
-  });
 }
 function mkUrlWith(params) {
   var search = params.toString();
@@ -737,6 +719,208 @@ function initializeMkPreview(page) {
     mkRun("/api/mk/notes/" + encodeURIComponent(id) + "/preview", { method: "POST" });
   });
 }
+function mkDetail() { return document.querySelector("[data-mk-detail]"); }
+function mkDetailField(root, name) { return root.querySelector("[data-mk-detail-" + name + "]"); }
+function mkDetailCard(root) {
+  var id = root.getAttribute("data-mk-note-id") || "";
+  return id === "" ? null : document.querySelector('.mk-card[data-mk-id="' + id + '"]');
+}
+function mkDetailError(root, message) {
+  var error = mkDetailField(root, "error");
+  if (!error) return;
+  error.textContent = message;
+  error.hidden = message === "";
+}
+function mkDetailSetColor(root, color) {
+  var dialog = mkDetailField(root, "dialog");
+  if (dialog) dialog.setAttribute("data-mk-color", color);
+  root.querySelectorAll("[data-mk-detail-color]").forEach(function (button) {
+    button.setAttribute("aria-pressed", button.getAttribute("data-mk-detail-color") === color ? "true" : "false");
+  });
+}
+function mkLabelNameFromCard(card, labelId) {
+  var chip = card.querySelector('[data-mk-card-label="' + labelId + '"]');
+  return chip ? chip.textContent.trim() : labelId;
+}
+function mkDetailRenderLabels(root, card) {
+  var box = mkDetailField(root, "labels");
+  if (!box) return;
+  box.textContent = "";
+  if (card === null) return;
+  var ids = mkCardLabelIds(card);
+  ids.forEach(function (labelId) {
+    var chip = document.createElement("span");
+    chip.className = "mk-label-chip";
+    chip.appendChild(document.createTextNode(mkLabelNameFromCard(card, labelId) + " "));
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", "ラベルを外す");
+    remove.addEventListener("click", function () {
+      var next = mkCardLabelIds(card).filter(function (id) { return id !== labelId; });
+      mkSetNoteLabels(mkCardId(card), next);
+      mkReload();
+    });
+    chip.appendChild(remove);
+    box.appendChild(chip);
+  });
+}
+function mkDetailRenderImages(root, card) {
+  var box = mkDetailField(root, "images");
+  if (!box) return;
+  box.textContent = "";
+  if (card === null) return;
+  var raw = card.getAttribute("data-mk-images") || "[]";
+  var images = [];
+  try { images = JSON.parse(raw); } catch (error) { images = []; }
+  images.forEach(function (image) {
+    var wrap = document.createElement("span");
+    wrap.className = "mk-detail__thumb";
+    var img = document.createElement("img");
+    img.src = image.src;
+    img.alt = "";
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", "画像を削除");
+    remove.addEventListener("click", function () { mkRemoveCardImage(image.link); });
+    wrap.appendChild(img);
+    wrap.appendChild(remove);
+    box.appendChild(wrap);
+  });
+}
+function mkDetailApply(root, note) {
+  var card = mkDetailCard(root);
+  if (card !== null) {
+    card.setAttribute("data-mk-title", note.title);
+    card.setAttribute("data-mk-body", note.body);
+    card.setAttribute("data-mk-color", note.color);
+    card.setAttribute("data-mk-pinned", note.pinned ? "true" : "false");
+    card.className = "mk-card mk-card--" + note.color;
+    var title = card.querySelector(".mk-card__title");
+    if (title) title.textContent = note.title;
+    var body = card.querySelector(".mk-card__body");
+    if (body) body.textContent = note.body;
+  }
+  mkDetailSetColor(root, note.color);
+  var pin = mkDetailField(root, "pin");
+  if (pin) pin.setAttribute("aria-pressed", note.pinned ? "true" : "false");
+}
+function mkDetailPatch(root, body) {
+  var id = root.getAttribute("data-mk-note-id");
+  if (!id) return null;
+  return mkApi("/api/mk/notes/" + encodeURIComponent(id), { method: "PATCH", body: JSON.stringify(body) });
+}
+function mkDetailSave(root) {
+  var title = mkDetailField(root, "title");
+  var body = mkDetailField(root, "body");
+  if (!title || !body) return;
+  mkDetailPatch(root, { title: title.value.trim(), body: body.value })
+    .then(function (note) { mkDetailError(root, ""); mkDetailApply(root, note); })
+    .catch(function () { mkDetailError(root, "保存に失敗しました。"); });
+}
+function mkDetailOpen(card) {
+  var root = mkDetail();
+  if (!root) return;
+  root.setAttribute("data-mk-note-id", mkCardId(card) || "");
+  var title = mkDetailField(root, "title");
+  var body = mkDetailField(root, "body");
+  if (title) title.value = card.getAttribute("data-mk-title") || "";
+  if (body) body.value = card.getAttribute("data-mk-body") || "";
+  mkDetailSetColor(root, card.getAttribute("data-mk-color") || "default");
+  var pin = mkDetailField(root, "pin");
+  if (pin) pin.setAttribute("aria-pressed", card.getAttribute("data-mk-pinned") === "true" ? "true" : "false");
+  mkDetailRenderLabels(root, card);
+  mkDetailRenderImages(root, card);
+  mkDetailError(root, "");
+  root.hidden = false;
+  if (title) title.focus();
+}
+function mkDetailClose() {
+  var root = mkDetail();
+  if (!root) return;
+  root.hidden = true;
+  root.removeAttribute("data-mk-note-id");
+}
+function mkDetailSingle(body) {
+  var root = mkDetail();
+  var id = root ? root.getAttribute("data-mk-note-id") : "";
+  if (!id) return;
+  mkBulk(Object.assign({ ids: [id] }, body));
+}
+function initializeMkDetail(page) {
+  var root = mkDetail();
+  if (!root) return;
+  var timer = null;
+  ["title", "body"].forEach(function (name) {
+    var field = mkDetailField(root, name);
+    if (!field) return;
+    field.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { mkDetailSave(root); }, 400);
+    });
+    field.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") { event.preventDefault(); mkDetailClose(); }
+    });
+  });
+  var pin = mkDetailField(root, "pin");
+  if (pin) {
+    pin.addEventListener("click", function () {
+      var next = pin.getAttribute("aria-pressed") !== "true";
+      mkDetailPatch(root, { pinned: next }).then(function (note) { mkDetailApply(root, note); }).catch(function () { mkDetailError(root, "保存に失敗しました。"); });
+    });
+  }
+  root.querySelectorAll("[data-mk-detail-color]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var color = button.getAttribute("data-mk-detail-color") || "default";
+      mkDetailPatch(root, { color: color }).then(function (note) { mkDetailApply(root, note); }).catch(function () { mkDetailError(root, "保存に失敗しました。"); });
+    });
+  });
+  var palette = mkDetailField(root, "palette");
+  if (palette) {
+    palette.addEventListener("click", function () {
+      var swatches = mkDetailField(root, "swatches");
+      if (swatches) swatches.hidden = !swatches.hidden;
+    });
+  }
+  var close = mkDetailField(root, "close");
+  if (close) close.addEventListener("click", mkDetailClose);
+  var backdrop = root.querySelector("[data-mk-detail-backdrop]");
+  if (backdrop) backdrop.addEventListener("click", mkDetailClose);
+  var archive = mkDetailField(root, "archive");
+  if (archive) archive.addEventListener("click", function () { mkDetailSingle({ action: "archive" }); });
+  var trash = mkDetailField(root, "trash");
+  if (trash) trash.addEventListener("click", function () { mkDetailSingle({ action: "trash" }); });
+  var remove = mkDetailField(root, "delete");
+  if (remove) {
+    remove.addEventListener("click", function () {
+      mkConfirm("このメモを削除しますか？", function () { mkDetailSingle({ action: "delete" }); });
+    });
+  }
+  var labelAdd = mkDetailField(root, "label-add");
+  if (labelAdd) {
+    labelAdd.addEventListener("change", function () {
+      var card = mkDetailCard(root);
+      var labelId = labelAdd.value;
+      if (card === null || labelId === "") return;
+      var next = mkCardLabelIds(card).concat([labelId]);
+      mkSetNoteLabels(mkCardId(card), next);
+      mkReload();
+    });
+  }
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && root.hidden === false) mkDetailClose();
+  });
+}
+function initializeMkSideOpen(page) {
+  page.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    if (target.closest("button, a, input, select, summary, label")) return;
+    var card = target.closest("[data-mk-open]");
+    if (card) mkDetailOpen(card);
+  });
+}
 function initializeMk() {
   var page = mkPage();
   if (!page || page.getAttribute("data-mk-initialized") === "true") return;
@@ -747,7 +931,8 @@ function initializeMk() {
   initializeMkToolbar(page);
   initializeMkLabelManager(page);
   initializeMkPaste(page);
-  initializeMkTheme(page);
+  initializeMkDetail(page);
+  initializeMkSideOpen(page);
   initializeMkSort(page);
   initializeMkDates(page);
   initializeMkSaved(page);

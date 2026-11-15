@@ -18,10 +18,10 @@ export const TASK_LIST_CSS = `
   border: 0;
   border-radius: 0;
   display: grid;
-  gap: 10px;
-  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px;
+  grid-template-columns: 44px minmax(0, 1fr);
   min-height: 68px;
-  padding: 12px 14px;
+  padding: 12px 14px 12px 12px;
 }
 
 /* The list owns the frame; rows are separated by a hairline instead of their own border. */
@@ -41,17 +41,26 @@ export const TASK_LIST_CSS = `
 
 .task-row-selection {
   align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
   display: flex;
   justify-content: center;
   margin: 0;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px;
+}
+
+.task-row-selection:hover {
+  background: #dcdcdc;
 }
 
 .task-row-selection input,
 .task-select-all input {
   accent-color: #1f1f1f;
-  height: 20px;
+  height: 24px;
   margin: 0;
-  width: 20px;
+  width: 24px;
 }
 
 .task-row-link {
@@ -103,10 +112,25 @@ export const TASK_LIST_CSS = `
 
 .task-select-all {
   align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
   display: flex;
   gap: 8px;
+  justify-content: center;
   margin: 0;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px;
   white-space: nowrap;
+}
+
+.task-select-all:hover {
+  background: #dcdcdc;
+}
+
+.task-select-all:has(input:focus-visible) {
+  outline: 2px solid #1f1f1f;
+  outline-offset: 2px;
 }
 
 .task-select-all input {
