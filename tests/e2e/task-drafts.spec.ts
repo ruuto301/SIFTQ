@@ -1,4 +1,4 @@
-import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, disableLocalStorage, createTask, expectTaskVisibleInList, openTaskFromList } from "./task-helpers";
+import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, disableLocalStorage, createTask, expectTaskVisibleInList, openTaskFromList, showDescriptionEditor } from "./task-helpers";
 import { authStatePath, e2eBaseUrl, expect, installHtmxRoute, test } from "./fixtures";
 
 test("creates a task and sees it in the list", async ({ page }) => {
@@ -309,6 +309,7 @@ test("discards a task detail draft when its base version is stale", async ({ pag
   await page.reload();
 
   await expect(page.getByLabel("Title")).toHaveValue(serverTitle);
+  await showDescriptionEditor(page);
   await expect(descriptionEditor(page)).toHaveText(serverDescription);
   await expect(page.locator('textarea[data-description-value]')).toHaveValue(serverDescription);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), draftKey)).toBeNull();
@@ -348,6 +349,7 @@ test("discards a stale task detail draft after an HTMX navigation", async ({ pag
   await waitForPageSettle(page);
 
   await expect(page.getByLabel("Title")).toHaveValue(serverTitle);
+  await showDescriptionEditor(page);
   await expect(descriptionEditor(page)).toHaveText(serverDescription);
   await expect(page.locator('textarea[data-description-value]')).toHaveValue(serverDescription);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), draftKey)).toBeNull();

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, expectTaskVisibleInList, openTaskFromList, dismissPopover } from "./task-helpers";
+import { signIn, descriptionEditor, hasDraft, getTaskDraftKey, expectDraftSaved, expectDraftNotSaved, waitForPageSettle, expectTaskVisibleInList, openTaskFromList, dismissPopover, showDescriptionEditor } from "./task-helpers";
 import { expect, test } from "./fixtures";
 
 test("creates a task from the task list and returns to the task list", async ({ page }) => {
@@ -127,6 +127,7 @@ async function saveAfterMetaChange(page: Page, kind: "status" | "project", value
   await descriptionEditor(page).fill(description);
   await page.getByRole("button", { name: "Create" }).click();
   await openTaskFromList(page, title, "do");
+  await showDescriptionEditor(page);
 
   const draftTitle = `${title} saved`;
   const draftKey = await getTaskDraftKey(page);

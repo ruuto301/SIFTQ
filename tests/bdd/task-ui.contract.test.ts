@@ -498,6 +498,23 @@ describe("Task detail Save form", () => {
     expect(body).toContain('class="button" href="/tasks?status=do"');
   });
 
+  it("renders the description 編集 / プレビュー tabs", async () => {
+    await repo.insert(taskFixture({ id: "filled-1", description: "**bold**" }));
+    await repo.insert(taskFixture({ id: "empty-1" }));
+
+    const filled = await (await request("/tasks/filled-1?from=tasks")).text();
+    expect(filled).toContain('role="tablist"');
+    expect(filled).toContain('aria-selected="true" tabindex="0">プレビュー</button>');
+    expect(filled).toContain('id="description-panel-edit" class="description-tabs__panel"');
+    expect(filled).toContain('data-description-panel="edit" hidden=""');
+    expect(filled).toContain('class="description-tabs__panel description-preview"');
+    expect(filled).toContain('data-description-preview="true"></div>');
+
+    const empty = await (await request("/tasks/empty-1?from=tasks")).text();
+    expect(empty).toContain('aria-selected="true" tabindex="0">編集</button>');
+    expect(empty).toContain('data-description-panel="preview" data-description-preview="true" hidden=""');
+  });
+
   it("saves edits and redirects to the task list", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 3 }));
 

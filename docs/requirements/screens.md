@@ -77,6 +77,10 @@
 
 - `Task detail` (`/tasks/:id`)
   - title と description を編集する。
+  - description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。
+  - `プレビュー` は description を Markdown（見出し・強調・リンク・リスト・チェックリスト・表・コードブロック・引用・取り消し線・水平線・自動リンク）として描画した HTML を表示する。
+  - 生 HTML は文字列として表示し、`javascript:` 等の危険な URL はリンクにしない。リンクには `rel="noopener noreferrer"`、画像には `loading="lazy"` を付ける。
+  - タブは `←` / `→` キーでも切り替えられる。
   - description 内の http/https URL は編集領域内でリンクとして表示する。
   - URL の通常クリックは同じタブ、Ctrl クリック / Command クリックは別タブで開く。
   - URL のリンク表示は編集用の表示であり、保存する description はプレーンテキストとする。
@@ -89,6 +93,8 @@
 - `New task` (`/tasks/new`)
   - detail と同じ 2 column layout を使う。
   - title と description を入力する。
+  - description は `編集` / `プレビュー` タブで切り替える。既定は `編集` とし、`プレビュー` は入力中の内容を Markdown として描画する。
+  - タブは `←` / `→` キーでも切り替えられる。
   - description 内の http/https URL は編集領域内でリンクとして表示する。
   - URL の通常クリックは同じタブ、Ctrl クリック / Command クリックは別タブで開く。
   - URL を貼り付けた場合もリンクとして表示し、保存する description はプレーンテキストとする。

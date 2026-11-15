@@ -1,5 +1,5 @@
 // covers: BDD-TM-017, BDD-TM-018
-import { signIn, descriptionEditor, waitForPageSettle, createTask } from "./task-helpers";
+import { signIn, descriptionEditor, waitForPageSettle, createTask, showDescriptionEditor } from "./task-helpers";
 import { e2eBaseUrl, expect, test } from "./fixtures";
 
 test("opens description URLs with native link behavior", async ({ page }) => {
@@ -14,6 +14,7 @@ test("opens description URLs with native link behavior", async ({ page }) => {
 
   await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
+  await showDescriptionEditor(page);
   const links = descriptionEditor(page).locator("a");
   await expect(links).toHaveCount(2);
   await expect(links.first()).toHaveAttribute("href", taskUrl);
@@ -55,6 +56,7 @@ test("linkifies pasted URLs and submits plain text", async ({ page }) => {
   await page.getByRole("button", { name: "Create" }).click();
   await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
+  await showDescriptionEditor(page);
 
   await expect(descriptionEditor(page).locator("a")).toHaveAttribute("href", taskUrl);
   await expect(page.locator('textarea[data-description-value]')).toHaveValue(description);
@@ -139,6 +141,7 @@ test("deletes text before a description URL at the URL boundary", async ({ page 
 
   await page.locator(".task-row-link", { hasText: taskTitle }).click();
   await waitForPageSettle(page);
+  await showDescriptionEditor(page);
   const editor = descriptionEditor(page);
   const urlLink = editor.locator("a", { hasText: taskUrl });
   await expect(urlLink).toHaveCount(1);

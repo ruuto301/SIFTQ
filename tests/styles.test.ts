@@ -222,3 +222,21 @@ describe("unified palette", () => {
     }
   });
 });
+
+describe("Description preview tabs", () => {
+  it("marks the selected tab and hides the inactive panel", () => {
+    const selected = cssBlock(/(?:^|\n)\.description-tab\[aria-selected="true"\]\s*\{[^}]*\}/);
+    expect(selected).toContain("background: #262626;");
+
+    const hidden = cssBlock(/(?:^|\n)\.description-tabs__panel\[hidden\]\s*\{[^}]*\}/);
+    expect(hidden).toContain("display: none;");
+  });
+
+  it("frames the rendered markdown like the description editor", () => {
+    const preview = cssBlock(/(?:^|\n)\.description-preview\s*\{[^}]*\}/);
+    expect(preview).toContain("border: 2px solid #1f1f1f;");
+    expect(preview).toContain("overflow: auto;");
+    expect(STYLES_CSS).toContain(".description-preview table");
+    expect(STYLES_CSS).toContain(".description-preview pre");
+  });
+});
