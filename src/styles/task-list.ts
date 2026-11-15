@@ -255,9 +255,18 @@ export const TASK_LIST_CSS = `
 }
 
 .task-search {
+  align-items: center;
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.task-search .task-label-filter {
+  flex: 0 0 auto;
+}
+
+.task-search .task-label-filter summary {
+  white-space: nowrap;
 }
 
 .task-search input {

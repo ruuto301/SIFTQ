@@ -194,7 +194,7 @@ function TaskLabelsFilter({
   };
   return (
     <details class={working !== undefined || project !== undefined ? "task-label-filter is-active" : "task-label-filter"}>
-      <summary class="button small">Labels</summary>
+      <summary class="button small">Filter</summary>
       <div class="task-label-menu">
         <div class="task-label-group-title">Labels</div>
         <a class={working === undefined ? "is-selected" : undefined} href={labelsHref(null)}>
@@ -234,7 +234,9 @@ function TaskListSearch({
   status,
   working,
   query,
-}: {
+  projects,
+  project,
+}: Omit<TaskListFilterProps, "status" | "working" | "query"> & {
   status: TaskStatus;
   working: TaskWorkingFilter | undefined;
   query: string;
@@ -250,6 +252,7 @@ function TaskListSearch({
         value={query}
         placeholder="見積もり is:do project:Yoriwake working:on"
       />
+      <TaskLabelsFilter status={status} working={working} query={query} projects={projects} project={project} />
       <button class="button small task-search-button" type="submit" aria-label="Submit search" title="Search">
         <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
           <circle cx="8.5" cy="8.5" r="5.5" />
@@ -299,8 +302,7 @@ function TaskListToolbar({
   working,
   query,
   projects,
-  project,
-}: { hasTasks: boolean } & TaskListFilterProps) {
+}: { hasTasks: boolean } & Omit<TaskListFilterProps, "project">) {
   return (
     <>
       <div class="task-list-toolbar">
@@ -318,13 +320,6 @@ function TaskListToolbar({
             <TaskBulkStatusMenu />
             <TaskBulkProjectMenu projects={projects} />
           </div>
-          <TaskLabelsFilter
-            status={status}
-            working={working}
-            query={query}
-            projects={projects}
-            project={project}
-          />
           <button
             class="button small button--danger"
             type="button"
@@ -402,14 +397,19 @@ export function TaskListPage({
         <NewTaskLink project={project} />
       </div>
       <div class="task-list-shell" data-task-list>
-        <TaskListSearch status={status} working={working} query={query} />
+        <TaskListSearch
+          status={status}
+          working={working}
+          query={query}
+          projects={projects}
+          project={project}
+        />
         <TaskListToolbar
           hasTasks={tasks.length > 0}
           status={status}
           working={working}
           query={queryInUrl}
           projects={projects}
-          project={project}
         />
         <TaskListRows tasks={tasks} projects={projects} status={status} />
       </div>
