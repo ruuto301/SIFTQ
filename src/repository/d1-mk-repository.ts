@@ -6,19 +6,15 @@ import {
   isDeleted,
   isMkColor,
   isMkImage,
-  isMkLabel,
   mkSortParts,
   setNoteArchived,
   setNoteDeleted,
 } from "../mk";
 import type {
   MkColor,
-  MkCounts,
   MkImage,
-  MkLabel,
   MkNote,
   MkNoteCounts,
-  MkNoteLabelMap,
   MkNoteQuery,
   MkPreviewFields,
   MkSort,
@@ -34,10 +30,6 @@ const MK_SELECT = `SELECT ${MK_COLUMNS} FROM mk_notes`;
 const MK_IMAGE_COLUMNS = "id, note_id, owner_id, image_id, position, created_at";
 const MK_IMAGE_SELECT = `SELECT ${MK_IMAGE_COLUMNS} FROM mk_images`;
 const MK_IMAGE_LIMIT = 50;
-const MK_LABEL_COLUMNS = "id, owner_id, name, created_at";
-const MK_LABEL_SELECT = `SELECT ${MK_LABEL_COLUMNS} FROM mk_labels`;
-const MK_LABEL_LIMIT = 200;
-const MK_NOTE_LABEL_LIMIT = 500;
 const MK_BULK_LIMIT = 50;
 
 const NULLABLE_NOTE_COLUMNS = [
@@ -104,9 +96,6 @@ export function toMkNote(value: unknown): MkNote | undefined {
   };
 }
 
-export function toMkLabel(value: unknown): MkLabel | undefined {
-  return isMkLabel(value) ? value : undefined;
-}
 
 function changes(result: D1Result): number {
   return result.meta?.changes ?? 0;
@@ -116,29 +105,14 @@ export function toMkImage(value: unknown): MkImage | undefined {
   return isMkImage(value) ? value : undefined;
 }
 
-function toNoteLabelEntry(value: unknown): { note_id: string; label: MkLabel } | undefined {
-  if (!isRecord(value)) return undefined;
-  const note_id = value["note_id"];
-  const label = toMkLabel(value);
-  return typeof note_id === "string" && label !== undefined ? { note_id, label } : undefined;
-}
 
-function groupLabels(entries: readonly { note_id: string; label: MkLabel }[]): MkNoteLabelMap {
-  const map: MkNoteLabelMap = {};
-  for (const entry of entries) {
-    const labels = map[entry.note_id] ?? [];
-    labels.push(entry.label);
-    map[entry.note_id] = labels;
-  }
-  return map;
-}
 
 function readCount(row: Record<string, unknown> | null, key: string): number {
   const value = row?.[key];
   return typeof value === "number" ? value : 0;
 }
 
-function toMkCounts(row: Record<string, unknown> | null): MkNoteCounts {
+function toMkNoteCounts(row: Record<string, unknown> | null): MkNoteCounts {
   return {
     notes: readCount(row, "notes"),
     pinned: readCount(row, "pinned"),
@@ -148,15 +122,6 @@ function toMkCounts(row: Record<string, unknown> | null): MkNoteCounts {
   };
 }
 
-function toLabelCounts(rows: readonly Record<string, unknown>[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const row of rows) {
-    const id = row["label_id"];
-    const total = row["total"];
-    if (typeof id === "string" && typeof total === "number") counts[id] = total;
-  }
-  return counts;
-}
 
 export function createD1MkRepository(db: D1Database): MkRepository {
   return {
@@ -176,12 +141,6 @@ export function createD1MkRepository(db: D1Database): MkRepository {
     insertImage: (link) => insertImage(db, link),
     removeImage: (id, owner_id) => deleteRow(db, "DELETE FROM mk_images WHERE id = ? AND owner_id = ?", [id, owner_id]),
     countImages: (note_id, owner_id) => countImages(db, note_id, owner_id),
-    listLabels: (owner_id) => listLabels(db, owner_id),
-    createLabel: (label) => createLabel(db, label),
-    renameLabel: (id, owner_id, name) => renameLabel(db, id, owner_id, name),
-    deleteLabel: (id, owner_id) => deleteLabel(db, id, owner_id),
-    setNoteLabels: (note_id, owner_id, label_ids) => setNoteLabels(db, { note_id, owner_id, label_ids }),
-    listLabelsForNotes: (note_ids, owner_id) => listLabelsForNotes(db, note_ids, owner_id),
   };
 }
 
@@ -216,12 +175,6 @@ function pushDateClauses(query: MkNoteQuery, clauses: string[], bindings: unknow
 function filterClauses(owner_id: string, query: MkNoteQuery): SqlQuery {
   const clauses = ["owner_id = ?", ...viewClauses(query.filter ?? "notes")];
   const bindings: unknown[] = [owner_id];
-  if (query.labelId !== undefined) {
-    clauses.push(
-      "EXISTS (SELECT 1 FROM mk_note_labels nl WHERE nl.note_id = mk_notes.id AND nl.label_id = ? AND nl.owner_id = ?)",
-    );
-    bindings.push(query.labelId, owner_id);
-  }
   if (query.color !== undefined) {
     clauses.push("color = ?");
     bindings.push(query.color);
@@ -255,7 +208,7 @@ async function listNotes(
   return ok(result.results.map(toMkNote).filter((note): note is MkNote => note !== undefined));
 }
 
-async function countNotes(db: D1Database, owner_id: string): Promise<Result<MkCounts, MkRepositoryError>> {
+async function countNotes(db: D1Database, owner_id: string): Promise<Result<MkNoteCounts, MkRepositoryError>> {
   const row = await db
     .prepare(
       `SELECT
@@ -268,16 +221,7 @@ async function countNotes(db: D1Database, owner_id: string): Promise<Result<MkCo
     )
     .bind(owner_id)
     .first<Record<string, unknown>>();
-  const labelRows = await db
-    .prepare(
-      `SELECT nl.label_id AS label_id, COUNT(*) AS total
-      FROM mk_note_labels nl JOIN mk_notes n ON n.id = nl.note_id
-      WHERE nl.owner_id = ? AND n.owner_id = ? AND n.deleted_at IS NULL AND n.archived_at IS NULL
-      GROUP BY nl.label_id ORDER BY nl.label_id ASC LIMIT ${MK_LABEL_LIMIT}`,
-    )
-    .bind(owner_id, owner_id)
-    .all<Record<string, unknown>>();
-  return ok({ ...toMkCounts(row), labels: toLabelCounts(labelRows.results) });
+  return ok(toMkNoteCounts(row));
 }
 
 async function findNote(
@@ -450,7 +394,6 @@ async function removeNotes(
   if (!current.ok) return current;
   if (requireTrashed && current.value.some((note) => !isDeleted(note))) return err({ code: "INVALID_STATE" });
   await db.batch(ids.map((id) => db.prepare("DELETE FROM mk_images WHERE note_id = ? AND owner_id = ?").bind(id, owner_id)));
-  await db.batch(ids.map((id) => db.prepare("DELETE FROM mk_note_labels WHERE note_id = ? AND owner_id = ?").bind(id, owner_id)));
   const removed = await db.batch(ids.map((id) => db.prepare("DELETE FROM mk_notes WHERE id = ? AND owner_id = ?").bind(id, owner_id)));
   return removed.some((result) => changes(result) === 0) ? err({ code: "NOT_FOUND" }) : ok(null);
 }
@@ -487,121 +430,11 @@ async function countImages(
   return ok(row === null ? 0 : row.total);
 }
 
-async function listLabels(db: D1Database, owner_id: string): Promise<Result<MkLabel[], MkRepositoryError>> {
-  const result = await db
-    .prepare(`${MK_LABEL_SELECT} WHERE owner_id = ? ORDER BY name ASC, id ASC LIMIT ${MK_LABEL_LIMIT}`)
-    .bind(owner_id)
-    .all<Record<string, unknown>>();
-  return ok(result.results.map(toMkLabel).filter((label): label is MkLabel => label !== undefined));
-}
 
-async function findLabel(db: D1Database, id: string, owner_id: string): Promise<MkLabel | undefined> {
-  const row = await db
-    .prepare(`${MK_LABEL_SELECT} WHERE id = ? AND owner_id = ?`)
-    .bind(id, owner_id)
-    .first<Record<string, unknown>>();
-  return row === null ? undefined : toMkLabel(row);
-}
 
-async function findLabelByName(db: D1Database, owner_id: string, name: string): Promise<MkLabel | undefined> {
-  const row = await db
-    .prepare(`${MK_LABEL_SELECT} WHERE owner_id = ? AND lower(name) = lower(?) LIMIT 1`)
-    .bind(owner_id, name)
-    .first<Record<string, unknown>>();
-  return row === null ? undefined : toMkLabel(row);
-}
 
-async function createLabel(db: D1Database, label: MkLabel): Promise<Result<MkLabel, MkRepositoryError>> {
-  const existing = await findLabelByName(db, label.owner_id, label.name);
-  if (existing !== undefined) return err({ code: "CONFLICT" });
-  await db
-    .prepare(`INSERT INTO mk_labels (${MK_LABEL_COLUMNS}) VALUES (?, ?, ?, ?)`)
-    .bind(label.id, label.owner_id, label.name, label.created_at)
-    .run();
-  return ok(label);
-}
 
-async function renameLabel(
-  db: D1Database,
-  id: string,
-  owner_id: string,
-  name: string,
-): Promise<Result<MkLabel, MkRepositoryError>> {
-  const current = await findLabel(db, id, owner_id);
-  if (current === undefined) return err({ code: "NOT_FOUND" });
-  const conflict = await findLabelByName(db, owner_id, name);
-  if (conflict !== undefined && conflict.id !== id) return err({ code: "CONFLICT" });
-  const result = await db
-    .prepare("UPDATE mk_labels SET name = ? WHERE id = ? AND owner_id = ?")
-    .bind(name, id, owner_id)
-    .run();
-  return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok({ ...current, name });
-}
 
-async function deleteLabel(db: D1Database, id: string, owner_id: string): Promise<Result<null, MkRepositoryError>> {
-  const results = await db.batch([
-    db.prepare("DELETE FROM mk_note_labels WHERE label_id = ? AND owner_id = ?").bind(id, owner_id),
-    db.prepare("DELETE FROM mk_labels WHERE id = ? AND owner_id = ?").bind(id, owner_id),
-  ]);
-  const removed = results.at(1);
-  return removed === undefined || changes(removed) === 0 ? err({ code: "NOT_FOUND" }) : ok(null);
-}
 
-async function findOwnedLabels(
-  db: D1Database,
-  ids: readonly string[],
-  owner_id: string,
-): Promise<Result<MkLabel[], MkRepositoryError>> {
-  if (ids.length === 0) return ok([]);
-  const placeholders = ids.map(() => "?").join(", ");
-  const result = await db
-    .prepare(`${MK_LABEL_SELECT} WHERE owner_id = ? AND id IN (${placeholders}) LIMIT ${MK_BULK_LIMIT}`)
-    .bind(owner_id, ...ids)
-    .all<Record<string, unknown>>();
-  const found = result.results.map(toMkLabel).filter((label): label is MkLabel => label !== undefined);
-  return found.length === ids.length ? ok(found) : err({ code: "NOT_FOUND" });
-}
 
-type SetNoteLabelsInput = { note_id: string; owner_id: string; label_ids: readonly string[] };
 
-async function setNoteLabels(
-  db: D1Database,
-  input: SetNoteLabelsInput,
-): Promise<Result<MkLabel[], MkRepositoryError>> {
-  const { note_id, owner_id, label_ids } = input;
-  const labels = await findOwnedLabels(db, label_ids, owner_id);
-  if (!labels.ok) return labels;
-  const note = await findNote(db, note_id, owner_id);
-  if (!note.ok) return note;
-  if (note.value === undefined) return err({ code: "NOT_FOUND" });
-  const statements = [db.prepare("DELETE FROM mk_note_labels WHERE note_id = ? AND owner_id = ?").bind(note_id, owner_id)];
-  for (const label of labels.value) {
-    statements.push(
-      db.prepare("INSERT INTO mk_note_labels (note_id, label_id, owner_id) VALUES (?, ?, ?)").bind(note_id, label.id, owner_id),
-    );
-  }
-  await db.batch(statements);
-  return ok(labels.value);
-}
-
-async function listLabelsForNotes(
-  db: D1Database,
-  note_ids: readonly string[],
-  owner_id: string,
-): Promise<Result<MkNoteLabelMap, MkRepositoryError>> {
-  if (note_ids.length === 0) return ok({});
-  const placeholders = note_ids.map(() => "?").join(", ");
-  const result = await db
-    .prepare(
-      `SELECT nl.note_id AS note_id, l.id AS id, l.owner_id AS owner_id, l.name AS name, l.created_at AS created_at
-      FROM mk_note_labels nl JOIN mk_labels l ON l.id = nl.label_id
-      WHERE nl.owner_id = ? AND nl.note_id IN (${placeholders})
-      ORDER BY l.name ASC, l.id ASC LIMIT ${MK_NOTE_LABEL_LIMIT}`,
-    )
-    .bind(owner_id, ...note_ids)
-    .all<Record<string, unknown>>();
-  const entries = result.results
-    .map(toNoteLabelEntry)
-    .filter((entry): entry is { note_id: string; label: MkLabel } => entry !== undefined);
-  return ok(groupLabels(entries));
-}

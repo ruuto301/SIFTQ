@@ -1,4 +1,4 @@
-import { bindings, defineConfig } from "cf/config";
+import { bindings, defineConfig, triggers } from "cf/config";
 
 export default defineConfig({
 	worker: {
@@ -17,9 +17,11 @@ export default defineConfig({
 			GITHUB_OAUTH_BASE: bindings.text(process.env["GITHUB_OAUTH_BASE"] ?? "https://github.com"),
 			GITHUB_API_BASE: bindings.text(process.env["GITHUB_API_BASE"] ?? "https://api.github.com"),
 			PREVIEW_MODE: bindings.text(process.env["PREVIEW_MODE"] ?? "false"),
+			BACKUPS: bindings.r2({ name: "siftq-backups" }),
 			DSH_TRANSPORT_URL: bindings.text(process.env["DSH_TRANSPORT_URL"] ?? "ws://127.0.0.1:8799"),
 			DSH_WORKSPACE: bindings.text(process.env["DSH_WORKSPACE"] ?? "/mnt/c/projects"),
 			DSH_INTERNAL_TOKEN: bindings.text(process.env["DSH_INTERNAL_TOKEN"] ?? ""),
 		},
+		triggers: [triggers.scheduled({ schedule: "0 18 * * *" })],
 	},
 });

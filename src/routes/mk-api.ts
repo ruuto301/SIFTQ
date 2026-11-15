@@ -2,19 +2,15 @@ import type { Context, Hono } from "hono";
 import {
   applyMkNotePatch,
   applyMkNotePreview,
-  createMkLabel,
   createMkNote,
   isMkBodyValid,
   isMkColor,
   isMkDateKind,
   isMkFilter,
-  isMkLabelNameValid,
   isMkRecord,
   isMkTitleValid,
   normalizeMkDateBound,
-  normalizeMkLabelName,
   parseMkIdList,
-  parseMkLabelIds,
   parseMkNotePatch,
   parseMkSort,
 } from "../mk";
@@ -70,8 +66,6 @@ function readCoreQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
   const color = readColorValue(c.req.query("color"));
   if (color === null) return err({ code: "INVALID_COLOR" });
   if (color !== undefined) query.color = color;
-  const label = c.req.query("label");
-  if (label !== undefined && label !== "") query.labelId = label;
   const text = c.req.query("q")?.trim() ?? "";
   if (text !== "") query.text = text;
   return ok(query);
@@ -237,71 +231,11 @@ async function bulkMkNotes(c: Context<AppEnv>, repository: Repository) {
   return respondRemoved(c, repository(c).bulkRemove(ids, OWNER_ID));
 }
 
-function readLabelName(body: Record<string, unknown>): Result<string, MkError> {
-  const raw = typeof body["name"] === "string" ? body["name"] : "";
-  const name = normalizeMkLabelName(raw);
-  return isMkLabelNameValid(name) ? ok(name) : err({ code: "INVALID_LABEL_NAME" });
-}
-
-async function listMkLabels(c: Context<AppEnv>, repository: Repository) {
-  const result = await repository(c).listLabels(OWNER_ID);
-  if (!result.ok) return problem(c, 500, result.error.code);
-  return c.json(result.value);
-}
-
-async function createMkLabelAtBoundary(c: Context<AppEnv>, repository: Repository) {
-  const body = await readJsonRecord(c, isMkRecord);
-  if (body === null) return problem(c, 400, "INVALID_INPUT");
-  const name = readLabelName(body);
-  if (!name.ok) return problem(c, 400, name.error.code);
-  const created = createMkLabel({
-    id: crypto.randomUUID(),
-    owner_id: OWNER_ID,
-    name: name.value,
-    created_at: new Date().toISOString(),
-  });
-  if (!created.ok) return problem(c, 400, created.error.code);
-  const inserted = await repository(c).createLabel(created.value);
-  if (!inserted.ok) return problem(c, errorStatus(inserted.error.code), inserted.error.code);
-  return c.json(inserted.value, 201);
-}
-
-async function renameMkLabel(c: Context<AppEnv>, repository: Repository) {
-  const target = await readMkTarget(c);
-  if (!target.ok) return problem(c, errorStatus(target.error.code), target.error.code);
-  const name = readLabelName(target.value.body);
-  if (!name.ok) return problem(c, 400, name.error.code);
-  const renamed = await repository(c).renameLabel(target.value.id, OWNER_ID, name.value);
-  if (!renamed.ok) return problem(c, errorStatus(renamed.error.code), renamed.error.code);
-  return c.json(renamed.value);
-}
-
-async function deleteMkLabel(c: Context<AppEnv>, repository: Repository) {
-  const id = c.req.param("id");
-  if (id === undefined) return problem(c, 404, "NOT_FOUND");
-  return respondRemoved(c, repository(c).deleteLabel(id, OWNER_ID));
-}
-
-async function setMkNoteLabels(c: Context<AppEnv>, repository: Repository) {
-  const target = await readMkTarget(c);
-  if (!target.ok) return problem(c, errorStatus(target.error.code), target.error.code);
-  const labelIds = parseMkLabelIds(target.value.body["labelIds"]);
-  if (labelIds === null) return problem(c, 400, "INVALID_LABEL");
-  const attached = await repository(c).setNoteLabels(target.value.id, OWNER_ID, labelIds);
-  if (!attached.ok) return problem(c, errorStatus(attached.error.code), attached.error.code);
-  return c.json(attached.value);
-}
-
 export function registerMkApiRoutes(app: Hono<AppEnv>, repository: Repository) {
   app.get("/api/mk/notes", (c) => listMkNotes(c, repository));
   app.post("/api/mk/notes", (c) => createMkNoteAtBoundary(c, repository));
   app.post("/api/mk/notes/bulk", (c) => bulkMkNotes(c, repository));
-  app.post("/api/mk/notes/:id/labels", (c) => setMkNoteLabels(c, repository));
   app.post("/api/mk/notes/:id/preview", (c) => previewMkNote(c, repository));
-  app.get("/api/mk/labels", (c) => listMkLabels(c, repository));
-  app.post("/api/mk/labels", (c) => createMkLabelAtBoundary(c, repository));
-  app.patch("/api/mk/labels/:id", (c) => renameMkLabel(c, repository));
-  app.delete("/api/mk/labels/:id", (c) => deleteMkLabel(c, repository));
   app.patch("/api/mk/notes/:id", (c) => patchMkNote(c, repository));
   app.delete("/api/mk/notes/:id", (c) => deleteMkNote(c, repository));
 }
