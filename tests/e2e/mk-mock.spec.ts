@@ -14,7 +14,6 @@ test("shows the seven colors, the new memo button and the agreed wording (BDD-TM
     "placeholder",
     "メモを検索（タイトル / 本文）",
   );
-  await expect(page.locator("[data-mk-selection-toggle]")).toHaveText("☑ 選択");
 
   // Close the menu so its panel does not cover the composer.
   await page.locator("[data-mk-filter-menu] summary").click();
@@ -52,4 +51,18 @@ test("clears the search from the × control (BDD-TM-037)", async ({ page }) => {
     "placeholder",
     "メモを検索（タイトル / 本文）",
   );
+});
+
+test("has no bulk selection and a full-width search (BDD-TM-045)", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/mk");
+
+  await expect(page.locator("[data-mk-selection-toggle]")).toHaveCount(0);
+  await expect(page.locator("[data-mk-bulk-bar]")).toHaveCount(0);
+
+  // The search pill takes the toolbar width, so the box is much wider than its old 200px.
+  const search = await page.locator("[data-mk-search-input]").boundingBox();
+  const toolbar = await page.locator(".mk-toolbar").boundingBox();
+  if (search === null || toolbar === null) throw new Error("the toolbar is missing");
+  expect(search.width).toBeGreaterThan(toolbar.width * 0.5);
 });

@@ -424,14 +424,13 @@ describe("MK screen follows the agreed mock (BDD-TM-037)", () => {
     expect(html).toContain('aria-label="red の絞り込みを解除"');
   });
 
-  it("renders the Keep-style composer, search and selection wording", async () => {
+  it("renders the Keep-style composer and search wording", async () => {
     const html = await (await request("/mk")).text();
 
     // Keep puts a single "take a note" card at the top of the list.
     expect(html).toContain("メモを取る...");
     expect(html).not.toContain("data-mk-side-new");
     expect(html).toContain('placeholder="メモを検索（タイトル / 本文）"');
-    expect(html).toContain("☑ 選択");
     expect(html).toContain('placeholder="新しいメモのタイトル"');
     expect(html).toContain("Ctrl+V で画像を貼り付け");
   });
@@ -626,5 +625,17 @@ describe("MK detail dialog (BDD-TM-044)", () => {
     expect(css).not.toContain('html[data-theme="dark"]');
     expect(css).toMatch(/\.mk-card--default\s*\{\s*background: #2c2e31;/);
     expect(css).toMatch(/\.mk-card--blue\s*\{\s*background: #2c4059;/);
+  });
+});
+
+describe("MK toolbar without bulk selection (BDD-TM-045)", () => {
+  it("renders no selection toggle or card checkboxes", async () => {
+    const note = await createNote("選択なし", "", "default");
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain(`data-mk-id="${note.id}"`);
+    expect(html).not.toContain("data-mk-selection-toggle");
+    expect(html).not.toContain("data-mk-select=");
+    expect(html).not.toContain("data-mk-bulk-bar");
   });
 });

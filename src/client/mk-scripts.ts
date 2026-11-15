@@ -9,15 +9,6 @@ function mkApi(path, init) {
 function mkPage() { return document.querySelector("[data-mk-page]"); }
 function mkCardId(card) { return card.getAttribute("data-mk-id"); }
 function mkCards() { return Array.prototype.slice.call(document.querySelectorAll("[data-mk-page] .mk-card[data-mk-id]")); }
-function mkSelectedCards() {
-  return mkCards().filter(function (card) {
-    var checkbox = card.querySelector("[data-mk-select]");
-    return checkbox && checkbox.checked;
-  });
-}
-function mkSelectedIds() {
-  return mkSelectedCards().map(mkCardId).filter(function (id) { return !!id; });
-}
 function mkConfirm(message, run) {
   if (typeof window.__siftqConfirm === "function") { window.__siftqConfirm(message, run); return; }
   if (window.confirm(message)) run();
@@ -258,52 +249,9 @@ function mkDeleteCard(card) {
     mkRun("/api/mk/notes/" + encodeURIComponent(id), { method: "DELETE" });
   });
 }
-function syncMkSelection() {
-  var page = mkPage();
-  if (!page) return;
-  var cards = mkCards();
-  var selected = mkSelectedCards();
-  var bulkBar = page.querySelector("[data-mk-bulk-bar]");
-  if (bulkBar) bulkBar.hidden = selected.length === 0;
-  var count = page.querySelector("[data-mk-selection-count]");
-  if (count) count.textContent = selected.length + "件選択";
-  var selectAll = page.querySelector("[data-mk-select-all]");
-  if (selectAll) {
-    selectAll.checked = cards.length > 0 && selected.length === cards.length;
-    selectAll.indeterminate = selected.length > 0 && selected.length < cards.length;
-  }
-  cards.forEach(function (card) {
-    var checkbox = card.querySelector("[data-mk-select]");
-    if (checkbox) card.classList.toggle("is-selected", checkbox.checked);
-  });
-}
-function setMkSelecting(page, active) {
-  page.setAttribute("data-mk-selecting", active ? "true" : "false");
-  var toggle = page.querySelector("[data-mk-selection-toggle]");
-  if (toggle) {
-    toggle.setAttribute("aria-pressed", active ? "true" : "false");
-    toggle.classList.toggle("is-active", active);
-  }
-  if (!active) {
-    mkCards().forEach(function (card) {
-      var checkbox = card.querySelector("[data-mk-select]");
-      if (checkbox) checkbox.checked = false;
-    });
-  }
-  syncMkSelection();
-}
 function mkBulk(body) {
   if (body.ids.length === 0) return;
   mkRun("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify(body) });
-}
-function mkBulkColor(color) { mkBulk({ ids: mkSelectedIds(), action: "color", color: color }); }
-function mkBulkPin() { mkBulk({ ids: mkSelectedIds(), action: "pin", pinned: true }); }
-function mkBulkDelete() {
-  var ids = mkSelectedIds();
-  if (ids.length === 0) return;
-  mkConfirm("選択した" + ids.length + "件のメモを削除しますか？", function () {
-    mkRun("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify({ ids: ids, action: "delete" }) });
-  });
 }
 var mkSnackbarTimer = null;
 function mkSnackbar() { return document.querySelector("[data-mk-snackbar]"); }
@@ -360,23 +308,6 @@ function mkBulkPurge() {
 function mkCardLabelIds(card) {
   var raw = card.getAttribute("data-mk-labels") || "";
   return raw === "" ? [] : raw.split(",");
-}
-function mkBulkLabelValue() {
-  var select = document.querySelector("[data-mk-bulk-label]");
-  return select ? select.value : "";
-}
-function mkBulkLabel(labelId, add) {
-  if (!labelId) return;
-  var cards = mkSelectedCards().filter(function (card) { return !!mkCardId(card); });
-  if (cards.length === 0) return;
-  var jobs = cards.map(function (card) {
-    var current = mkCardLabelIds(card);
-    var next = add
-      ? (current.indexOf(labelId) === -1 ? current.concat([labelId]) : current)
-      : current.filter(function (id) { return id !== labelId; });
-    return mkSetNoteLabels(mkCardId(card), next);
-  });
-  Promise.all(jobs).then(mkReload).catch(function () {});
 }
 function mkLabelManager() { return document.querySelector("[data-mk-label-manager]"); }
 function mkToggleLabelManager() {
@@ -507,10 +438,6 @@ function initializeMkActions(page) {
     if (deleteLabel) { event.preventDefault(); mkDeleteLabel(deleteLabel.getAttribute("data-mk-label-delete") || ""); return; }
     if (target.closest("[data-mk-bulk-delete]")) { event.preventDefault(); mkBulkDelete(); }
   });
-  page.addEventListener("change", function (event) {
-    var target = event.target;
-    if (target && target.matches && target.matches("[data-mk-select]")) syncMkSelection();
-  });
 }
 function initializeMkLabelManager(page) {
   var manage = page.querySelector("[data-mk-label-manage]");
@@ -522,28 +449,6 @@ function initializeMkLabelManager(page) {
       mkCreateLabel(form);
     });
   }
-}
-function initializeMkToolbar(page) {
-  var toggle = page.querySelector("[data-mk-selection-toggle]");
-  if (toggle) {
-    toggle.addEventListener("click", function () {
-      setMkSelecting(page, page.getAttribute("data-mk-selecting") !== "true");
-    });
-  }
-  var selectAll = page.querySelector("[data-mk-select-all]");
-  if (selectAll) {
-    selectAll.addEventListener("change", function () {
-      mkCards().forEach(function (card) {
-        var checkbox = card.querySelector("[data-mk-select]");
-        if (checkbox) checkbox.checked = selectAll.checked;
-      });
-      syncMkSelection();
-    });
-  }
-  var clear = page.querySelector("[data-mk-bulk-clear]");
-  if (clear) clear.addEventListener("click", function () { setMkSelecting(page, false); });
-  var form = page.querySelector("[data-mk-search]");
-  if (form) form.addEventListener("submit", function (event) { event.preventDefault(); window.location.assign(mkSearchUrl(form)); });
 }
 function initializeMkPaste(page) {
   document.addEventListener("paste", function (event) {
@@ -928,7 +833,6 @@ function initializeMk() {
   initializeMkComposer(page);
   initializeMkSideNew(page);
   initializeMkActions(page);
-  initializeMkToolbar(page);
   initializeMkLabelManager(page);
   initializeMkPaste(page);
   initializeMkDetail(page);
@@ -937,7 +841,6 @@ function initializeMk() {
   initializeMkDates(page);
   initializeMkSaved(page);
   initializeMkPreview(page);
-  syncMkSelection();
 }
 document.addEventListener("DOMContentLoaded", initializeMk);
 document.addEventListener("htmx:load", initializeMk);
