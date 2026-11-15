@@ -18,11 +18,11 @@
     "docs:domain:svg": "bun tools/domain-blueprint/src/cli.ts build --config .config/domain-blueprint.json"
   },
   "dependencies": {
-    "hono": "^4.13.4"
+    "hono": "^4.13.16"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260822.1",
-    "cf": "1.0.0-beta.14",
+    "cf": "1.0.0-beta.27",
     "@mermaid-js/mermaid-cli": "^11.16.0",
     "@types/node": "^26.2.0",
     "@playwright/test": "^1.61.1",
@@ -30,17 +30,19 @@
     "dependency-cruiser": "^18.2.0",
     "eslint-plugin-sonarjs": "^4.2.0",
     "jscpd": "^5.0.16",
-    "knip": "^6.32.2",
+    "knip": "^6.44.1",
     "md2idx": "^0.3.0",
+    "puppeteer": "^25.16.0",
     "typescript": "^5.9.3",
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
-    "vite-plus": "0.3.0",
-    "vitest": "4.1.11",
-    "wrangler": "^4.149.0"
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vite-plus": "1.4.0",
+    "vitest": "5.0.5",
+    "wrangler": "^4.156.2"
   },
   "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
-    "vitest": "4.1.11",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vitest": "5.0.5",
+    "dompurify": "^3.4.17",
     "brace-expansion": "^5.0.12",
     "tinypool": "^2.1.2"
   },
