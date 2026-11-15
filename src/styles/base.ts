@@ -26,6 +26,21 @@ body {
   margin: 0;
 }
 
+/* Compact rows keep their density; the taller reading rhythm is for prose. */
+.task-row,
+.ds__task-item,
+.ds__group-head,
+.ds__task,
+.task-bulk-menu-items button,
+.task-label-menu a,
+.nav a,
+.button,
+.label,
+.status,
+.task-list-toolbar {
+  line-height: 1.4;
+}
+
 html:has(dialog[open]) {
   overflow: hidden;
 }
