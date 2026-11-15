@@ -47,9 +47,9 @@ test("frames each project so the header forms the top edge (BDD-TM-029)", async 
   expect(frame.flexShrink).toBe("0");
   // The header is the inner top edge, so the 2px border sits outside it on both sides.
   expect(frame.boxWidth - frame.headWidth).toBe(4);
-  expect(frame.headBackground).toBe("rgb(0, 0, 0)");
+  expect(frame.headBackground).toBe("rgb(216, 216, 216)");
   expect(frame.countBackground).toBe("rgba(0, 0, 0, 0)");
-  expect(frame.countBorder).toBe("rgb(139, 148, 158)");
+  expect(frame.countBorder).toBe("rgb(189, 189, 189)");
 });
 
 test("extends the frame for an added task without squashing other projects (BDD-TM-029)", async ({ page }) => {

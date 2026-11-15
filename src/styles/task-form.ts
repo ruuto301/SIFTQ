@@ -28,7 +28,7 @@ export const TASK_FORM_CSS = `
 }
 
 .meta-row-link:hover {
-  background: #eaeef2;
+  background: #e4e4e4;
   cursor: pointer;
 }
 
@@ -46,7 +46,7 @@ export const TASK_FORM_CSS = `
 }
 
 .meta-row--spaced {
-  border-top: 1px solid #8b949e;
+  border-top: 1px solid #bdbdbd;
   margin-top: 16px;
   margin-bottom: 8px;
   padding-top: 16px;
@@ -60,7 +60,7 @@ export const TASK_FORM_CSS = `
 .meta-caret {
   align-items: center;
   border: 0;
-  color: #3f4854;
+  color: #555555;
   display: inline-flex;
   font-size: 20px;
   justify-content: center;
@@ -80,9 +80,10 @@ input,
 textarea,
 select,
 .description-editor {
-  background: #cfd6de;
-  border: 1px solid #8b949e;
+  background: #e4e4e4;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
+  color: #303030;
   font: inherit;
   padding: 9px 10px;
   width: 100%;
@@ -93,7 +94,7 @@ textarea {
 }
 
 .description-editor {
-  background: #fff;
+  background: #e4e4e4;
   min-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
@@ -163,16 +164,16 @@ textarea[data-description-value] {
 }
 
 .status-option {
-  border: 1px solid #8b949e;
+  border: 1px solid #1f1f1f;
   border-radius: 6px;
   padding: 10px;
 }
 
 .popover {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 12px;
-  box-shadow: 0 16px 36px rgb(31 35 40 / 18%);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 18%);
   display: grid;
   gap: 0;
   margin-top: 10px;
@@ -196,10 +197,10 @@ details:not([open]) .popover {
 }
 
 .status-group-title {
-  background: #fff;
-  border-bottom: 1px solid #8b949e;
-  border-top: 1px solid #8b949e;
-  color: #3f4854;
+  background: #e1e1e1;
+  border-bottom: 1px solid #bdbdbd;
+  border-top: 1px solid #bdbdbd;
+  color: #555555;
   font-size: 13px;
   font-weight: 700;
   padding: 10px 16px;
@@ -207,6 +208,8 @@ details:not([open]) .popover {
 
 .status-choice {
   align-items: start;
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
   display: grid;
   gap: 10px;
   grid-template-columns: 20px 16px 1fr;
@@ -214,13 +217,11 @@ details:not([open]) .popover {
 }
 
 .status-choice.selected {
-  background: #fff;
-  box-shadow: inset 4px 0 0 #3f6b4f;
+  background: #dcdcdc;
+  box-shadow: inset 4px 0 0 #1f1f1f;
 }
 
 button.status-choice {
-  background: none;
-  border: 0;
   color: inherit;
   cursor: pointer;
   font: inherit;
@@ -230,9 +231,10 @@ button.status-choice {
 
 .check {
   align-items: center;
-  background: #1b1f24;
+  background: #262626;
+  border: 2px solid #dcdcdc;
   border-radius: 4px;
-  color: #ffffff;
+  color: #dcdcdc;
   display: inline-flex;
   font-weight: 700;
   height: 20px;
@@ -241,7 +243,7 @@ button.status-choice {
 }
 
 .box {
-  border: 1px solid #8c959f;
+  border: 1px solid #1f1f1f;
   border-radius: 4px;
   display: inline-flex;
   height: 20px;
@@ -257,15 +259,15 @@ button.status-choice {
 }
 
 .status-dot--do {
-  background: #1b1f24;
+  background: #1f1f1f;
 }
 
 .status-dot--done {
-  background: #3f6b4f;
+  background: #262626;
 }
 
 .status-dot--skip {
-  background: #6b7280;
+  background: #8a8a8a;
 }
 
 @media (width >= 48rem) {
