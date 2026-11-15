@@ -137,14 +137,6 @@ export function isMkLabel(value: unknown): value is MkLabel {
   );
 }
 
-export function isMkNoteLabel(value: unknown): value is MkNoteLabel {
-  if (!isMkRecord(value)) return false;
-  const { note_id, label_id, owner_id } = value;
-  return (
-    typeof note_id === "string" && note_id !== "" && typeof label_id === "string" && label_id !== "" && typeof owner_id === "string" && owner_id !== ""
-  );
-}
-
 export type CreateMkLabelInput = {
   id: string;
   owner_id: string;
