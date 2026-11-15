@@ -90,6 +90,17 @@ describe("DS task action menu", () => {
   });
 });
 
+describe("DS task pane shortcuts", () => {
+  it("saves with Ctrl/Cmd + S from anywhere on the DS screen (BDD-TM-041)", () => {
+    expect(DS_SCRIPT).toContain('var key = typeof event.key === "string" ? event.key.toLowerCase() : ""');
+    expect(DS_SCRIPT).toContain('key !== "s" || !(event.ctrlKey || event.metaKey)');
+    // The browser save dialog is blocked even when there is nothing to save.
+    expect(DS_SCRIPT).toContain("event.preventDefault();");
+    expect(DS_SCRIPT).toContain("if (!titleInput || !descriptionInput || !dirty()) return;");
+  });
+
+});
+
 describe("DS task list DnD", () => {
   it("moves tasks between project groups and reorders projects by drag and drop (BDD-TM-025)", () => {
     for (const hook of [

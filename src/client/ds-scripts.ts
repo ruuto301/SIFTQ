@@ -1133,6 +1133,14 @@ export const DS_SCRIPT = `(function () {
     var status = document.getElementById("ds-task-status");
     var saveButton = document.getElementById("ds-task-save");
     var error = document.getElementById("ds-task-error");
+    // Ctrl/Cmd + S saves from anywhere on the DS screen; the browser save dialog never opens here.
+    document.addEventListener("keydown", function (event) {
+      var key = typeof event.key === "string" ? event.key.toLowerCase() : "";
+      if (key !== "s" || !(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      if (!titleInput || !descriptionInput || !dirty()) return;
+      save();
+    });
     if (!titleInput || !descriptionInput) return;
     var baselineTitle = titleInput.value;
     var baselineDescription = descriptionInput.value;
