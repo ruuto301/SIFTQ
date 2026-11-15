@@ -82,37 +82,32 @@ export const MK_CSS = `
   width: 18px;
 }
 
-/* Note tones become a grey ladder: the darkest step stays legible under body text. */
-.mk-color-filter__dot--all {
-  background: linear-gradient(135deg, #e8e8e8, #e4e4e4, #dcdcdc, #d9d9d9, #d8d8d8, #cccccc, #bdbdbd);
-}
-
 .mk-color-filter__dot--default {
-  background: #e8e8e8;
+  background: #ffffff;
 }
 
 .mk-color-filter__dot--red {
-  background: #e4e4e4;
+  background: #ffe9e7;
 }
 
 .mk-color-filter__dot--orange {
-  background: #dcdcdc;
+  background: #ffeddc;
 }
 
 .mk-color-filter__dot--yellow {
-  background: #d9d9d9;
+  background: #fff5cf;
 }
 
 .mk-color-filter__dot--green {
-  background: #d8d8d8;
+  background: #e4f3df;
 }
 
 .mk-color-filter__dot--blue {
-  background: #cccccc;
+  background: #e1efff;
 }
 
 .mk-color-filter__dot--purple {
-  background: #bdbdbd;
+  background: #efe7fb;
 }
 
 .mk-main {
@@ -264,8 +259,15 @@ export const MK_CSS = `
 }
 
 .mk-composer__attachments {
+  align-items: center;
   display: flex;
+  gap: 8px;
   justify-content: flex-start;
+}
+
+.mk-composer__hint {
+  color: #555555;
+  font-size: 11px;
 }
 
 .mk-composer__file {
@@ -321,31 +323,31 @@ export const MK_CSS = `
 }
 
 .mk-swatch--default {
-  background: #e8e8e8;
+  background: #ffffff;
 }
 
 .mk-swatch--red {
-  background: #e4e4e4;
+  background: #ffe9e7;
 }
 
 .mk-swatch--orange {
-  background: #dcdcdc;
+  background: #ffeddc;
 }
 
 .mk-swatch--yellow {
-  background: #d9d9d9;
+  background: #fff5cf;
 }
 
 .mk-swatch--green {
-  background: #d8d8d8;
+  background: #e4f3df;
 }
 
 .mk-swatch--blue {
-  background: #cccccc;
+  background: #e1efff;
 }
 
 .mk-swatch--purple {
-  background: #bdbdbd;
+  background: #efe7fb;
 }
 
 .mk-bulk-bar {
@@ -402,7 +404,6 @@ export const MK_CSS = `
 }
 
 .mk-card.is-selected {
-  background: #dcdcdc;
   border-color: #1f1f1f;
   box-shadow: inset 4px 0 0 #1f1f1f, 0 1px 3px rgb(0 0 0 / 8%);
 }
@@ -481,31 +482,31 @@ export const MK_CSS = `
 }
 
 .mk-card--default {
-  background: #e8e8e8;
+  background: #ffffff;
 }
 
 .mk-card--red {
-  background: #e4e4e4;
+  background: #ffe9e7;
 }
 
 .mk-card--orange {
-  background: #dcdcdc;
+  background: #ffeddc;
 }
 
 .mk-card--yellow {
-  background: #d9d9d9;
+  background: #fff5cf;
 }
 
 .mk-card--green {
-  background: #d8d8d8;
+  background: #e4f3df;
 }
 
 .mk-card--blue {
-  background: #cccccc;
+  background: #e1efff;
 }
 
 .mk-card--purple {
-  background: #bdbdbd;
+  background: #efe7fb;
 }
 
 .mk-empty {
