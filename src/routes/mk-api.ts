@@ -1,7 +1,7 @@
 import type { Context, Hono } from "hono";
 import { applyMkNotePatch, createMkNote, isMkBodyValid, isMkColor, isMkFilter, isMkRecord, isMkTitleValid, parseMkNotePatch } from "../mk";
 import type { MkError, MkNote, MkNoteQuery } from "../mk";
-import { errorStatus, findOwned, problem, readJsonRecord } from "./api-helpers";
+import { errorStatus, findOwned, problem, readJsonRecord, respondRemoved } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
 import { err, ok } from "../task";
@@ -86,9 +86,7 @@ async function patchMkNote(c: Context<AppEnv>, repository: Repository) {
 async function deleteMkNote(c: Context<AppEnv>, repository: Repository) {
   const id = c.req.param("id");
   if (id === undefined) return problem(c, 404, "NOT_FOUND");
-  const removed = await repository(c).remove(id, OWNER_ID);
-  if (!removed.ok) return problem(c, errorStatus(removed.error.code), removed.error.code);
-  return c.body(null, 204);
+  return respondRemoved(c, repository(c).remove(id, OWNER_ID));
 }
 
 function readBulkIds(value: unknown): string[] | null {

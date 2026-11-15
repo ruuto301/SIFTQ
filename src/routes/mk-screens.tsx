@@ -4,7 +4,7 @@ import { Layout } from "../components/Layout";
 import { MkPage } from "../views/MkPage";
 import type { MkNoteCounts } from "../views/MkPage";
 import { filterMkNotes, isMkColor, isMkFilter, sortMkNotes } from "../mk";
-import type { MkColor, MkFilter, MkNote, MkNoteQuery } from "../mk";
+import type { MkColor, MkFilter, MkImage, MkNote, MkNoteQuery } from "../mk";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
 
@@ -41,17 +41,40 @@ function listQuery(filter: MkFilter, color: MkColor | undefined, text: string): 
   };
 }
 
+/** Loads the attached images for the rendered notes, keyed by note id. */
+async function imagesByNote(
+  repository: MkRepository,
+  notes: readonly MkNote[],
+): Promise<Record<string, readonly MkImage[]>> {
+  const entries = await Promise.all(
+    notes.map(async (note): Promise<readonly [string, readonly MkImage[]]> => {
+      const result = await repository.listImages(note.id, OWNER_ID);
+      return [note.id, result.ok ? result.value : []];
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
 export function registerMkScreenRoutes(app: Hono<AppEnv>, repository: Repository) {
   app.get("/mk", async (c) => {
-    const result = await repository(c).list(OWNER_ID);
+    const repositoryForRequest = repository(c);
+    const result = await repositoryForRequest.list(OWNER_ID);
     if (!result.ok) return c.text("Internal Server Error", 500);
     const filter = readFilter(c.req.query("filter"));
     const color = readColor(c.req.query("color"));
     const query = c.req.query("q") ?? "";
     const notes = sortMkNotes(filterMkNotes(result.value, listQuery(filter, color, query.trim())));
+    const images = await imagesByNote(repositoryForRequest, notes);
     return renderMkPage(
       c,
-      <MkPage notes={notes} counts={countMkNotes(result.value)} filter={filter} query={query} color={color} />,
+      <MkPage
+        notes={notes}
+        counts={countMkNotes(result.value)}
+        filter={filter}
+        query={query}
+        color={color}
+        images={images}
+      />,
     );
   });
 }

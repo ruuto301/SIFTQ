@@ -49,15 +49,171 @@ function resetMkComposer(composer) {
   if (title) title.value = "";
   if (body) body.value = "";
   selectMkComposerColor(composer, "default");
+  composer.__mkImages = [];
+  mkRenderComposerImages(composer);
+  mkShowComposerError(composer, "");
+}
+function mkComposerImages(composer) {
+  if (!composer.__mkImages) composer.__mkImages = [];
+  return composer.__mkImages;
+}
+function mkImageUrl(imageId) { return "/api/images/" + encodeURIComponent(imageId); }
+function mkShowComposerError(composer, message) {
+  var error = composer.querySelector("[data-mk-composer-error]");
+  if (!error) { if (message) window.alert(message); return; }
+  error.textContent = message || "";
+  error.hidden = (message || "") === "";
+}
+function mkRenderComposerImages(composer) {
+  var wrap = composer.querySelector("[data-mk-composer-images]");
+  var list = composer.querySelector("[data-mk-composer-image-list]");
+  if (!wrap || !list) return;
+  var images = mkComposerImages(composer);
+  list.textContent = "";
+  images.forEach(function (image) {
+    var item = document.createElement("li");
+    item.className = "mk-composer__image";
+    item.setAttribute("data-mk-composer-image", image.id);
+    var thumb = document.createElement("img");
+    thumb.className = "mk-composer__image-thumb";
+    thumb.src = image.url;
+    thumb.alt = "";
+    thumb.loading = "lazy";
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "mk-composer__image-remove";
+    remove.setAttribute("data-mk-composer-image-remove", image.id);
+    remove.setAttribute("aria-label", "画像を削除");
+    remove.textContent = "×";
+    item.appendChild(thumb);
+    item.appendChild(remove);
+    list.appendChild(item);
+  });
+  wrap.hidden = images.length === 0;
+}
+function mkImageType(file) {
+  var type = file && file.type ? String(file.type).toLowerCase() : "";
+  if (type === "image/png" || type === "image/webp" || type === "image/jpeg") return type;
+  var name = file && file.name ? String(file.name).toLowerCase() : "";
+  var extension = name.slice(name.lastIndexOf("."));
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  return "";
+}
+function mkIsImageFile(file) { return mkImageType(file) !== ""; }
+function mkDroppedFiles(source) {
+  if (!source) return [];
+  var files = [];
+  var items = source.items ? Array.prototype.slice.call(source.items) : [];
+  items.forEach(function (item) {
+    if (!item || item.kind !== "file" || typeof item.getAsFile !== "function") return;
+    var file = item.getAsFile();
+    if (file) files.push(file);
+  });
+  var direct = source.files ? Array.prototype.slice.call(source.files) : [];
+  direct.forEach(function (file) { if (file && files.indexOf(file) === -1) files.push(file); });
+  return files;
+}
+function mkHasFileDrag(source) {
+  if (!source) return false;
+  if (source.types && Array.prototype.indexOf.call(source.types, "Files") !== -1) return true;
+  return mkDroppedFiles(source).length > 0;
+}
+function mkImageFiles(source) { return mkDroppedFiles(source).filter(mkIsImageFile); }
+function mkEncodeImage(canvas, qualities) {
+  var quality = qualities[0];
+  return new Promise(function (resolve, reject) {
+    canvas.toBlob(function (blob) {
+      if (!blob) { reject(new Error("画像を変換できませんでした。")); return; }
+      if (blob.size <= 1048576 || qualities.length <= 1) { resolve(blob); return; }
+      mkEncodeImage(canvas, qualities.slice(1)).then(resolve, reject);
+    }, "image/webp", quality);
+  });
+}
+function mkPrepareImage(file) {
+  return new Promise(function (resolve, reject) {
+    if (!mkIsImageFile(file)) { reject(new Error("対応していない画像形式です。")); return; }
+    var url = URL.createObjectURL(file);
+    var image = new Image();
+    image.onload = function () {
+      var longest = Math.max(image.naturalWidth, image.naturalHeight) || 1;
+      var scale = Math.min(1, 1600 / longest);
+      var width = Math.max(1, Math.round(image.naturalWidth * scale));
+      var height = Math.max(1, Math.round(image.naturalHeight * scale));
+      var canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      var context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      mkEncodeImage(canvas, [0.8, 0.6, 0.4, 0.25]).then(resolve, reject);
+    };
+    image.onerror = function () { URL.revokeObjectURL(url); reject(new Error("画像を読み込めませんでした。")); };
+    image.src = url;
+  });
+}
+function mkUploadErrorMessage(body) {
+  var code = body && body.code ? body.code : "";
+  if (code === "IMAGE_TOO_LARGE") return "画像が大きすぎます。";
+  if (code === "UNSUPPORTED_IMAGE") return "対応していない画像形式です。";
+  return "画像をアップロードできませんでした。";
+}
+function mkUploadComposerImage(composer, file) {
+  if (mkComposerImages(composer).length >= 10) { mkShowComposerError(composer, "画像は10枚までです。"); return; }
+  mkShowComposerError(composer, "");
+  mkPrepareImage(file).then(function (blob) {
+    var form = new FormData();
+    form.append("file", blob, "mk-image.webp");
+    return fetch("/api/images", { method: "POST", body: form });
+  }).then(function (response) {
+    if (response.ok) return response.json();
+    return response.json().catch(function () { return {}; }).then(function (body) {
+      throw new Error(mkUploadErrorMessage(body));
+    });
+  }).then(function (image) {
+    mkComposerImages(composer).push({ id: image.id, url: image.url || mkImageUrl(image.id) });
+    mkRenderComposerImages(composer);
+  }).catch(function (error) {
+    mkShowComposerError(composer, error && error.message ? error.message : "画像をアップロードできませんでした。");
+  });
+}
+function mkLinkComposerImages(composer, noteId) {
+  var images = mkComposerImages(composer);
+  return images.reduce(function (chain, image) {
+    return chain.then(function () {
+      return fetch("/api/mk/notes/" + encodeURIComponent(noteId) + "/images", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageId: image.id }),
+      }).then(function (response) {
+        if (!response.ok) throw new Error("image link failed: " + response.status);
+      });
+    });
+  }, Promise.resolve());
 }
 function saveMkComposer(composer) {
   var title = composer.querySelector("[data-mk-composer-title]");
   var body = composer.querySelector("[data-mk-composer-body]");
   var value = title ? title.value.trim() : "";
   if (!value) return;
-  mkRun("/api/mk/notes", {
+  mkApi("/api/mk/notes", {
     method: "POST",
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: mkComposerColor(composer) }),
+  }).then(function (note) {
+    return mkLinkComposerImages(composer, note.id);
+  }).then(mkReload).catch(function () {
+    mkShowComposerError(composer, "保存に失敗しました。");
+  });
+}
+function mkRemoveComposerImage(composer, imageId) {
+  composer.__mkImages = mkComposerImages(composer).filter(function (image) { return image.id !== imageId; });
+  mkRenderComposerImages(composer);
+}
+function mkRemoveCardImage(linkId) {
+  if (!linkId) return;
+  mkConfirm("この画像を削除しますか？", function () {
+    mkRun("/api/mk/images/" + encodeURIComponent(linkId), { method: "DELETE" });
   });
 }
 function mkSetPinned(card) {
@@ -132,6 +288,42 @@ function mkSearchUrl(form) {
   var search = params.toString();
   return search === "" ? "/mk" : "/mk?" + search;
 }
+function initializeMkComposerImageInput(composer) {
+  var add = composer.querySelector("[data-mk-composer-image-add]");
+  var input = composer.querySelector("[data-mk-composer-file]");
+  if (add && input) {
+    add.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () {
+      var files = input.files ? Array.prototype.slice.call(input.files) : [];
+      files.forEach(function (file) { mkUploadComposerImage(composer, file); });
+      input.value = "";
+    });
+  }
+  var editor = composer.querySelector("[data-mk-composer-editor]");
+  if (editor) {
+    editor.addEventListener("dragover", function (event) {
+      if (!mkHasFileDrag(event.dataTransfer)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    });
+    editor.addEventListener("drop", function (event) {
+      var files = mkDroppedFiles(event.dataTransfer);
+      if (files.length === 0) return;
+      event.preventDefault();
+      var imageFiles = files.filter(mkIsImageFile);
+      if (imageFiles.length === 0) { mkShowComposerError(composer, "対応していない画像形式です。"); return; }
+      imageFiles.forEach(function (file) { mkUploadComposerImage(composer, file); });
+    });
+  }
+  composer.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var remove = target.closest("[data-mk-composer-image-remove]");
+    if (!remove) return;
+    event.preventDefault();
+    mkRemoveComposerImage(composer, remove.getAttribute("data-mk-composer-image-remove") || "");
+  });
+}
 function initializeMkComposer(page) {
   var composer = page.querySelector("[data-mk-composer]");
   if (!composer || composer.getAttribute("data-mk-ready") === "true") return;
@@ -152,11 +344,18 @@ function initializeMkComposer(page) {
     event.preventDefault();
     saveMkComposer(composer);
   });
+  initializeMkComposerImageInput(composer);
 }
 function initializeMkActions(page) {
   page.addEventListener("click", function (event) {
     var target = event.target;
     if (!target || !target.closest) return;
+    var imageRemove = target.closest("[data-mk-image-remove]");
+    if (imageRemove) {
+      event.preventDefault();
+      mkRemoveCardImage(imageRemove.getAttribute("data-mk-image-remove") || "");
+      return;
+    }
     var card = target.closest("[data-mk-id]");
     if (card && target.closest("[data-mk-pin]")) { event.preventDefault(); mkSetPinned(card); return; }
     if (card && target.closest("[data-mk-delete]")) { event.preventDefault(); mkDeleteCard(card); return; }
@@ -192,6 +391,16 @@ function initializeMkToolbar(page) {
   var form = page.querySelector("[data-mk-search]");
   if (form) form.addEventListener("submit", function (event) { event.preventDefault(); window.location.assign(mkSearchUrl(form)); });
 }
+function initializeMkPaste(page) {
+  document.addEventListener("paste", function (event) {
+    var composer = page.querySelector("[data-mk-composer]");
+    if (!composer || composer.getAttribute("data-mk-composer-open") !== "true") return;
+    var imageFiles = mkImageFiles(event.clipboardData);
+    if (imageFiles.length === 0) return;
+    event.preventDefault();
+    imageFiles.forEach(function (file) { mkUploadComposerImage(composer, file); });
+  });
+}
 function initializeMk() {
   var page = mkPage();
   if (!page || page.getAttribute("data-mk-initialized") === "true") return;
@@ -199,6 +408,7 @@ function initializeMk() {
   initializeMkComposer(page);
   initializeMkActions(page);
   initializeMkToolbar(page);
+  initializeMkPaste(page);
   syncMkSelection();
 }
 document.addEventListener("DOMContentLoaded", initializeMk);

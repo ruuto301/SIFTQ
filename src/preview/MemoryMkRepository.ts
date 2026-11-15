@@ -1,11 +1,15 @@
 import { changeMkNoteColor, changeMkNotePinned, filterMkNotes, sortMkNotes } from "../mk";
-import type { MkColor, MkNote, MkNoteQuery } from "../mk";
+import type { MkColor, MkImage, MkNote, MkNoteQuery } from "../mk";
 import { err, ok } from "../task";
 import type { Result } from "../task";
 import type { MkRepository, MkRepositoryError } from "../repository/mk-repository";
 
-export function createMemoryMkRepository(initialNotes: readonly MkNote[] = []): MkRepository {
+export function createMemoryMkRepository(
+  initialNotes: readonly MkNote[] = [],
+  initialImages: readonly MkImage[] = [],
+): MkRepository {
   const notes = new Map(initialNotes.map((note) => [note.id, note]));
+  const images = new Map(initialImages.map((image) => [image.id, image]));
 
   return {
     list: (owner_id, query) => listNotes(notes, owner_id, query),
@@ -16,6 +20,10 @@ export function createMemoryMkRepository(initialNotes: readonly MkNote[] = []): 
     bulkUpdateColor: (ids, owner_id, color) => bulkChange(notes, ids, owner_id, { kind: "color", color }),
     bulkPin: (ids, owner_id, pinned) => bulkChange(notes, ids, owner_id, { kind: "pin", pinned }),
     bulkRemove: (ids, owner_id) => bulkRemove(notes, ids, owner_id),
+    listImages: (note_id, owner_id) => listImages(images, note_id, owner_id),
+    insertImage: (link) => insertImage(images, link),
+    removeImage: (id, owner_id) => removeImage(images, id, owner_id),
+    countImages: (note_id, owner_id) => countImages(images, note_id, owner_id),
   };
 }
 
@@ -97,4 +105,45 @@ async function bulkRemove(
   if (selected === null) return err({ code: "NOT_FOUND" });
   selected.forEach((note) => notes.delete(note.id));
   return ok(null);
+}
+
+function ownedImages(images: Map<string, MkImage>, note_id: string, owner_id: string): MkImage[] {
+  return [...images.values()]
+    .filter((image) => image.note_id === note_id && image.owner_id === owner_id)
+    .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
+}
+
+async function listImages(
+  images: Map<string, MkImage>,
+  note_id: string,
+  owner_id: string,
+): Promise<Result<MkImage[], MkRepositoryError>> {
+  return ok(ownedImages(images, note_id, owner_id));
+}
+
+async function insertImage(
+  images: Map<string, MkImage>,
+  link: MkImage,
+): Promise<Result<MkImage, MkRepositoryError>> {
+  images.set(link.id, link);
+  return ok(link);
+}
+
+async function removeImage(
+  images: Map<string, MkImage>,
+  id: string,
+  owner_id: string,
+): Promise<Result<null, MkRepositoryError>> {
+  const image = images.get(id);
+  if (image === undefined || image.owner_id !== owner_id) return err({ code: "NOT_FOUND" });
+  images.delete(id);
+  return ok(null);
+}
+
+async function countImages(
+  images: Map<string, MkImage>,
+  note_id: string,
+  owner_id: string,
+): Promise<Result<number, MkRepositoryError>> {
+  return ok(ownedImages(images, note_id, owner_id).length);
 }

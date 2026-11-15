@@ -2,27 +2,37 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
 import { createMemoryMkRepository } from "../../src/preview/MemoryMkRepository";
-import { isMkNote } from "../../src/mk";
+import { createMemoryImageRepository } from "../../src/repository/image-repository";
+import { MK_MAX_IMAGES, isMkNote } from "../../src/mk";
 import type { MkNote } from "../../src/mk";
 import type { MkRepository } from "../../src/repository/mk-repository";
+import type { ImageRepository } from "../../src/repository/image-repository";
 
 const SECRET = "mk-contract-secret";
 
 let repo: MkRepository;
+let images: ImageRepository;
 
 beforeEach(() => {
   repo = createMemoryMkRepository();
+  images = createMemoryImageRepository();
 });
 
 async function request(path: string, init: RequestInit = {}) {
   const cookie = await createSession(SECRET, Date.now() + 60_000);
   const headers = new Headers(init.headers);
   headers.set("Cookie", `${SESSION_COOKIE_NAME}=${cookie}`);
-  return app.request(path, { ...init, headers }, { SESSION_SECRET: SECRET, MK_REPOSITORY: repo });
+  return app.request(path, { ...init, headers }, { SESSION_SECRET: SECRET, MK_REPOSITORY: repo, IMAGE_REPOSITORY: images });
 }
 
 function jsonRequest(path: string, method: string, body: unknown) {
   return request(path, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+}
+
+function uploadImage() {
+  const form = new FormData();
+  form.append("file", new File([new Uint8Array([137, 80, 78, 71])], "pixel.png", { type: "image/png" }));
+  return request("/api/images", { method: "POST", body: form });
 }
 
 async function readNote(response: Response): Promise<MkNote> {
@@ -151,5 +161,81 @@ describe("MK client script", () => {
     const body = await response.text();
     expect(body).toContain("/api/mk/notes");
     expect(body).toContain("/api/mk/notes/bulk");
+    expect(body).toContain("/api/mk/images/");
+    expect(body).toContain("/api/images");
+  });
+});
+
+describe("MK note images API", () => {
+  async function noteId(title = "画像メモ"): Promise<string> {
+    return (await createNote(title)).id;
+  }
+
+  async function linkImage(note: string, imageId: string) {
+    return jsonRequest(`/api/mk/notes/${note}/images`, "POST", { imageId });
+  }
+
+  it("uploads an image, links it, renders the thumbnail, and unlinks it", async () => {
+    const id = await noteId();
+    const uploaded = await uploadImage();
+    expect(uploaded.status).toBe(201);
+    const image: { id: string; url: string } = await uploaded.json();
+
+    const linked = await linkImage(id, image.id);
+    expect(linked.status).toBe(201);
+    const link: { id: string; url: string } = await linked.json();
+    expect(link.url).toBe(`/api/images/${image.id}`);
+
+    const rendered = await (await request("/mk")).text();
+    expect(rendered).toContain("mk-card__image");
+    expect(rendered).toContain(`/api/images/${image.id}`);
+    expect(rendered).toContain(`data-mk-image-remove="${link.id}"`);
+
+    expect((await request(`/api/mk/images/${link.id}`, { method: "DELETE" })).status).toBe(204);
+    const afterRemoval = await (await request("/mk")).text();
+    expect(afterRemoval).not.toContain(`/api/images/${image.id}`);
+    // The stored blob survives unlinking.
+    expect((await request(`/api/images/${image.id}`)).status).toBe(200);
+    expect((await request(`/api/mk/images/${link.id}`, { method: "DELETE" })).status).toBe(404);
+  });
+
+  it("rejects unknown notes, unknown images, and missing image ids", async () => {
+    const id = await noteId();
+
+    expect((await linkImage("missing", "image-1")).status).toBe(404);
+    expect((await linkImage(id, "missing")).status).toBe(400);
+    expect((await linkImage(id, "")).status).toBe(400);
+    expect((await jsonRequest(`/api/mk/notes/${id}/images`, "POST", {})).status).toBe(400);
+    expect((await request(`/api/mk/notes/${id}/images`, { method: "POST", body: "not json" })).status).toBe(400);
+  });
+
+  it("rejects an attachment beyond the ten image limit", async () => {
+    const id = await noteId();
+    const uploaded = await uploadImage();
+    const image: { id: string } = await uploaded.json();
+
+    for (let index = 0; index < MK_MAX_IMAGES; index += 1) {
+      expect((await linkImage(id, image.id)).status).toBe(201);
+    }
+
+    const overflow = await linkImage(id, image.id);
+    expect(overflow.status).toBe(400);
+    expect(await overflow.json()).toEqual({ code: "IMAGE_LIMIT_EXCEEDED" });
+  });
+
+  it("keeps positions increasing after an unlink", async () => {
+    const id = await noteId();
+    const first: { id: string } = await (await uploadImage()).json();
+    const second: { id: string } = await (await uploadImage()).json();
+
+    const firstLink: { id: string } = await (await linkImage(id, first.id)).json();
+    await linkImage(id, second.id);
+    await request(`/api/mk/images/${firstLink.id}`, { method: "DELETE" });
+
+    const relinked = await linkImage(id, first.id);
+    expect(relinked.status).toBe(201);
+
+    const rendered = await (await request("/mk")).text();
+    expect(rendered).toContain(`/api/images/${second.id}`);
   });
 });

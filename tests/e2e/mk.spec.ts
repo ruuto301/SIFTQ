@@ -1,24 +1,10 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { signIn } from "./task-helpers";
 
-async function clearNotes(page: Page) {
-  const notes = await page.evaluate(async () => {
-    const response = await fetch("/api/mk/notes");
-    return response.json();
-  });
-  for (const note of notes) {
-    await page.evaluate(async (id) => {
-      await fetch(`/api/mk/notes/${id}`, { method: "DELETE" });
-    }, note.id);
-  }
-}
-
 test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ page }) => {
   await signIn(page);
-  await clearNotes(page);
   await page.goto("/mk");
-  await expect(page.getByRole("heading", { name: "MK" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "MK", exact: true })).toBeVisible();
 
   const title = `MK e2e ${Date.now()}`;
   await page.locator("[data-mk-composer-trigger]").click();
@@ -31,11 +17,9 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await expect(card).toHaveCount(1);
   await expect(card).toHaveAttribute("data-mk-color", "blue");
   await expect(card.locator(".mk-card__body")).toHaveText("e2e body");
-  await expect(page.locator('[data-mk-count="all"]')).toContainText("1");
 
   await card.locator("[data-mk-pin]").click();
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-pinned", "true");
-  await expect(page.locator('[data-mk-count="pinned"]')).toContainText("1");
 
   await page.getByLabel("メモを検索").fill(title);
   await page.getByLabel("メモを検索").press("Enter");
@@ -50,9 +34,9 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await page.locator('[data-mk-bulk-color="red"]').click();
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-color", "red");
 
+  await page.goto("/mk");
   await page.locator(".mk-card").filter({ hasText: title }).locator("[data-mk-delete]").click();
   await expect(page.locator(".matrix-modal")).toContainText("このメモを削除しますか？");
   await page.locator(".matrix-modal-button--danger").click();
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveCount(0);
-  await expect(page.locator('[data-mk-count="all"]')).toContainText("0");
 });

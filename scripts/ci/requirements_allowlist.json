@@ -213,5 +213,10 @@
     "path": "src/routes/api-helpers.ts",
     "reason": "API の共通ヘルパーで、idea-api / mk-api の契約テストが検証するため。",
     "removal": "ヘルパー単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/mk-image-api.ts",
+    "reason": "MK画像の添付APIはMK契約テストがHTTP境界の挙動を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
   }
 ]

@@ -211,6 +211,97 @@ export const MK_CSS = `
   justify-content: flex-end;
 }
 
+.mk-composer__images[hidden],
+.mk-composer__error[hidden] {
+  display: none;
+}
+
+.mk-composer__image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-composer__image {
+  position: relative;
+}
+
+.mk-composer__image-thumb {
+  border: 1px solid #d8dde3;
+  border-radius: 6px;
+  display: block;
+  height: 72px;
+  object-fit: cover;
+  width: 72px;
+}
+
+.mk-composer__image-remove {
+  background: #1b1f24;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  height: 20px;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 20px;
+}
+
+.mk-composer__error {
+  color: #b42318;
+  font-size: 13px;
+  margin: 0;
+}
+
+.mk-composer__attachments {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.mk-composer__file {
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+
+.mk-card__image-wrap {
+  margin-top: 8px;
+  position: relative;
+}
+
+.mk-card__image {
+  border-radius: 6px;
+  display: block;
+  height: 120px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.mk-card__image-remove {
+  background: rgb(27 31 36 / 70%);
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  height: 22px;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 22px;
+}
+
 .mk-swatch {
   border: 1px solid #d8dde3;
   border-radius: 50%;
