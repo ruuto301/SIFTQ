@@ -44,13 +44,13 @@ export function createD1MkRepository(db: D1Database): MkRepository {
     find: (id, owner_id) => findNote(db, id, owner_id),
     insert: (note) => insertNote(db, note),
     update: (note) => updateNote(db, note),
-    remove: (id, owner_id) => removeNote(db, id, owner_id),
+    remove: (id, owner_id) => deleteRow(db, "DELETE FROM mk_notes WHERE id = ? AND owner_id = ?", [id, owner_id]),
     bulkUpdateColor: (ids, owner_id, color) => bulkUpdateColor(db, ids, owner_id, color),
     bulkPin: (ids, owner_id, pinned) => bulkPin(db, ids, owner_id, pinned),
     bulkRemove: (ids, owner_id) => bulkRemove(db, ids, owner_id),
     listImages: (note_id, owner_id) => listImages(db, note_id, owner_id),
     insertImage: (link) => insertImage(db, link),
-    removeImage: (id, owner_id) => removeImage(db, id, owner_id),
+    removeImage: (id, owner_id) => deleteRow(db, "DELETE FROM mk_images WHERE id = ? AND owner_id = ?", [id, owner_id]),
     countImages: (note_id, owner_id) => countImages(db, note_id, owner_id),
   };
 }
@@ -129,12 +129,12 @@ async function updateNote(db: D1Database, note: MkNote): Promise<Result<MkNote, 
   return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(note);
 }
 
-async function removeNote(
+async function deleteRow(
   db: D1Database,
-  id: string,
-  owner_id: string,
+  sql: string,
+  args: readonly unknown[],
 ): Promise<Result<null, MkRepositoryError>> {
-  const result = await db.prepare("DELETE FROM mk_notes WHERE id = ? AND owner_id = ?").bind(id, owner_id).run();
+  const result = await db.prepare(sql).bind(...args).run();
   return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(null);
 }
 
@@ -233,15 +233,6 @@ async function insertImage(db: D1Database, link: MkImage): Promise<Result<MkImag
     .bind(link.id, link.note_id, link.owner_id, link.image_id, link.position, link.created_at)
     .run();
   return ok(link);
-}
-
-async function removeImage(
-  db: D1Database,
-  id: string,
-  owner_id: string,
-): Promise<Result<null, MkRepositoryError>> {
-  const result = await db.prepare("DELETE FROM mk_images WHERE id = ? AND owner_id = ?").bind(id, owner_id).run();
-  return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(null);
 }
 
 async function countImages(

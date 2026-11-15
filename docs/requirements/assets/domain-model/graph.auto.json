@@ -324,7 +324,28 @@
       "method": "POST",
       "path": "/api/mk/notes/{id}/images",
       "operation": "notes-id-images",
-      "success": 200
+      "success": 200,
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_IMAGE"
+        },
+        {
+          "status": 400,
+          "code": "IMAGE_LIMIT_EXCEEDED"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 500
+        }
+      ]
     },
     "mk_images_id_delete": {
       "kind": "api",

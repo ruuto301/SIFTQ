@@ -1,7 +1,7 @@
 import type { Context, Hono } from "hono";
 import { MK_MAX_IMAGES, createMkImage, isMkRecord } from "../mk";
 import type { MkImage } from "../mk";
-import { errorStatus, findOwned, problem, readJsonRecord } from "./api-helpers";
+import { errorStatus, findOwned, problem, readJsonRecord, respondRemoved } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { ImageRepository } from "../repository/image-repository";
 import type { MkRepository } from "../repository/mk-repository";
@@ -61,9 +61,7 @@ async function unlinkNoteImage(c: Context<AppEnv>, mkRepository: MkRepositoryFac
   const id = c.req.param("id");
   if (id === undefined) return problem(c, 404, "NOT_FOUND");
   // Unlinking drops only the note link; the uploaded blob stays in the image repository.
-  const removed = await mkRepository(c).removeImage(id, OWNER_ID);
-  if (!removed.ok) return problem(c, errorStatus(removed.error.code), removed.error.code);
-  return c.body(null, 204);
+  return respondRemoved(c, mkRepository(c).removeImage(id, OWNER_ID));
 }
 
 export function registerMkImageApiRoutes(

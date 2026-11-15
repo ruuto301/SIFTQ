@@ -30,6 +30,15 @@ export async function findOwned<T, E>(
   return loaded.value === undefined ? { ok: false, error: notFound } : { ok: true, value: loaded.value };
 }
 
+export async function respondRemoved<E extends { code: string }>(
+  c: Context<AppEnv>,
+  removed: Promise<Result<null, E>>,
+) {
+  const result = await removed;
+  if (!result.ok) return problem(c, errorStatus(result.error.code), result.error.code);
+  return c.body(null, 204);
+}
+
 export function errorStatus(code: string): ContentfulStatusCode {
   if (code === "NOT_FOUND") return 404;
   if (code === "CONFLICT") return 409;
