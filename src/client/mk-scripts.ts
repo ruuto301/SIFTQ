@@ -40,19 +40,9 @@ function resetMkComposer(composer) {
   if (title) title.value = "";
   if (body) body.value = "";
   selectMkComposerColor(composer, "default");
-  mkClearComposerLabels(composer);
   composer.__mkImages = [];
   mkRenderComposerImages(composer);
   mkShowComposerError(composer, "");
-}
-function mkComposerLabelInputs(composer) {
-  return Array.prototype.slice.call(composer.querySelectorAll("[data-mk-composer-label]"));
-}
-function mkComposerLabelIds(composer) {
-  return mkComposerLabelInputs(composer).filter(function (input) { return input.checked; }).map(function (input) { return input.value; });
-}
-function mkClearComposerLabels(composer) {
-  mkComposerLabelInputs(composer).forEach(function (input) { input.checked = false; });
 }
 function mkComposerImages(composer) {
   if (!composer.__mkImages) composer.__mkImages = [];
@@ -193,12 +183,6 @@ function mkLinkComposerImages(composer, noteId) {
     });
   }, Promise.resolve());
 }
-function mkSetNoteLabels(noteId, labelIds) {
-  return mkApi("/api/mk/notes/" + encodeURIComponent(noteId) + "/labels", {
-    method: "POST",
-    body: JSON.stringify({ labelIds: labelIds }),
-  });
-}
 function mkRequestPreview(noteId) {
   return mkApi("/api/mk/notes/" + encodeURIComponent(noteId) + "/preview", { method: "POST" });
 }
@@ -211,9 +195,7 @@ function saveMkComposer(composer) {
     method: "POST",
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: mkComposerColor(composer) }),
   }).then(function (note) {
-    return mkSetNoteLabels(note.id, mkComposerLabelIds(composer)).then(function () {
-      return mkLinkComposerImages(composer, note.id);
-    }).then(function () {
+    return mkLinkComposerImages(composer, note.id).then(function () {
       // 本文に URL があればプレビューを先に取得する。失敗しても作成は成功として扱う。
       return mkRequestPreview(note.id).catch(function () { return null; });
     });
@@ -305,35 +287,6 @@ function mkBulkPurge() {
     mkApi("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify({ ids: ids, action: "purge" }) }).then(mkReload).catch(function () {});
   });
 }
-function mkCardLabelIds(card) {
-  var raw = card.getAttribute("data-mk-labels") || "";
-  return raw === "" ? [] : raw.split(",");
-}
-function mkLabelManager() { return document.querySelector("[data-mk-label-manager]"); }
-function mkToggleLabelManager() {
-  var manager = mkLabelManager();
-  if (manager) manager.hidden = !manager.hidden;
-}
-function mkLabelRequest(path, method, name) {
-  return mkApi(path, { method: method, body: JSON.stringify({ name: name }) });
-}
-function mkCreateLabel(form) {
-  var input = form.querySelector("[data-mk-label-create-input]");
-  var name = input ? input.value.trim() : "";
-  if (!name) return;
-  mkLabelRequest("/api/mk/labels", "POST", name).then(mkReload).catch(function () {});
-}
-function mkRenameLabel(id) {
-  var input = document.querySelector('[data-mk-label-rename-input="' + id + '"]');
-  var name = input ? input.value.trim() : "";
-  if (!name) return;
-  mkLabelRequest("/api/mk/labels/" + encodeURIComponent(id), "PATCH", name).then(mkReload).catch(function () {});
-}
-function mkDeleteLabel(id) {
-  mkConfirm("このラベルを削除しますか？", function () {
-    mkLabelRequest("/api/mk/labels/" + encodeURIComponent(id), "DELETE").then(mkReload).catch(function () {});
-  });
-}
 function mkSearchUrl(form) {
   var params = new URLSearchParams();
   form.querySelectorAll('input[type="hidden"]').forEach(function (hidden) {
@@ -423,32 +376,7 @@ function initializeMkActions(page) {
     var card = target.closest("[data-mk-id]");
     if (card && target.closest("[data-mk-pin]")) { event.preventDefault(); mkSetPinned(card); return; }
     if (card && target.closest("[data-mk-delete]")) { event.preventDefault(); mkDeleteCard(card); return; }
-    var colorButton = target.closest("[data-mk-bulk-color]");
-    if (colorButton) { event.preventDefault(); mkBulkColor(colorButton.getAttribute("data-mk-bulk-color") || "default"); return; }
-    if (target.closest("[data-mk-bulk-pin]")) { event.preventDefault(); mkBulkPin(); return; }
-    if (target.closest("[data-mk-bulk-archive]")) { event.preventDefault(); mkBulkArchive(); return; }
-    if (target.closest("[data-mk-bulk-trash]")) { event.preventDefault(); mkBulkTrash(); return; }
-    if (target.closest("[data-mk-bulk-restore]")) { event.preventDefault(); mkBulkRestore(); return; }
-    if (target.closest("[data-mk-bulk-purge]")) { event.preventDefault(); mkBulkPurge(); return; }
-    if (target.closest("[data-mk-bulk-label-add]")) { event.preventDefault(); mkBulkLabel(mkBulkLabelValue(), true); return; }
-    if (target.closest("[data-mk-bulk-label-remove]")) { event.preventDefault(); mkBulkLabel(mkBulkLabelValue(), false); return; }
-    var renameLabel = target.closest("[data-mk-label-rename]");
-    if (renameLabel) { event.preventDefault(); mkRenameLabel(renameLabel.getAttribute("data-mk-label-rename") || ""); return; }
-    var deleteLabel = target.closest("[data-mk-label-delete]");
-    if (deleteLabel) { event.preventDefault(); mkDeleteLabel(deleteLabel.getAttribute("data-mk-label-delete") || ""); return; }
-    if (target.closest("[data-mk-bulk-delete]")) { event.preventDefault(); mkBulkDelete(); }
   });
-}
-function initializeMkLabelManager(page) {
-  var manage = page.querySelector("[data-mk-label-manage]");
-  if (manage) manage.addEventListener("click", function () { mkToggleLabelManager(); });
-  var form = page.querySelector("[data-mk-label-create-form]");
-  if (form) {
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      mkCreateLabel(form);
-    });
-  }
 }
 function initializeMkPaste(page) {
   document.addEventListener("paste", function (event) {
@@ -643,33 +571,6 @@ function mkDetailSetColor(root, color) {
     button.setAttribute("aria-pressed", button.getAttribute("data-mk-detail-color") === color ? "true" : "false");
   });
 }
-function mkLabelNameFromCard(card, labelId) {
-  var chip = card.querySelector('[data-mk-card-label="' + labelId + '"]');
-  return chip ? chip.textContent.trim() : labelId;
-}
-function mkDetailRenderLabels(root, card) {
-  var box = mkDetailField(root, "labels");
-  if (!box) return;
-  box.textContent = "";
-  if (card === null) return;
-  var ids = mkCardLabelIds(card);
-  ids.forEach(function (labelId) {
-    var chip = document.createElement("span");
-    chip.className = "mk-label-chip";
-    chip.appendChild(document.createTextNode(mkLabelNameFromCard(card, labelId) + " "));
-    var remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "×";
-    remove.setAttribute("aria-label", "ラベルを外す");
-    remove.addEventListener("click", function () {
-      var next = mkCardLabelIds(card).filter(function (id) { return id !== labelId; });
-      mkSetNoteLabels(mkCardId(card), next);
-      mkReload();
-    });
-    chip.appendChild(remove);
-    box.appendChild(chip);
-  });
-}
 function mkDetailRenderImages(root, card) {
   var box = mkDetailField(root, "images");
   if (!box) return;
@@ -735,7 +636,6 @@ function mkDetailOpen(card) {
   mkDetailSetColor(root, card.getAttribute("data-mk-color") || "default");
   var pin = mkDetailField(root, "pin");
   if (pin) pin.setAttribute("aria-pressed", card.getAttribute("data-mk-pinned") === "true" ? "true" : "false");
-  mkDetailRenderLabels(root, card);
   mkDetailRenderImages(root, card);
   mkDetailError(root, "");
   root.hidden = false;
@@ -802,17 +702,6 @@ function initializeMkDetail(page) {
       mkConfirm("このメモを削除しますか？", function () { mkDetailSingle({ action: "delete" }); });
     });
   }
-  var labelAdd = mkDetailField(root, "label-add");
-  if (labelAdd) {
-    labelAdd.addEventListener("change", function () {
-      var card = mkDetailCard(root);
-      var labelId = labelAdd.value;
-      if (card === null || labelId === "") return;
-      var next = mkCardLabelIds(card).concat([labelId]);
-      mkSetNoteLabels(mkCardId(card), next);
-      mkReload();
-    });
-  }
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && root.hidden === false) mkDetailClose();
   });
@@ -833,7 +722,6 @@ function initializeMk() {
   initializeMkComposer(page);
   initializeMkSideNew(page);
   initializeMkActions(page);
-  initializeMkLabelManager(page);
   initializeMkPaste(page);
   initializeMkDetail(page);
   initializeMkSideOpen(page);

@@ -10,7 +10,6 @@ import type {
   MkFilter,
   MkImage,
   MkNote,
-  MkNoteLabelMap,
   MkNoteQuery,
   MkSort,
 } from "../mk";
@@ -57,7 +56,6 @@ function listQuery(state: MkState): MkNoteQuery {
     filter: state.filter,
     ...(state.color === undefined ? {} : { color: state.color }),
     ...(text === "" ? {} : { text }),
-    ...(state.labelId === "" ? {} : { labelId: state.labelId }),
     ...(state.dateKind === undefined || (state.from === undefined && state.to === undefined)
       ? {}
       : { dateKind: state.dateKind }),
@@ -81,48 +79,29 @@ async function imagesByNote(
   return Object.fromEntries(entries);
 }
 
-/** One batch query for every rendered note keeps the page free of per-note label queries. */
-async function labelsForNotes(
-  repository: MkRepository,
-  notes: readonly MkNote[],
-): Promise<MkNoteLabelMap> {
-  const result = await repository.listLabelsForNotes(
-    notes.map((note) => note.id),
-    OWNER_ID,
-  );
-  return result.ok ? result.value : {};
-}
-
 export function registerMkScreenRoutes(app: Hono<AppEnv>, repository: Repository) {
   app.get("/mk", async (c) => {
     const repositoryForRequest = repository(c);
     const filter = readFilter(c.req.query("filter"));
     const color = readColor(c.req.query("color"));
-    const labelId = c.req.query("label") ?? "";
     const query = c.req.query("q") ?? "";
     const dateKind = readDateKind(c.req.query("dateKind"));
     const from = readDateBound(c, "from", "fromDate", false);
     const to = readDateBound(c, "to", "toDate", true);
     const sort = readSort(c.req.query("sort"));
-    const state: MkState = { filter, labelId, query, color, dateKind, from, to, sort };
-    const [listed, counts, labels] = await Promise.all([
+    const state: MkState = { filter, query, color, dateKind, from, to, sort };
+    const [listed, counts] = await Promise.all([
       repositoryForRequest.list(OWNER_ID, listQuery(state)),
       repositoryForRequest.counts(OWNER_ID),
-      repositoryForRequest.listLabels(OWNER_ID),
     ]);
-    if (!listed.ok || !counts.ok || !labels.ok) return c.text("Internal Server Error", 500);
+    if (!listed.ok || !counts.ok) return c.text("Internal Server Error", 500);
     const notes = sortMkNotesByQuery(listed.value, sort);
-    const [images, labelsByNote] = await Promise.all([
-      imagesByNote(repositoryForRequest, notes),
-      labelsForNotes(repositoryForRequest, notes),
-    ]);
+    const images = await imagesByNote(repositoryForRequest, notes);
     return renderMkPage(
       c,
       <MkPage
         notes={notes}
         counts={counts.value}
-        labels={labels.value}
-        labelsByNote={labelsByNote}
         state={state}
         images={images}
       />,
