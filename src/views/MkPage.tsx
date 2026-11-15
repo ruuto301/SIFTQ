@@ -433,66 +433,6 @@ function MkLabelSelect({
   );
 }
 
-function MkBulkBar({ labels }: { readonly labels: readonly MkLabel[] }) {
-  return (
-    <div class="mk-bulk-bar" data-mk-bulk-bar role="toolbar" aria-label="選択したメモの操作" hidden>
-      <span class="mk-bulk-bar__count" data-mk-selection-count>
-        0件選択
-      </span>
-      <label class="mk-bulk-bar__select-all">
-        <input type="checkbox" data-mk-select-all aria-label="すべて選択" />
-      </label>
-      <div class="mk-bulk-bar__colors" role="group" aria-label="色を変更">
-        {MK_COLORS.map((candidate) => (
-          <button
-            key={candidate}
-            class={`mk-swatch mk-swatch--${candidate}`}
-            type="button"
-            data-mk-bulk-color={candidate}
-            aria-label={`${candidate} に変更`}
-          />
-        ))}
-      </div>
-      <button class="button small" type="button" data-mk-bulk-pin>
-        ピン
-      </button>
-      <button class="button small" type="button" data-mk-bulk-archive>
-        アーカイブ
-      </button>
-      <button class="button small" type="button" data-mk-bulk-trash>
-        ゴミ箱へ
-      </button>
-      <button class="button small" type="button" data-mk-bulk-restore>
-        復元
-      </button>
-      <button class="button small button--danger" type="button" data-mk-bulk-purge>
-        完全削除
-      </button>
-      <div class="mk-bulk-bar__labels">
-        <MkLabelSelect
-          labels={labels}
-          attribute="data-mk-bulk-label"
-          placeholder="ラベル"
-          ariaLabel="ラベルを選択"
-          className="mk-bulk-bar__label-select"
-        />
-        <button class="button small" type="button" data-mk-bulk-label-add>
-          追加
-        </button>
-        <button class="button small" type="button" data-mk-bulk-label-remove>
-          解除
-        </button>
-      </div>
-      <button class="button small" type="button" data-mk-bulk-delete>
-        削除
-      </button>
-      <button class="button small" type="button" data-mk-bulk-clear>
-        選択解除
-      </button>
-    </div>
-  );
-}
-
 function MkCardLabels({ labels }: { readonly labels: readonly MkLabel[] }) {
   if (labels.length === 0) return null;
   return (
@@ -616,9 +556,6 @@ function MkCard({
       )}
       data-mk-open
     >
-      <label class="mk-card__select-label">
-        <input class="mk-card__select" type="checkbox" data-mk-select aria-label={`${note.title} を選択`} />
-      </label>
       <MkCardActions note={note} />
       {note.pinned ? (
         <span class="mk-card__pin-badge" aria-hidden="true">
@@ -831,7 +768,7 @@ export function MkPage({
   readonly images: Readonly<Record<string, readonly MkImage[]>>;
 }) {
   return (
-    <div class="page page--mk" data-mk-page data-mk-selecting="false" data-mk-sort={state.sort ?? MK_DEFAULT_SORT}>
+    <div class="page page--mk" data-mk-page data-mk-sort={state.sort ?? MK_DEFAULT_SORT}>
       <MkHeader />
       <div class="mk-layout">
         <MkSidebar counts={counts} labels={labels} state={state} />
@@ -839,11 +776,7 @@ export function MkPage({
           <div class="mk-toolbar">
             <MkSearch state={state} />
             <MkFilterMenu counts={counts} labels={labels} state={state} />
-            <button class="button small" type="button" data-mk-selection-toggle aria-pressed="false">
-              ☑ 選択
-            </button>
           </div>
-          <MkBulkBar labels={labels} />
           <MkComposer labels={labels} />
           <MkGrid notes={notes} labelsByNote={labelsByNote} images={images} />
         </section>
