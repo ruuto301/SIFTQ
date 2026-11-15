@@ -38,13 +38,6 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await expect(page.locator(".mk-card").filter({ hasText: title })).toBeVisible();
 
   await page.goto("/mk");
-  await page.locator("[data-mk-selection-toggle]").click();
-  await page.locator(".mk-card").filter({ hasText: title }).locator("[data-mk-select]").check();
-  await expect(page.locator("[data-mk-bulk-bar]")).toBeVisible();
-  await actAndWaitForReload(page, () => page.locator('[data-mk-bulk-color="red"]').click());
-  await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-color", "red");
-
-  await page.goto("/mk");
   await page.locator(".mk-card").filter({ hasText: title }).hover();
   await page.locator(".mk-card").filter({ hasText: title }).locator("[data-mk-delete]").click();
   await expect(page.locator(".matrix-modal")).toContainText("このメモを削除しますか？");

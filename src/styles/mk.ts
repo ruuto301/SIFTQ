@@ -120,13 +120,14 @@ export const MK_CSS = `
   align-items: center;
   display: flex;
   gap: 12px;
-  justify-content: space-between;
 }
 
 .mk-search {
   align-items: center;
   display: flex;
+  flex: 1 1 auto;
   gap: 8px;
+  min-width: 0;
 }
 
 .mk-search input[type="search"] {
@@ -134,9 +135,11 @@ export const MK_CSS = `
   border: 2px solid #1f1f1f;
   border-radius: 999px;
   color: #303030;
+  flex: 1 1 auto;
   font: inherit;
-  min-width: 200px;
+  min-width: 0;
   padding: 6px 14px;
+  width: 100%;
 }
 
 .mk-composer {
@@ -197,12 +200,6 @@ export const MK_CSS = `
 }
 
 .mk-composer__colors,
-.mk-bulk-bar__colors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .mk-composer__actions {
   display: flex;
   gap: 8px;
@@ -350,25 +347,6 @@ export const MK_CSS = `
   background: #efe7fb;
 }
 
-.mk-bulk-bar {
-  align-items: center;
-  background: #d8d8d8;
-  border: 2px solid #1f1f1f;
-  border-radius: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 8px 12px;
-}
-
-.mk-bulk-bar[hidden] {
-  display: none;
-}
-
-.mk-bulk-bar__count {
-  font-size: 13px;
-}
-
 .mk-grid {
   column-gap: 16px;
   columns: 1;
@@ -406,25 +384,6 @@ export const MK_CSS = `
 .mk-card.is-selected {
   border-color: #1f1f1f;
   box-shadow: inset 4px 0 0 #1f1f1f, 0 1px 3px rgb(0 0 0 / 8%);
-}
-
-.mk-card__select-label {
-  left: 10px;
-  position: absolute;
-  top: 10px;
-}
-
-.mk-card__select {
-  display: none;
-}
-
-.page--mk[data-mk-selecting="true"] .mk-card__select {
-  display: block;
-}
-
-.page--mk[data-mk-selecting="true"] .mk-card__title,
-.page--mk[data-mk-selecting="true"] .mk-card__body {
-  padding-left: 24px;
 }
 
 .mk-card__actions {
@@ -636,19 +595,6 @@ export const MK_CSS = `
   display: inline-flex;
   font-size: 13px;
   gap: 4px;
-}
-
-.mk-bulk-bar__labels {
-  align-items: center;
-  display: flex;
-  gap: 4px;
-}
-
-.mk-bulk-bar__label-select {
-  border: 1px solid #d8dde3;
-  border-radius: 4px;
-  font: inherit;
-  padding: 2px 4px;
 }
 
 .mk-snackbar {
