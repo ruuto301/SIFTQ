@@ -67,7 +67,7 @@ test("has no bulk selection and a full-width search (BDD-TM-045)", async ({ page
   expect(search.width).toBeGreaterThan(toolbar.width * 0.5);
 });
 
-test("has no label controls (BDD-TM-046)", async ({ page }) => {
+test("has no label controls (BDD-TM-047)", async ({ page }) => {
   await signIn(page);
   await page.goto("/mk");
 

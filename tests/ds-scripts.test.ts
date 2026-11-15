@@ -166,3 +166,27 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("tabId");
   });
 });
+
+describe("DS description preview tabs", () => {
+  it("previews the description through the shared 編集 / プレビュー tabs (BDD-TM-006)", () => {
+    for (const hook of [
+      "[data-description-tabs]",
+      "[data-description-tab]",
+      "[data-description-panel]",
+      "[data-description-preview]",
+      'fetch("/api/markdown/preview"',
+      'document.addEventListener("click", handleDescriptionTabClick)',
+      'document.addEventListener("keydown", handleDescriptionTabKeydown)',
+      'document.addEventListener("DOMContentLoaded", refreshDescriptionTabs)',
+      'document.addEventListener("htmx:load", refreshDescriptionTabs)',
+      "ArrowRight",
+      "ArrowLeft",
+      '"Home"',
+      '"End"',
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+    // The DS editor is a textarea, so the shared reader falls back to its value.
+    expect(DS_SCRIPT).toContain('root.querySelector("textarea[data-description-value]")');
+  });
+});

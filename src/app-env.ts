@@ -1,4 +1,4 @@
-import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 import type { TaskRepository } from "./repository/task-repository";
 import type { ProjectRepository } from "./repository/project-repository";
 import type { IdeaRepository } from "./repository/idea-repository";
@@ -15,6 +15,7 @@ export type Env = GithubOAuthEnv & {
   IMAGE_REPOSITORY?: ImageRepository;
   OAUTH_REPOSITORY?: OAuthRepository;
   DB?: D1Database;
+  BACKUPS?: R2Bucket;
   SESSION_SECRET?: string;
   PREVIEW_MODE?: string;
   DSH_TRANSPORT_URL?: string;

@@ -643,6 +643,32 @@ describe("BDD-TM-006: DS project groups", () => {
   });
 });
 
+describe("BDD-TM-006: DS description preview tabs", () => {
+  it("defaults a markdown description to プレビュー", async () => {
+    await repo.insert(taskFixture({ id: "ds-1", title: "ds task", description: "**bold**" }));
+
+    const body = await (await request("/ds")).text();
+
+    expect(body).toContain('data-description-tabs="true" data-default-tab="preview"');
+    expect(body).toContain('id="ds-description-panel-edit"');
+    expect(body).toContain('id="ds-description-panel-preview"');
+    expect(body).toContain('data-description-preview="true"');
+    expect(body).toMatch(/data-description-tab="preview"[^>]*aria-selected="true"/);
+    expect(body).toMatch(/data-description-panel="preview" data-description-preview="true"><\/div>/);
+    expect(body).toMatch(/data-description-panel="edit" hidden=""/);
+  });
+
+  it("defaults an empty description to 編集", async () => {
+    await repo.insert(taskFixture({ id: "ds-2", title: "empty task", description: "" }));
+
+    const body = await (await request("/ds")).text();
+
+    expect(body).toContain('data-description-tabs="true" data-default-tab="edit"');
+    expect(body).toMatch(/data-description-tab="edit"[^>]*aria-selected="true"/);
+    expect(body).toMatch(/data-description-panel="preview" data-description-preview="true" hidden=""/);
+  });
+});
+
 describe("Description edit followed by Status operation (issue 477)", () => {
   it("applies Status with the fresh version after saving a description edit", async () => {
     await repo.insert(taskFixture({ id: "task-1", version: 3, status: "do" }));

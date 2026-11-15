@@ -4,6 +4,10 @@ import { TEST_SECRET, authBindings, authenticatedRequest } from "./helpers/authe
 import { createMemoryTaskRepository } from "./helpers/memory-task-repository";
 
 describe("smoke", () => {
+  it("exposes the daily D1 backup on the scheduled handler", () => {
+    expect(typeof app.scheduled).toBe("function");
+  });
+
   it("redirects the removed Matrix route to the task list", async () => {
     const response = await authenticatedRequest("/matrix", createMemoryTaskRepository());
 

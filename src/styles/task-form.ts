@@ -252,7 +252,9 @@ textarea {
   margin-right: 6px;
 }
 
-textarea[data-description-value] {
+/* The task form mirrors the contenteditable into a hidden textarea; the DS
+   field uses the same attribute on its visible editor. */
+.description-field textarea[data-description-value] {
   display: none;
 }
 

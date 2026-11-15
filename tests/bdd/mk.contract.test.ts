@@ -543,7 +543,7 @@ describe("MK toolbar without bulk selection (BDD-TM-045)", () => {
   });
 });
 
-describe("MK without labels (BDD-TM-046)", () => {
+describe("MK without labels (BDD-TM-047)", () => {
   it("renders no label UI on the screen", async () => {
     const note = await createNote("ラベルなし");
     const html = await (await request("/mk")).text();

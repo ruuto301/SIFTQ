@@ -888,6 +888,27 @@
   },
   "screenCalls": [
     {
+      "screen": "P03",
+      "trigger": "POST",
+      "view": "screen:P03",
+      "gateway": "description-tabs-scripts.ts",
+      "api": "markdown_preview"
+    },
+    {
+      "screen": "P04",
+      "trigger": "POST",
+      "view": "screen:P04",
+      "gateway": "description-tabs-scripts.ts",
+      "api": "markdown_preview"
+    },
+    {
+      "screen": "P10",
+      "trigger": "POST",
+      "view": "screen:P10",
+      "gateway": "description-tabs-scripts.ts",
+      "api": "markdown_preview"
+    },
+    {
       "screen": "P10",
       "trigger": "POST",
       "view": "screen:P10",
@@ -1012,20 +1033,6 @@
       "view": "screen:P04",
       "gateway": "task-form-scripts.ts",
       "api": "images_create"
-    },
-    {
-      "screen": "P03",
-      "trigger": "POST",
-      "view": "screen:P03",
-      "gateway": "task-form-scripts.ts",
-      "api": "markdown_preview"
-    },
-    {
-      "screen": "P04",
-      "trigger": "POST",
-      "view": "screen:P04",
-      "gateway": "task-form-scripts.ts",
-      "api": "markdown_preview"
     },
     {
       "screen": "P02",
