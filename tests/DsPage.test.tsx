@@ -138,16 +138,19 @@ describe("DsPage chat and browser panes", () => {
     expect(html).toContain("↑");
   });
 
-  it("renders the chat, description and settings tabs plus the browser pane", () => {
+  it("renders the task, chat and settings tabs in order plus the browser pane", () => {
     const html = renderToString(page([taskFixture()], taskFixture()));
 
-    for (const id of ["dsh-desc", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
+    for (const id of ["ds-task", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
       expect(html).toContain(`id="${id}"`);
     }
     expect(html).toContain("ds__resizer");
-    // The tab is labelled with the field name, not the Japanese word.
-    expect(html).toContain('data-ds-tab="desc" role="tab">description</button>');
-    expect(html).not.toContain(">説明</button>");
+   expect(html).toContain('data-ds-tab="task" role="tab">');
+    expect(html).toContain('data-ds-tab="chat" role="tab">');
+    expect(html.indexOf('data-ds-tab="task"')).toBeLessThan(html.indexOf('data-ds-tab="chat"'));
+    expect(html.indexOf('data-ds-tab="chat"')).toBeLessThan(html.indexOf('data-ds-tab="settings"'));
+    expect(html.indexOf('class="ds__tab active" data-ds-tab="task"')).toBeGreaterThan(-1);
+    expect(html).not.toContain('data-ds-tab="desc"');
   });
 });
 
@@ -156,17 +159,26 @@ describe("DsPage task list", () => {
     const html = renderToString(page([], undefined));
 
     expect(html).toContain("左のタスクを選択してください。");
-    expect(html).not.toContain('id="dsh-desc"');
+    // The task pane stays mounted so the tab can explain the empty state.
+    expect(html).toContain('id="ds-task"');
+    expect(html).not.toContain('id="ds-task-title"');
   });
 
-  it("renders the description pane and hands the text to the client", () => {
+  it("renders the task editor with the selected title and description (BDD-TM-036)", () => {
     const description = "手順は https://example.com/docs を参照";
-    const html = renderToString(page([taskFixture({ description })], taskFixture({ description })));
+    const selected = taskFixture({ id: "t1", title: "DS で編集する", description, version: 4 });
+    const html = renderToString(page([selected], selected));
 
     expect(html).toContain('data-task-description="手順は https://example.com/docs を参照"');
-    expect(html).toContain('id="dsh-desc-view"');
-    expect(html).toContain('<span class="dsh-desc__title">description</span>');
-    expect(html).toContain('data-ds-tab="desc"');
+    expect(html).toContain('id="ds-task"');
+    expect(html).toContain('data-task-id="t1"');
+    expect(html).toContain('data-task-version="4"');
+    expect(html).toContain('id="ds-task-title"');
+    expect(html).toContain('value="DS で編集する"');
+    expect(html).toContain('id="ds-task-description"');
+    expect(html).toContain("手順は https://example.com/docs を参照");
+    expect(html).toContain('id="ds-task-save"');
+    expect(html).toContain('data-ds-pane="task"');
   });
 
   it("shows the selected task title between the tabs and the chat (BDD-TM-027)", () => {

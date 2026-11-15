@@ -45,6 +45,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-018 | ユーザーは、DS でタスクを削除する前に画面中央で確認したい。 | screens.md |
 | REQ-TM-019 | ユーザーは、タスクを用途（リポジトリ・生活）ごとのプロジェクトに分けて整理したい。 | screens.md |
 | REQ-TM-020 | ユーザーは、アプリを離れずにプロジェクトを追加・改名・削除・並べ替えしたい。 | screens.md |
+| REQ-TM-021 | ユーザーは、DS を見ながら選択中タスクの title と description を直したい。 | screens.md |
 
 ## 仕様
 
@@ -81,6 +82,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-027 | REQ-TM-018 | DS のタスク削除は、既存の中央モーダル（`.matrix-modal`）を使った確認ダイアログを経由する。ダイアログはビューポート中央に表示し、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。 | BDD-TM-033 |
 | SPEC-TM-028 | REQ-TM-019 | project の一覧は `Yoriwake` / `affiliate` / `customer_portal` / `生活` とし、未設定は `未分類` として扱う。`生活` は id `life`・表示名 `生活` を持つ。タスク一覧の project ラベルは id ではなく表示名を表示する。 | BDD-TM-034 |
 | SPEC-TM-029 | REQ-TM-020 | `/settings` にプロジェクト一覧を表示し、追加・改名・並べ替え・削除を行える。削除するとそのプロジェクトのタスクは未分類（`project = NULL`）へ移り、タスクは削除しない。確認ダイアログには移動するタスク件数を表示する。 | BDD-TM-035 |
+| SPEC-TM-030 | REQ-TM-021 | DS の中央ペインは `task` / `Chat` / `設定` の順にタブを表示し、`task` タブで選択中 task の title と description を編集して `PATCH /api/tasks/<id>` で保存する。保存に成功したら version と左ペインのカード title を更新し、409 のときは入力を保持してエラーを表示する。 | BDD-TM-036 |
 
 ## BDD 候補
 
@@ -119,6 +121,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-033 | SPEC-TM-027 | DS でタスクを右クリックして delete を選ぶと確認ダイアログが画面中央に表示され、キャンセルでは消えず、削除でタスクが消える。 | 正常 |
 | BDD-TM-034 | SPEC-TM-028 | タスク一覧の project ラベルが表示名（例: `#生活`）で表示され、DS のグループにも `生活` が並ぶ。 | 正常 |
 | BDD-TM-035 | SPEC-TM-029 | `/settings` でプロジェクトを追加・改名・削除でき、削除したプロジェクトのタスクは未分類に残る。 | 正常 |
+| BDD-TM-036 | SPEC-TM-030 | DS の `task` タブで title と description を編集して保存すると、その内容がタスクに反映され、左ペインのカードも更新される。 | 正常 |
 
 ## 未決事項
 

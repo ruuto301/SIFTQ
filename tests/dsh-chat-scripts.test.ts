@@ -13,9 +13,11 @@ describe("DSH chat script", () => {
     }
   });
 
-  it("renders the task description and follows description updates", () => {
+  it("hands description updates to the task pane instead of rendering them", () => {
     expect(DSH_CHAT_SCRIPT).toContain("data-task-description");
-    expect(DSH_CHAT_SCRIPT).toContain("dsh-desc-view");
+    expect(DSH_CHAT_SCRIPT).toContain('getElementById("ds-task")');
+    expect(DSH_CHAT_SCRIPT).toContain("ds-task-description");
+    expect(DSH_CHAT_SCRIPT).not.toContain("dsh-desc-view");
     expect(DSH_CHAT_SCRIPT).toContain("desc.updated");
   });
 

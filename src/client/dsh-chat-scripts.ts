@@ -14,7 +14,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
   var input = document.getElementById("dsh-chat-input");
   var send = document.getElementById("dsh-chat-send");
   var modelSelect = document.getElementById("dsh-chat-model");
-  var descView = document.getElementById("dsh-desc-view");
+  var taskPane = document.getElementById("ds-task");
   var bridgeHandlers = [];
   var accessButton = document.getElementById("dsh-chat-access");
   var accessMenu = document.getElementById("dsh-chat-access-menu");
@@ -59,10 +59,10 @@ export const DSH_CHAT_SCRIPT = `(function () {
     accessMode = mode;
     if (accessButton) accessButton.textContent = ACCESS_LABELS[mode] || mode;
   }
+  // The task pane owns the description field; hand the text over instead of writing it here.
   function setDesc(text) {
-    if (!descView) return;
-    var value = text || "";
-    descView.innerHTML = value.trim() === "" ? "" : renderMarkdown(value);
+    if (!taskPane) return;
+    taskPane.dispatchEvent(new CustomEvent("ds-task-description", { detail: { text: text || "" } }));
   }
 
   function requestId() { seq += 1; return "c-" + seq; }
@@ -388,7 +388,7 @@ export const DSH_CHAT_SCRIPT = `(function () {
       tabs.forEach(function (other) { other.classList.toggle("active", other === tab); });
       panes.forEach(function (pane) { pane.hidden = pane.getAttribute("data-ds-pane") !== name; });
       if (name === "chat" && input) input.focus();
-      if (name === "desc") {
+      if (name === "task") {
         if (sessionId !== null) sendRequest("desc.get", { sessionId: sessionId });
         else setDesc(taskDescription);
       }
