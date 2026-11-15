@@ -98,6 +98,7 @@
   - 初期値は `status = do`、`project = 未分類` とする。
   - `project` query が指定され、その project が存在する場合は初期選択にする。
   - `status` query は初期値へ反映する。
+  - `Create` で作成した task は、既存 task の `order` を 1 つずつ繰り下げて先頭（`order = 1`）に置く。DS では該当 project グループの先頭に表示される。
   - `Cancel` は Task list へ戻る。
   - `Create` は task を作成して Task list へ進む。
 

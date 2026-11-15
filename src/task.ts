@@ -227,6 +227,21 @@ export function applyTaskPatch(task: Task, patch: TaskPatch): Task {
   return { ...task, ...patch };
 }
 
+/** The order a task takes when it is inserted before every other task. */
+export const FIRST_TASK_ORDER = 1;
+
+/**
+ * Orders every task one step down so a new task can take {@link FIRST_TASK_ORDER}.
+ * Descending order keeps the moved rows from colliding with each other.
+ */
+export function tasksShiftedForFirstPlace(
+  tasks: readonly Task[],
+): { id: string; order: number }[] {
+  return tasks
+    .map((task) => ({ id: task.id, order: task.order + 1 }))
+    .sort((left, right) => right.order - left.order);
+}
+
 export function nextTaskOrder(tasks: readonly Task[]): number {
   return tasks.reduce((maximum, task) => Math.max(maximum, task.order), 0) + 1;
 }

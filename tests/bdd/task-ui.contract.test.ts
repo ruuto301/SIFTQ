@@ -339,6 +339,42 @@ describe("Task list working and pagination interaction", () => {
   });
 });
 
+describe("Task creation order (BDD-TM-039)", () => {
+  it("puts a newly created task before the existing ones (BDD-TM-039)", async () => {
+    await repo.insert(taskFixture({ id: "older-1", title: "old one", order: 1 }));
+    await repo.insert(taskFixture({ id: "older-2", title: "old two", order: 2 }));
+
+    const response = await request("/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ title: "newest", description: "", status: "do", project: "" }).toString(),
+    });
+    expect(response.status).toBe(201);
+
+    const listed = await repo.list();
+    if (!listed.ok) throw new Error("expected task list");
+    const byTitle = new Map(listed.value.map((task) => [task.title, task.order]));
+    expect(byTitle.get("newest")).toBe(1);
+    expect(byTitle.get("old one")).toBe(2);
+    expect(byTitle.get("old two")).toBe(3);
+  });
+
+  it("appends the first task with order 1 when the list is empty (BDD-TM-039)", async () => {
+    const response = await request("/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ title: "only one", description: "", status: "do", project: "" }).toString(),
+    });
+    expect(response.status).toBe(201);
+
+    const listed = await repo.list();
+    if (!listed.ok) throw new Error("expected task list");
+    expect(listed.value).toHaveLength(1);
+    expect(listed.value[0]?.order).toBe(1);
+  });
+
+});
+
 describe("Task creation", () => {
   it("redirects to the task list after creating a task", async () => {
     const response = await request("/tasks", {
