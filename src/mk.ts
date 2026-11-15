@@ -4,11 +4,14 @@ import type { Result } from "./task";
 export const MK_COLORS = ["default", "red", "orange", "yellow", "green", "blue", "purple"] as const;
 export type MkColor = (typeof MK_COLORS)[number];
 
-export const MK_FILTERS = ["all", "pinned", "unpinned"] as const;
+/** `notes` is the default view; archived and trashed notes leave it. */
+export const MK_FILTERS = ["notes", "pinned", "unpinned", "archived", "trash"] as const;
 export type MkFilter = (typeof MK_FILTERS)[number];
 
 export const MK_TITLE_MAX_CODE_POINTS = TASK_TITLE_MAX_CODE_POINTS;
 export const MK_BODY_MAX_CODE_POINTS = TASK_DESCRIPTION_MAX_CODE_POINTS;
+export const MK_LABEL_NAME_MAX_CODE_POINTS = 100;
+export const MK_MAX_LABELS_PER_NOTE = 20;
 export const MK_MAX_IMAGES = 10;
 
 export type MkNote = {
@@ -20,7 +23,26 @@ export type MkNote = {
   pinned: boolean;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
+  deleted_at: string | null;
 };
+
+export type MkLabel = {
+  id: string;
+  owner_id: string;
+  name: string;
+  created_at: string;
+};
+
+/** The link row that attaches a label to a note. */
+export type MkNoteLabel = {
+  note_id: string;
+  label_id: string;
+  owner_id: string;
+};
+
+/** Labels grouped by note id, so a list render avoids one query per note. */
+export type MkNoteLabelMap = Record<string, MkLabel[]>;
 
 export type MkImage = {
   id: string;
@@ -37,15 +59,24 @@ export type MkErrorCode =
   | "INVALID_COLOR"
   | "INVALID_FILTER"
   | "INVALID_PINNED"
+  | "INVALID_INPUT"
   | "INVALID_BULK_INPUT"
+  | "INVALID_LABEL_NAME"
+  | "INVALID_LABEL"
   | "INVALID_IMAGE"
+  | "INVALID_STATE"
   | "IMAGE_LIMIT_EXCEEDED"
+  | "CONFLICT"
   | "NOT_FOUND";
 
 export type MkError = { code: MkErrorCode };
 
 export function isMkRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
 }
 
 export function isMkColor(value: unknown): value is MkColor {
@@ -62,12 +93,77 @@ export function isMkNote(value: unknown): value is MkNote {
     isMkColor(value["color"]) &&
     typeof value["pinned"] === "boolean" &&
     typeof value["created_at"] === "string" &&
-    typeof value["updated_at"] === "string"
+    typeof value["updated_at"] === "string" &&
+    isNullableString(value["archived_at"]) &&
+    isNullableString(value["deleted_at"])
   );
 }
 
 export function isMkFilter(value: unknown): value is MkFilter {
   return typeof value === "string" && MK_FILTERS.some((filter) => filter === value);
+}
+
+export function isMkLabelNameValid(name: string): boolean {
+  const length = Array.from(name.trim()).length;
+  return length >= 1 && length <= MK_LABEL_NAME_MAX_CODE_POINTS;
+}
+
+/** Label names are stored trimmed and compared case-insensitively. */
+export function normalizeMkLabelName(name: string): string {
+  return name.trim();
+}
+
+export function mkLabelNameKey(name: string): string {
+  return normalizeMkLabelName(name).toLowerCase();
+}
+
+export function isMkLabelNameTaken(labels: readonly MkLabel[], name: string, exceptId?: string): boolean {
+  const key = mkLabelNameKey(name);
+  return labels.some((label) => label.id !== exceptId && mkLabelNameKey(label.name) === key);
+}
+
+export function isMkLabel(value: unknown): value is MkLabel {
+  if (!isMkRecord(value)) return false;
+  const { id, owner_id, name, created_at } = value;
+  return (
+    typeof id === "string" &&
+    id !== "" &&
+    typeof owner_id === "string" &&
+    owner_id !== "" &&
+    typeof name === "string" &&
+    isMkLabelNameValid(name) &&
+    typeof created_at === "string" &&
+    created_at !== ""
+  );
+}
+
+export type CreateMkLabelInput = {
+  id: string;
+  owner_id: string;
+  name: string;
+  created_at: string;
+};
+
+export function createMkLabel(input: CreateMkLabelInput): Result<MkLabel, MkError> {
+  const name = normalizeMkLabelName(input.name);
+  if (!isMkLabelNameValid(name)) return err({ code: "INVALID_LABEL_NAME" });
+  return ok({ ...input, name });
+}
+
+/** Reads a list of non-empty unique ids, or null when malformed or over the limit. */
+export function parseMkIdList(value: unknown, max: number): string[] | null {
+  if (!Array.isArray(value) || value.length > max) return null;
+  const ids = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== "string" || item === "") return null;
+    ids.add(item);
+  }
+  return ids.size === value.length ? [...ids] : null;
+}
+
+/** Accepts a label id list for `setNoteLabels`; an empty list clears the note. */
+export function parseMkLabelIds(value: unknown): string[] | null {
+  return parseMkIdList(value, MK_MAX_LABELS_PER_NOTE);
 }
 
 /** Image positions are 1-based slots so the first attached image sorts first. */
@@ -117,6 +213,25 @@ export function isMkBodyValid(body: string): boolean {
   return isTaskDescriptionValid(body);
 }
 
+export function isArchived(note: MkNote): boolean {
+  return note.archived_at !== null;
+}
+
+export function isDeleted(note: MkNote): boolean {
+  return note.deleted_at !== null;
+}
+
+/** A note belongs to exactly one view: trashed wins over archived, and both leave `notes`. */
+export function noteMatchesFilter(note: MkNote, filter: MkFilter): boolean {
+  if (isDeleted(note)) return filter === "trash";
+  if (filter === "trash") return false;
+  if (isArchived(note)) return filter === "archived";
+  if (filter === "archived") return false;
+  if (filter === "pinned") return note.pinned;
+  if (filter === "unpinned") return !note.pinned;
+  return true;
+}
+
 /** Pinned notes first, then most recently updated, then id for a stable order. */
 export function sortMkNotes<T extends MkNote>(notes: readonly T[]): T[] {
   return [...notes].sort(
@@ -131,6 +246,8 @@ export type MkNoteQuery = {
   filter?: MkFilter;
   text?: string;
   color?: MkColor;
+  /** Repository-side filter; a note does not carry its labels. */
+  labelId?: string;
 };
 
 function matchesText(note: MkNote, text: string): boolean {
@@ -140,8 +257,7 @@ function matchesText(note: MkNote, text: string): boolean {
 }
 
 export function matchesMkNoteQuery(note: MkNote, query: MkNoteQuery): boolean {
-  if (query.filter === "pinned" && !note.pinned) return false;
-  if (query.filter === "unpinned" && note.pinned) return false;
+  if (!noteMatchesFilter(note, query.filter ?? "notes")) return false;
   if (query.color !== undefined && note.color !== query.color) return false;
   return matchesText(note, query.text ?? "");
 }
@@ -195,6 +311,25 @@ export function changeMkNotePinned(note: MkNote, pinned: boolean, updated_at: st
   return { ...note, pinned, updated_at };
 }
 
+export function setNoteArchived(note: MkNote, archived: boolean, updated_at: string): MkNote {
+  return { ...note, archived_at: archived ? updated_at : null, updated_at };
+}
+
+export function setNoteDeleted(note: MkNote, deleted: boolean, updated_at: string): MkNote {
+  return { ...note, deleted_at: deleted ? updated_at : null, updated_at };
+}
+
+export type MkNoteCounts = {
+  notes: number;
+  pinned: number;
+  unpinned: number;
+  archived: number;
+  trash: number;
+};
+
+/** Sidebar counts: note views plus one entry per label id. */
+export type MkCounts = MkNoteCounts & { labels: Record<string, number> };
+
 export type CreateMkNoteInput = {
   id: string;
   owner_id: string;
@@ -218,5 +353,7 @@ export function createMkNote(input: CreateMkNoteInput): Result<MkNote, MkError> 
     pinned: input.pinned ?? false,
     created_at: input.created_at,
     updated_at: input.created_at,
+    archived_at: null,
+    deleted_at: null,
   });
 }

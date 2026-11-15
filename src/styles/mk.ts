@@ -512,4 +512,162 @@ export const MK_CSS = `
 .mk-empty {
   color: #555555;
 }
+
+.mk-sidebar__title {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.mk-labels__header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.mk-label-list {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.mk-label-list__empty {
+  color: #6b7480;
+  font-size: 13px;
+}
+
+.mk-label-link {
+  align-items: center;
+  border-radius: 999px;
+  color: #1b1f24;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 6px 12px;
+  text-decoration: none;
+}
+
+.mk-label-link:hover,
+.mk-label-link:focus-visible {
+  background: #f3f6fa;
+}
+
+.mk-label-link.is-active {
+  background: #e5ecf5;
+  font-weight: 600;
+}
+
+.mk-label-link__count {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.mk-label-manager {
+  background: #f8fafc;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.mk-label-manager__create,
+.mk-label-manager__row {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.mk-label-manager__list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-label-manager__input {
+  border: 1px solid #d8dde3;
+  border-radius: 4px;
+  font: inherit;
+  min-width: 0;
+  padding: 4px 6px;
+  width: 100%;
+}
+
+.mk-card__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.mk-label-chip {
+  background: rgb(255 255 255 / 70%);
+  border: 1px solid #d8dde3;
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 12px;
+  padding: 1px 8px;
+}
+
+.mk-composer__labels {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.mk-composer__labels legend {
+  color: #6b7480;
+  font-size: 12px;
+  padding: 0;
+}
+
+.mk-composer__label {
+  align-items: center;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.mk-bulk-bar__labels {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.mk-bulk-bar__label-select {
+  border: 1px solid #d8dde3;
+  border-radius: 4px;
+  font: inherit;
+  padding: 2px 4px;
+}
+
+.mk-snackbar {
+  align-items: center;
+  background: #1b1f24;
+  border-radius: 8px;
+  bottom: 20px;
+  color: #fff;
+  display: flex;
+  gap: 12px;
+  left: 50%;
+  padding: 10px 16px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 40;
+}
+
+.mk-snackbar .button {
+  background: #fff;
+  color: #1b1f24;
+}
 `;

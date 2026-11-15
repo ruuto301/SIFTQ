@@ -3,8 +3,8 @@ import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
 import { createMemoryMkRepository } from "../../src/preview/MemoryMkRepository";
 import { createMemoryImageRepository } from "../../src/repository/image-repository";
-import { MK_MAX_IMAGES, isMkNote } from "../../src/mk";
-import type { MkNote } from "../../src/mk";
+import { MK_MAX_IMAGES, isMkLabel, isMkNote } from "../../src/mk";
+import type { MkLabel, MkNote } from "../../src/mk";
 import type { MkRepository } from "../../src/repository/mk-repository";
 import type { ImageRepository } from "../../src/repository/image-repository";
 
@@ -47,10 +47,32 @@ async function readNotes(response: Response): Promise<MkNote[]> {
   return value.filter(isMkNote);
 }
 
+async function readLabel(response: Response): Promise<MkLabel> {
+  const value: unknown = await response.json();
+  if (!isMkLabel(value)) throw new Error("expected an MK label");
+  return value;
+}
+
+async function readLabels(response: Response): Promise<MkLabel[]> {
+  const value: unknown = await response.json();
+  if (!Array.isArray(value)) throw new Error("expected MK labels");
+  return value.filter(isMkLabel);
+}
+
+async function createLabel(name: string): Promise<MkLabel> {
+  const response = await jsonRequest("/api/mk/labels", "POST", { name });
+  expect(response.status).toBe(201);
+  return readLabel(response);
+}
+
 async function createNote(title: string, body = "", color = "default"): Promise<MkNote> {
   const response = await jsonRequest("/api/mk/notes", "POST", { title, body, color });
   expect(response.status).toBe(201);
   return readNote(response);
+}
+
+async function bulk(action: string, ids: readonly string[]) {
+  return jsonRequest("/api/mk/notes/bulk", "POST", { ids, action });
 }
 
 describe("MK notes API", () => {
@@ -122,6 +144,146 @@ describe("MK notes bulk API", () => {
   });
 });
 
+describe("MK labels API", () => {
+  it("creates, lists, renames, and deletes labels", async () => {
+    const work = await createLabel("  仕事  ");
+    expect(work.name).toBe("仕事");
+
+    const renamed = await jsonRequest(`/api/mk/labels/${work.id}`, "PATCH", { name: "私用" });
+    expect(renamed.status).toBe(200);
+    expect(await readLabel(renamed)).toEqual(expect.objectContaining({ id: work.id, name: "私用" }));
+
+    expect(await readLabels(await request("/api/mk/labels"))).toEqual([expect.objectContaining({ id: work.id, name: "私用" })]);
+
+    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(204);
+    expect(await readLabels(await request("/api/mk/labels"))).toEqual([]);
+    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(404);
+  });
+
+  it("rejects invalid names and case-insensitive duplicates", async () => {
+    const work = await createLabel("Work");
+
+    expect((await jsonRequest("/api/mk/labels", "POST", { name: "   " })).status).toBe(400);
+    expect((await jsonRequest("/api/mk/labels", "POST", { name: "a".repeat(101) })).status).toBe(400);
+    expect((await jsonRequest("/api/mk/labels", "POST", { name: "work" })).status).toBe(409);
+    expect((await jsonRequest(`/api/mk/labels/${work.id}`, "PATCH", { name: "WORK" })).status).toBe(200);
+    expect((await jsonRequest("/api/mk/labels/missing", "PATCH", { name: "x" })).status).toBe(404);
+
+    const other = await createLabel("Other");
+    expect((await jsonRequest(`/api/mk/labels/${other.id}`, "PATCH", { name: "work" })).status).toBe(409);
+  });
+
+  it("sets note labels, filters by label, and renders chips", async () => {
+    const note = await createNote("ラベル付き");
+    const work = await createLabel("仕事");
+    const home = await createLabel("家");
+
+    const attached = await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id] });
+    expect(attached.status).toBe(200);
+    expect(await readLabels(attached)).toEqual([expect.objectContaining({ id: work.id })]);
+
+    expect((await readNotes(await request(`/api/mk/notes?label=${work.id}`))).map((item) => item.id)).toEqual([note.id]);
+    expect(await readNotes(await request(`/api/mk/notes?label=${home.id}`))).toEqual([]);
+
+    const both = await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id, home.id] });
+    expect(await readLabels(both)).toEqual([
+      expect.objectContaining({ id: work.id }),
+      expect.objectContaining({ id: home.id }),
+    ]);
+
+    const rendered = await (await request(`/mk?label=${work.id}`)).text();
+    expect(rendered).toContain(`data-mk-card-label="${work.id}"`);
+    expect(rendered).toContain(`data-mk-label-link="${work.id}"`);
+    expect(rendered).toContain(`data-mk-label-count="${work.id}"`);
+    expect(rendered).toContain(`data-mk-composer-label`);
+  });
+
+  it("rejects unknown notes, unknown labels, and malformed label ids", async () => {
+    const note = await createNote("ラベル検証");
+
+    expect((await jsonRequest("/api/mk/notes/missing/labels", "POST", { labelIds: [] })).status).toBe(404);
+    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: ["missing"] })).status).toBe(404);
+    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: "work" })).status).toBe(400);
+    expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: ["a", "a"] })).status).toBe(400);
+  });
+
+  it("detaches a deleted label from its notes", async () => {
+    const note = await createNote("ラベル削除");
+    const work = await createLabel("仕事");
+    await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [work.id] });
+
+    expect((await request(`/api/mk/labels/${work.id}`, { method: "DELETE" })).status).toBe(204);
+    expect(await readNotes(await request(`/api/mk/notes?label=${work.id}`))).toEqual([]);
+    const rendered = await (await request("/mk")).text();
+    expect(rendered).not.toContain(`data-mk-card-label="${work.id}"`);
+  });
+});
+
+describe("MK archive and trash API", () => {
+  it("archives and restores notes", async () => {
+    const kept = await createNote("残す");
+    const archived = await createNote("しまう");
+
+    const result = await bulk("archive", [archived.id]);
+    expect(result.status).toBe(200);
+    expect(await readNotes(result)).toEqual([
+      expect.objectContaining({ id: archived.id, archived_at: expect.any(String) }),
+    ]);
+
+    expect((await readNotes(await request("/api/mk/notes"))).map((note) => note.id)).toEqual([kept.id]);
+    expect((await readNotes(await request("/api/mk/notes?filter=archived"))).map((note) => note.id)).toEqual([archived.id]);
+
+    const restored = await bulk("unarchive", [archived.id]);
+    expect(restored.status).toBe(200);
+    expect(await readNotes(restored)).toEqual([expect.objectContaining({ id: archived.id, archived_at: null })]);
+    expect((await readNotes(await request("/api/mk/notes"))).map((note) => note.id).sort()).toEqual([kept.id, archived.id].sort());
+
+    expect((await bulk("archive", ["missing"])).status).toBe(404);
+  });
+
+  it("trashes, restores, and purges notes with their image links", async () => {
+    const note = await createNote("ゴミ箱へ");
+    const uploaded = await uploadImage();
+    const image: { id: string } = await uploaded.json();
+    const link: { id: string } = await (await jsonRequest(`/api/mk/notes/${note.id}/images`, "POST", { imageId: image.id })).json();
+
+    const trashed = await bulk("trash", [note.id]);
+    expect(trashed.status).toBe(200);
+    expect(await readNotes(trashed)).toEqual([expect.objectContaining({ id: note.id, deleted_at: expect.any(String) })]);
+    expect(await readNotes(await request("/api/mk/notes"))).toEqual([]);
+    expect((await readNotes(await request("/api/mk/notes?filter=trash"))).map((item) => item.id)).toEqual([note.id]);
+
+    const restored = await bulk("restore", [note.id]);
+    expect(restored.status).toBe(200);
+    expect(await readNotes(restored)).toEqual([expect.objectContaining({ id: note.id, deleted_at: null })]);
+    await bulk("trash", [note.id]);
+
+    const active = await createNote("まだ生きている");
+    expect((await bulk("purge", [active.id])).status).toBe(409);
+
+    expect((await bulk("purge", [note.id])).status).toBe(204);
+    expect(await readNotes(await request("/api/mk/notes?filter=trash"))).toEqual([]);
+    expect((await jsonRequest(`/api/mk/notes/${note.id}`, "PATCH", { title: "x" })).status).toBe(404);
+    expect((await request(`/api/mk/images/${link.id}`, { method: "DELETE" })).status).toBe(404);
+    expect((await request(`/api/images/${image.id}`)).status).toBe(200);
+  });
+
+  it("counts notes per view and per label", async () => {
+    const label = await createLabel("集計");
+    const active = await createNote("active");
+    const archived = await createNote("archived");
+    const trashed = await createNote("trashed");
+    await bulk("archive", [archived.id]);
+    await bulk("trash", [trashed.id]);
+    await jsonRequest(`/api/mk/notes/${active.id}/labels`, "POST", { labelIds: [label.id] });
+
+    const counts = await repo.counts("local");
+    expect(counts.ok).toBe(true);
+    if (!counts.ok) return;
+    expect(counts.value).toEqual({ notes: 1, pinned: 0, unpinned: 1, archived: 1, trash: 1, labels: { [label.id]: 1 } });
+  });
+});
+
 describe("MK page", () => {
   it("renders cards, color classes, sidebar counts, and the MK nav", async () => {
     const note = await createNote("ページ表示", "本文", "purple");
@@ -136,7 +298,11 @@ describe("MK page", () => {
     expect(body).toContain("ページ表示");
     expect(body).toContain("ピンあり");
     expect(body).toContain("ピンなし");
-    expect(body).toContain('data-mk-count="all"');
+    expect(body).toContain("アーカイブ");
+    expect(body).toContain("ゴミ箱");
+    expect(body).toContain('data-mk-count="notes"');
+    expect(body).toContain('data-mk-count="archived"');
+    expect(body).toContain('data-mk-count="trash"');
     expect(body).toContain('src="/mk.js"');
     expect(body).toContain(">MK<");
   });
@@ -161,6 +327,7 @@ describe("MK client script", () => {
     const body = await response.text();
     expect(body).toContain("/api/mk/notes");
     expect(body).toContain("/api/mk/notes/bulk");
+    expect(body).toContain("/api/mk/labels");
     expect(body).toContain("/api/mk/images/");
     expect(body).toContain("/api/images");
   });
@@ -255,7 +422,7 @@ describe("MK screen follows the agreed mock (BDD-TM-037)", () => {
     const html = await (await request("/mk?color=red")).text();
 
     // The active swatch links back to the unfiltered list.
-    expect(html).toContain('href="/mk?filter=all" data-mk-color-filter="red"');
+    expect(html).toContain('href="/mk?filter=notes" data-mk-color-filter="red"');
     expect(html).toContain('aria-label="red の絞り込みを解除"');
   });
 

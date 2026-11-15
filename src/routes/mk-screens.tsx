@@ -2,9 +2,8 @@ import type { Context, Hono } from "hono";
 import type { JSX } from "hono/jsx/jsx-runtime";
 import { Layout } from "../components/Layout";
 import { MkPage } from "../views/MkPage";
-import type { MkNoteCounts } from "../views/MkPage";
-import { filterMkNotes, isMkColor, isMkFilter, sortMkNotes } from "../mk";
-import type { MkColor, MkFilter, MkImage, MkNote, MkNoteQuery } from "../mk";
+import { isMkColor, isMkFilter, sortMkNotes } from "../mk";
+import type { MkColor, MkFilter, MkImage, MkNote, MkNoteLabelMap, MkNoteQuery } from "../mk";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
 
@@ -17,27 +16,22 @@ function renderMkPage(c: Context<AppEnv>, content: JSX.Element) {
   return c.html(<Layout active="mk">{content}</Layout>);
 }
 
+/** `all` stays accepted as the legacy alias of the default notes view. */
 function readFilter(value: unknown): MkFilter {
-  return isMkFilter(value) ? value : "all";
+  if (value === "all") return "notes";
+  return isMkFilter(value) ? value : "notes";
 }
 
 function readColor(value: unknown): MkColor | undefined {
   return isMkColor(value) ? value : undefined;
 }
 
-function countMkNotes(notes: readonly MkNote[]): MkNoteCounts {
-  return {
-    all: notes.length,
-    pinned: notes.filter((note) => note.pinned).length,
-    unpinned: notes.filter((note) => !note.pinned).length,
-  };
-}
-
-function listQuery(filter: MkFilter, color: MkColor | undefined, text: string): MkNoteQuery {
+function listQuery(filter: MkFilter, color: MkColor | undefined, text: string, labelId: string): MkNoteQuery {
   return {
     filter,
     ...(color === undefined ? {} : { color }),
     ...(text === "" ? {} : { text }),
+    ...(labelId === "" ? {} : { labelId }),
   };
 }
 
@@ -55,22 +49,45 @@ async function imagesByNote(
   return Object.fromEntries(entries);
 }
 
+/** One batch query for every rendered note keeps the page free of per-note label queries. */
+async function labelsForNotes(
+  repository: MkRepository,
+  notes: readonly MkNote[],
+): Promise<MkNoteLabelMap> {
+  const result = await repository.listLabelsForNotes(
+    notes.map((note) => note.id),
+    OWNER_ID,
+  );
+  return result.ok ? result.value : {};
+}
+
 export function registerMkScreenRoutes(app: Hono<AppEnv>, repository: Repository) {
   app.get("/mk", async (c) => {
     const repositoryForRequest = repository(c);
-    const result = await repositoryForRequest.list(OWNER_ID);
-    if (!result.ok) return c.text("Internal Server Error", 500);
     const filter = readFilter(c.req.query("filter"));
     const color = readColor(c.req.query("color"));
+    const labelId = c.req.query("label") ?? "";
     const query = c.req.query("q") ?? "";
-    const notes = sortMkNotes(filterMkNotes(result.value, listQuery(filter, color, query.trim())));
-    const images = await imagesByNote(repositoryForRequest, notes);
+    const [listed, counts, labels] = await Promise.all([
+      repositoryForRequest.list(OWNER_ID, listQuery(filter, color, query.trim(), labelId)),
+      repositoryForRequest.counts(OWNER_ID),
+      repositoryForRequest.listLabels(OWNER_ID),
+    ]);
+    if (!listed.ok || !counts.ok || !labels.ok) return c.text("Internal Server Error", 500);
+    const notes = sortMkNotes(listed.value);
+    const [images, labelsByNote] = await Promise.all([
+      imagesByNote(repositoryForRequest, notes),
+      labelsForNotes(repositoryForRequest, notes),
+    ]);
     return renderMkPage(
       c,
       <MkPage
         notes={notes}
-        counts={countMkNotes(result.value)}
+        counts={counts.value}
+        labels={labels.value}
+        labelsByNote={labelsByNote}
         filter={filter}
+        labelId={labelId}
         query={query}
         color={color}
         images={images}

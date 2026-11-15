@@ -49,9 +49,19 @@ function resetMkComposer(composer) {
   if (title) title.value = "";
   if (body) body.value = "";
   selectMkComposerColor(composer, "default");
+  mkClearComposerLabels(composer);
   composer.__mkImages = [];
   mkRenderComposerImages(composer);
   mkShowComposerError(composer, "");
+}
+function mkComposerLabelInputs(composer) {
+  return Array.prototype.slice.call(composer.querySelectorAll("[data-mk-composer-label]"));
+}
+function mkComposerLabelIds(composer) {
+  return mkComposerLabelInputs(composer).filter(function (input) { return input.checked; }).map(function (input) { return input.value; });
+}
+function mkClearComposerLabels(composer) {
+  mkComposerLabelInputs(composer).forEach(function (input) { input.checked = false; });
 }
 function mkComposerImages(composer) {
   if (!composer.__mkImages) composer.__mkImages = [];
@@ -192,6 +202,12 @@ function mkLinkComposerImages(composer, noteId) {
     });
   }, Promise.resolve());
 }
+function mkSetNoteLabels(noteId, labelIds) {
+  return mkApi("/api/mk/notes/" + encodeURIComponent(noteId) + "/labels", {
+    method: "POST",
+    body: JSON.stringify({ labelIds: labelIds }),
+  });
+}
 function saveMkComposer(composer) {
   var title = composer.querySelector("[data-mk-composer-title]");
   var body = composer.querySelector("[data-mk-composer-body]");
@@ -201,7 +217,9 @@ function saveMkComposer(composer) {
     method: "POST",
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: mkComposerColor(composer) }),
   }).then(function (note) {
-    return mkLinkComposerImages(composer, note.id);
+    return mkSetNoteLabels(note.id, mkComposerLabelIds(composer)).then(function () {
+      return mkLinkComposerImages(composer, note.id);
+    });
   }).then(function () {
     // 作成したメモが必ず見えるよう、絞り込み・検索・色の条件を外した一覧へ戻る。
     window.location.assign("/mk");
@@ -279,6 +297,104 @@ function mkBulkDelete() {
   if (ids.length === 0) return;
   mkConfirm("選択した" + ids.length + "件のメモを削除しますか？", function () {
     mkRun("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify({ ids: ids, action: "delete" }) });
+  });
+}
+var mkSnackbarTimer = null;
+function mkSnackbar() { return document.querySelector("[data-mk-snackbar]"); }
+function mkHideSnackbar() {
+  var bar = mkSnackbar();
+  if (bar) bar.hidden = true;
+  if (mkSnackbarTimer) { clearTimeout(mkSnackbarTimer); mkSnackbarTimer = null; }
+}
+function mkShowSnackbar(message, undo) {
+  var bar = mkSnackbar();
+  mkHideSnackbar();
+  if (!bar) { mkReload(); return; }
+  var text = bar.querySelector("[data-mk-snackbar-message]");
+  if (text) text.textContent = message;
+  bar.hidden = false;
+  var button = bar.querySelector("[data-mk-snackbar-undo]");
+  if (button) {
+    button.onclick = function () {
+      mkHideSnackbar();
+      undo().then(mkReload).catch(function () {});
+    };
+  }
+  mkSnackbarTimer = setTimeout(mkReload, 5000);
+}
+function mkBulkAction(body, undoBody, message) {
+  mkApi("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify(body) }).then(function () {
+    mkShowSnackbar(message, function () {
+      return mkApi("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify(undoBody) });
+    });
+  }).catch(function () {});
+}
+function mkBulkArchive() {
+  var ids = mkSelectedIds();
+  if (ids.length === 0) return;
+  mkBulkAction({ ids: ids, action: "archive" }, { ids: ids, action: "unarchive" }, ids.length + "件をアーカイブしました。");
+}
+function mkBulkTrash() {
+  var ids = mkSelectedIds();
+  if (ids.length === 0) return;
+  mkBulkAction({ ids: ids, action: "trash" }, { ids: ids, action: "restore" }, ids.length + "件をゴミ箱へ移動しました。");
+}
+function mkBulkRestore() {
+  var ids = mkSelectedIds();
+  if (ids.length === 0) return;
+  mkBulkAction({ ids: ids, action: "restore" }, { ids: ids, action: "trash" }, ids.length + "件を復元しました。");
+}
+function mkBulkPurge() {
+  var ids = mkSelectedIds();
+  if (ids.length === 0) return;
+  mkConfirm("選択した" + ids.length + "件のメモを完全に削除しますか？", function () {
+    mkApi("/api/mk/notes/bulk", { method: "POST", body: JSON.stringify({ ids: ids, action: "purge" }) }).then(mkReload).catch(function () {});
+  });
+}
+function mkCardLabelIds(card) {
+  var raw = card.getAttribute("data-mk-labels") || "";
+  return raw === "" ? [] : raw.split(",");
+}
+function mkBulkLabelValue() {
+  var select = document.querySelector("[data-mk-bulk-label]");
+  return select ? select.value : "";
+}
+function mkBulkLabel(labelId, add) {
+  if (!labelId) return;
+  var cards = mkSelectedCards().filter(function (card) { return !!mkCardId(card); });
+  if (cards.length === 0) return;
+  var jobs = cards.map(function (card) {
+    var current = mkCardLabelIds(card);
+    var next = add
+      ? (current.indexOf(labelId) === -1 ? current.concat([labelId]) : current)
+      : current.filter(function (id) { return id !== labelId; });
+    return mkSetNoteLabels(mkCardId(card), next);
+  });
+  Promise.all(jobs).then(mkReload).catch(function () {});
+}
+function mkLabelManager() { return document.querySelector("[data-mk-label-manager]"); }
+function mkToggleLabelManager() {
+  var manager = mkLabelManager();
+  if (manager) manager.hidden = !manager.hidden;
+}
+function mkLabelRequest(path, method, name) {
+  return mkApi(path, { method: method, body: JSON.stringify({ name: name }) });
+}
+function mkCreateLabel(form) {
+  var input = form.querySelector("[data-mk-label-create-input]");
+  var name = input ? input.value.trim() : "";
+  if (!name) return;
+  mkLabelRequest("/api/mk/labels", "POST", name).then(mkReload).catch(function () {});
+}
+function mkRenameLabel(id) {
+  var input = document.querySelector('[data-mk-label-rename-input="' + id + '"]');
+  var name = input ? input.value.trim() : "";
+  if (!name) return;
+  mkLabelRequest("/api/mk/labels/" + encodeURIComponent(id), "PATCH", name).then(mkReload).catch(function () {});
+}
+function mkDeleteLabel(id) {
+  mkConfirm("このラベルを削除しますか？", function () {
+    mkLabelRequest("/api/mk/labels/" + encodeURIComponent(id), "DELETE").then(mkReload).catch(function () {});
   });
 }
 function mkSearchUrl(form) {
@@ -373,12 +489,33 @@ function initializeMkActions(page) {
     var colorButton = target.closest("[data-mk-bulk-color]");
     if (colorButton) { event.preventDefault(); mkBulkColor(colorButton.getAttribute("data-mk-bulk-color") || "default"); return; }
     if (target.closest("[data-mk-bulk-pin]")) { event.preventDefault(); mkBulkPin(); return; }
+    if (target.closest("[data-mk-bulk-archive]")) { event.preventDefault(); mkBulkArchive(); return; }
+    if (target.closest("[data-mk-bulk-trash]")) { event.preventDefault(); mkBulkTrash(); return; }
+    if (target.closest("[data-mk-bulk-restore]")) { event.preventDefault(); mkBulkRestore(); return; }
+    if (target.closest("[data-mk-bulk-purge]")) { event.preventDefault(); mkBulkPurge(); return; }
+    if (target.closest("[data-mk-bulk-label-add]")) { event.preventDefault(); mkBulkLabel(mkBulkLabelValue(), true); return; }
+    if (target.closest("[data-mk-bulk-label-remove]")) { event.preventDefault(); mkBulkLabel(mkBulkLabelValue(), false); return; }
+    var renameLabel = target.closest("[data-mk-label-rename]");
+    if (renameLabel) { event.preventDefault(); mkRenameLabel(renameLabel.getAttribute("data-mk-label-rename") || ""); return; }
+    var deleteLabel = target.closest("[data-mk-label-delete]");
+    if (deleteLabel) { event.preventDefault(); mkDeleteLabel(deleteLabel.getAttribute("data-mk-label-delete") || ""); return; }
     if (target.closest("[data-mk-bulk-delete]")) { event.preventDefault(); mkBulkDelete(); }
   });
   page.addEventListener("change", function (event) {
     var target = event.target;
     if (target && target.matches && target.matches("[data-mk-select]")) syncMkSelection();
   });
+}
+function initializeMkLabelManager(page) {
+  var manage = page.querySelector("[data-mk-label-manage]");
+  if (manage) manage.addEventListener("click", function () { mkToggleLabelManager(); });
+  var form = page.querySelector("[data-mk-label-create-form]");
+  if (form) {
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      mkCreateLabel(form);
+    });
+  }
 }
 function initializeMkToolbar(page) {
   var toggle = page.querySelector("[data-mk-selection-toggle]");
@@ -420,6 +557,7 @@ function initializeMk() {
   initializeMkSideNew(page);
   initializeMkActions(page);
   initializeMkToolbar(page);
+  initializeMkLabelManager(page);
   initializeMkPaste(page);
   syncMkSelection();
 }
