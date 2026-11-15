@@ -37,6 +37,7 @@ function MkComposerColors() {
 function MkComposerAttachments() {
   return (
     <div class="mk-composer__attachments">
+      <span class="mk-composer__hint">📋 Ctrl+V で画像を貼り付け</span>
       <button class="button small" type="button" data-mk-composer-image-add>
         画像を追加
       </button>
@@ -57,7 +58,7 @@ function MkComposer() {
   return (
     <div class="mk-composer" data-mk-composer data-mk-composer-open="false" data-mk-color="default">
       <button class="mk-composer__trigger" type="button" data-mk-composer-trigger aria-expanded="false">
-        <span>メモを入力...</span>
+        <span>＋ 新規メモ</span>
       </button>
       <div class="mk-composer__editor" data-mk-composer-editor hidden>
         <input
@@ -66,7 +67,7 @@ function MkComposer() {
           type="text"
           maxlength={256}
           autocomplete="off"
-          placeholder="タイトル"
+          placeholder="新しいメモのタイトル"
           aria-label="メモのタイトル"
           data-mk-composer-title
         />
@@ -74,7 +75,7 @@ function MkComposer() {
           class="mk-composer__body"
           name="body"
           rows={3}
-          placeholder="メモを入力..."
+          placeholder="本文。Ctrl+V で画像を貼り付けできます。"
           aria-label="メモの本文"
           data-mk-composer-body
         ></textarea>
@@ -110,6 +111,9 @@ function MkSidebar({
 }) {
   return (
     <aside class="mk-sidebar">
+      <button class="mk-side-new" type="button" data-mk-side-new>
+        ＋ 新規メモ
+      </button>
       <nav class="mk-filters" aria-label="メモの絞り込み">
         {(["all", "pinned", "unpinned"] as const).map((candidate) => (
           <a
@@ -126,27 +130,22 @@ function MkSidebar({
         ))}
       </nav>
       <div class="mk-color-filters" role="group" aria-label="色で絞り込む">
-        <a
-          class={color === undefined ? "mk-color-filter is-active" : "mk-color-filter"}
-          aria-current={color === undefined ? "true" : undefined}
-          href={mkListHref(filter, query, undefined)}
-          data-mk-color-filter="all"
-          aria-label="すべての色"
-        >
-          <span class="mk-color-filter__dot mk-color-filter__dot--all" />
-        </a>
-        {MK_COLORS.map((candidate) => (
-          <a
-            key={candidate}
-            class={color === candidate ? "mk-color-filter is-active" : "mk-color-filter"}
-            aria-current={color === candidate ? "true" : undefined}
-            href={mkListHref(filter, query, candidate)}
-            data-mk-color-filter={candidate}
-            aria-label={`${candidate} のメモ`}
-          >
-            <span class={`mk-color-filter__dot mk-color-filter__dot--${candidate}`} />
-          </a>
-        ))}
+        {MK_COLORS.map((candidate) => {
+          const active = color === candidate;
+          return (
+            <a
+              key={candidate}
+              class={active ? "mk-color-filter is-active" : "mk-color-filter"}
+              aria-current={active ? "true" : undefined}
+              // The active color clears the filter so the row keeps the agreed seven swatches.
+              href={active ? mkListHref(filter, query, undefined) : mkListHref(filter, query, candidate)}
+              data-mk-color-filter={candidate}
+              aria-label={active ? `${candidate} の絞り込みを解除` : `${candidate} のメモ`}
+            >
+              <span class={`mk-color-filter__dot mk-color-filter__dot--${candidate}`} />
+            </a>
+          );
+        })}
       </div>
     </aside>
   );
@@ -247,12 +246,19 @@ function MkSearch({ filter, query, color }: { readonly filter: MkFilter; readonl
         name="q"
         aria-label="メモを検索"
         value={query}
-        placeholder="検索"
+        placeholder="メモを検索（タイトル / 本文）"
         data-mk-search-input
       />
-      <button class="button small" type="submit" aria-label="検索を実行">
-        検索
-      </button>
+      {query.trim() === "" ? null : (
+        <a
+          class="mk-search__clear"
+          href={mkListHref(filter, "", color)}
+          aria-label="検索を解除"
+          data-mk-search-clear
+        >
+          ×
+        </a>
+      )}
     </form>
   );
 }
@@ -286,7 +292,7 @@ export function MkPage({
           <div class="mk-toolbar">
             <MkSearch filter={filter} query={query} color={color} />
             <button class="button small" type="button" data-mk-selection-toggle aria-pressed="false">
-              選択
+              ☑ 選択
             </button>
           </div>
           <MkBulkBar />

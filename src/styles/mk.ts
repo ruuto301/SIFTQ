@@ -80,10 +80,6 @@ export const MK_CSS = `
   width: 18px;
 }
 
-.mk-color-filter__dot--all {
-  background: linear-gradient(135deg, #ffe9e7, #ffeddc, #fff5cf, #e4f3df, #e1efff, #efe7fb);
-}
-
 .mk-color-filter__dot--default {
   background: #ffffff;
 }
@@ -261,8 +257,15 @@ export const MK_CSS = `
 }
 
 .mk-composer__attachments {
+  align-items: center;
   display: flex;
+  gap: 8px;
   justify-content: flex-start;
+}
+
+.mk-composer__hint {
+  color: #57606a;
+  font-size: 11px;
 }
 
 .mk-composer__file {
