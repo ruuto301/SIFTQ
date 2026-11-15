@@ -1,4 +1,11 @@
 import { DescriptionContent } from "../components/DescriptionContent";
+import {
+  DescriptionTabList,
+  descriptionDefaultTab,
+  descriptionPanelId,
+  descriptionTabId,
+} from "../components/DescriptionTabs";
+import type { DescriptionTab } from "../components/DescriptionTabs";
 import { TaskMeta } from "../components/TaskMeta";
 import { NewTaskMeta } from "../components/NewTaskMeta";
 import type { NewTaskState } from "../components/NewTaskMeta";
@@ -14,50 +21,16 @@ function TitleField({ value }: { value?: string }) {
   );
 }
 
-type DescriptionTab = "edit" | "preview";
-
-const DESCRIPTION_TABS: readonly { tab: DescriptionTab; label: string }[] = [
-  { tab: "edit", label: "編集" },
-  { tab: "preview", label: "プレビュー" },
-];
-
-/** Task detail opens on the rendered description; an empty description opens the editor. */
-function descriptionDefaultTab(description: string): DescriptionTab {
-  return description.trim() === "" ? "edit" : "preview";
-}
-
-function DescriptionTabList({ selected }: { selected: DescriptionTab }) {
-  return (
-    <div class="description-tabs" role="tablist" aria-label="Description view">
-      {DESCRIPTION_TABS.map(({ tab, label }) => (
-        <button
-          key={tab}
-          type="button"
-          role="tab"
-          id={`description-tab-${tab}`}
-          class="description-tab"
-          data-description-tab={tab}
-          aria-controls={`description-panel-${tab}`}
-          aria-selected={tab === selected ? "true" : "false"}
-          tabindex={tab === selected ? 0 : -1}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function DescriptionField({ children, defaultTab }: { children?: string; defaultTab: DescriptionTab }) {
   const description = children ?? "";
   return (
     <div class="description-field" data-description-tabs data-default-tab={defaultTab}>
-      <DescriptionTabList selected={defaultTab} />
+      <DescriptionTabList prefix="description" selected={defaultTab} />
       <div
-        id="description-panel-edit"
+        id={descriptionPanelId("description", "edit")}
         class="description-tabs__panel"
         role="tabpanel"
-        aria-labelledby="description-tab-edit"
+        aria-labelledby={descriptionTabId("description", "edit")}
         data-description-panel="edit"
         hidden={defaultTab !== "edit"}
       >
@@ -79,10 +52,10 @@ function DescriptionField({ children, defaultTab }: { children?: string; default
         </textarea>
       </div>
       <div
-        id="description-panel-preview"
+        id={descriptionPanelId("description", "preview")}
         class="description-tabs__panel description-preview"
         role="tabpanel"
-        aria-labelledby="description-tab-preview"
+        aria-labelledby={descriptionTabId("description", "preview")}
         data-description-panel="preview"
         data-description-preview
         hidden={defaultTab !== "preview"}

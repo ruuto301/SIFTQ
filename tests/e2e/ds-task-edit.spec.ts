@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { descriptionEditor } from "./task-helpers";
+import { descriptionEditor, waitForPageSettle } from "./task-helpers";
 import type { Page } from "@playwright/test";
 
 async function createTask(page: Page, title: string, description: string) {
@@ -15,6 +15,9 @@ async function openTaskInDs(page: Page, title: string) {
   await page.goto("/ds");
   await page.locator(".ds__task").filter({ hasText: title }).click();
   await expect(page.locator("#ds-task-title")).toHaveValue(title);
+  // The DS pane is server-rendered; wait for the deferred scripts that wire the
+  // save, revert and tab handlers before interacting.
+  await waitForPageSettle(page);
 }
 
 test("edits title and description in the DS task tab (BDD-TM-036)", async ({ page }) => {
@@ -29,6 +32,8 @@ test("edits title and description in the DS task tab (BDD-TM-036)", async ({ pag
   const updatedDescription = "更新した説明\n- 追記";
   await page.locator("#ds-task-title").fill(updatedTitle);
   await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
+  // A stored description opens on プレビュー, so switch to 編集 before typing.
+  await page.getByRole("tab", { name: "編集" }).click();
   await page.locator("#ds-task-description").fill(updatedDescription);
 
   await page.locator("#ds-task-save").click();

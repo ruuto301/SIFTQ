@@ -209,3 +209,31 @@ describe("DsPage task list", () => {
     expect(html).toContain(">done<");
   });
 });
+
+describe("DsPage description tabs", () => {
+  it("renders the description 編集 / プレビュー tabs (BDD-TM-006)", () => {
+    const selected = taskFixture({ id: "t1", title: "preview", description: "**bold**" });
+    const html = renderToString(page([selected], selected));
+
+    expect(html).toContain('class="ds-task__description-field" data-description-tabs="true" data-default-tab="preview"');
+    expect(html).toContain('id="ds-description-tab-edit"');
+    expect(html).toContain('id="ds-description-tab-preview"');
+    expect(html).toContain('id="ds-description-panel-edit"');
+    expect(html).toContain('id="ds-description-panel-preview"');
+    expect(html).toContain('data-description-value="true"');
+    expect(html).toMatch(/data-description-tab="preview"[^>]*aria-selected="true"[^>]*tabindex="0"/);
+    expect(html).toMatch(/data-description-tab="edit"[^>]*aria-selected="false"[^>]*tabindex="-1"/);
+    expect(html).toMatch(/data-description-panel="edit" hidden=""/);
+    expect(html).toMatch(/data-description-panel="preview" data-description-preview="true"><\/div>/);
+  });
+
+  it("opens the DS description editor when the description is empty (BDD-TM-006)", () => {
+    const selected = taskFixture({ id: "t1", title: "empty", description: "" });
+    const html = renderToString(page([selected], selected));
+
+    expect(html).toContain('data-default-tab="edit"');
+    expect(html).toMatch(/data-description-tab="edit"[^>]*aria-selected="true"[^>]*tabindex="0"/);
+    expect(html).toMatch(/data-description-panel="edit">/);
+    expect(html).toMatch(/data-description-panel="preview" data-description-preview="true" hidden=""/);
+  });
+});

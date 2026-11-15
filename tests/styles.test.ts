@@ -239,4 +239,12 @@ describe("Description preview tabs", () => {
     expect(STYLES_CSS).toContain(".description-preview table");
     expect(STYLES_CSS).toContain(".description-preview pre");
   });
+
+  it("sizes the DS description field around the tabs", () => {
+    const field = cssBlock(/(?:^|\n)\.ds-task__description-field\s*\{[^}]*\}/);
+    expect(field).toContain("flex: 1;");
+    expect(field).toContain("min-height: 0;");
+    expect(field).toContain("flex-direction: column;");
+    expect(STYLES_CSS).toContain(".ds-task__description-field .description-tabs__panel");
+  });
 });
