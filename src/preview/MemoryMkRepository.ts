@@ -7,7 +7,7 @@ import {
   isMkLabelNameTaken,
   setNoteArchived,
   setNoteDeleted,
-  sortMkNotes,
+  sortMkNotesByQuery,
 } from "../mk";
 import type { MkColor, MkCounts, MkImage, MkLabel, MkNote, MkNoteCounts, MkNoteLabel, MkNoteLabelMap, MkNoteQuery } from "../mk";
 import { err, ok } from "../task";
@@ -83,7 +83,7 @@ async function listNotes(
   const owned = ownedNotes(notes, owner_id);
   const labelId = query?.labelId;
   const matching = labelId === undefined ? owned : owned.filter((note) => hasNoteLabel(links, note.id, labelId, owner_id));
-  return ok(sortMkNotes(filterMkNotes(matching, query ?? {})));
+  return ok(sortMkNotesByQuery(filterMkNotes(matching, query ?? {}), query?.sort));
 }
 
 async function countNotes(

@@ -1,21 +1,35 @@
 import type { D1Database, D1Result } from "@cloudflare/workers-types";
 import {
+  MK_DEFAULT_SORT,
   changeMkNoteColor,
   changeMkNotePinned,
   isDeleted,
   isMkColor,
   isMkImage,
   isMkLabel,
+  mkSortParts,
   setNoteArchived,
   setNoteDeleted,
 } from "../mk";
-import type { MkColor, MkCounts, MkImage, MkLabel, MkNote, MkNoteCounts, MkNoteLabelMap, MkNoteQuery } from "../mk";
+import type {
+  MkColor,
+  MkCounts,
+  MkImage,
+  MkLabel,
+  MkNote,
+  MkNoteCounts,
+  MkNoteLabelMap,
+  MkNoteQuery,
+  MkPreviewFields,
+  MkSort,
+} from "../mk";
 import { err, ok } from "../task";
 import { isRecord } from "../task";
 import type { Result } from "../task";
 import type { MkRepository, MkRepositoryError } from "./mk-repository";
 
-const MK_COLUMNS = "id, owner_id, title, body, color, pinned, created_at, updated_at, archived_at, deleted_at";
+const MK_COLUMNS =
+  "id, owner_id, title, body, color, pinned, created_at, updated_at, archived_at, deleted_at, preview_title, preview_description, preview_image, preview_domain, preview_fetched_at";
 const MK_SELECT = `SELECT ${MK_COLUMNS} FROM mk_notes`;
 const MK_IMAGE_COLUMNS = "id, note_id, owner_id, image_id, position, created_at";
 const MK_IMAGE_SELECT = `SELECT ${MK_IMAGE_COLUMNS} FROM mk_images`;
@@ -26,9 +40,29 @@ const MK_LABEL_LIMIT = 200;
 const MK_NOTE_LABEL_LIMIT = 500;
 const MK_BULK_LIMIT = 50;
 
+const NULLABLE_NOTE_COLUMNS = [
+  "archived_at",
+  "deleted_at",
+  "preview_title",
+  "preview_description",
+  "preview_image",
+  "preview_domain",
+  "preview_fetched_at",
+] as const;
+
+type NullableNoteColumns = { archived_at: string | null; deleted_at: string | null } & MkPreviewFields;
+
+function isNullableText(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function hasNullableNoteColumns(value: Record<string, unknown>): value is Record<string, unknown> & NullableNoteColumns {
+  return NULLABLE_NOTE_COLUMNS.every((column) => isNullableText(value[column]));
+}
+
 export function toMkNote(value: unknown): MkNote | undefined {
   if (!isRecord(value)) return undefined;
-  const { id, owner_id, title, body, color, pinned, created_at, updated_at, archived_at, deleted_at } = value;
+  const { id, owner_id, title, body, color, pinned, created_at, updated_at } = value;
   if (
     typeof id !== "string" ||
     typeof owner_id !== "string" ||
@@ -37,13 +71,37 @@ export function toMkNote(value: unknown): MkNote | undefined {
     !isMkColor(color) ||
     (pinned !== 0 && pinned !== 1) ||
     typeof created_at !== "string" ||
-    typeof updated_at !== "string" ||
-    (archived_at !== null && typeof archived_at !== "string") ||
-    (deleted_at !== null && typeof deleted_at !== "string")
+    typeof updated_at !== "string"
   ) {
     return undefined;
   }
-  return { id, owner_id, title, body, color, pinned: pinned === 1, created_at, updated_at, archived_at, deleted_at };
+  if (!hasNullableNoteColumns(value)) return undefined;
+  const {
+    archived_at,
+    deleted_at,
+    preview_title,
+    preview_description,
+    preview_image,
+    preview_domain,
+    preview_fetched_at,
+  } = value;
+  return {
+    id,
+    owner_id,
+    title,
+    body,
+    color,
+    pinned: pinned === 1,
+    created_at,
+    updated_at,
+    archived_at,
+    deleted_at,
+    preview_title,
+    preview_description,
+    preview_image,
+    preview_domain,
+    preview_fetched_at,
+  };
 }
 
 export function toMkLabel(value: unknown): MkLabel | undefined {
@@ -133,17 +191,31 @@ function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, "\\$&");
 }
 
-function filterClauses(owner_id: string, query: MkNoteQuery): SqlQuery {
-  const clauses = ["owner_id = ?"];
-  const bindings: unknown[] = [owner_id];
-  const filter = query.filter ?? "notes";
-  if (filter === "trash") clauses.push("deleted_at IS NOT NULL");
-  if (filter === "archived") clauses.push("deleted_at IS NULL", "archived_at IS NOT NULL");
-  if (filter === "notes" || filter === "pinned" || filter === "unpinned") {
-    clauses.push("deleted_at IS NULL", "archived_at IS NULL");
-    if (filter === "pinned") clauses.push("pinned = 1");
-    if (filter === "unpinned") clauses.push("pinned = 0");
+function viewClauses(filter: MkNoteQuery["filter"]): string[] {
+  if (filter === "trash") return ["deleted_at IS NOT NULL"];
+  if (filter === "archived") return ["deleted_at IS NULL", "archived_at IS NOT NULL"];
+  const clauses = ["deleted_at IS NULL", "archived_at IS NULL"];
+  if (filter === "pinned") clauses.push("pinned = 1");
+  if (filter === "unpinned") clauses.push("pinned = 0");
+  return clauses;
+}
+
+function pushDateClauses(query: MkNoteQuery, clauses: string[], bindings: unknown[]): void {
+  if (query.dateKind === undefined) return;
+  const column = query.dateKind === "created" ? "created_at" : "updated_at";
+  if (query.from !== undefined) {
+    clauses.push(`${column} >= ?`);
+    bindings.push(query.from);
   }
+  if (query.to !== undefined) {
+    clauses.push(`${column} <= ?`);
+    bindings.push(query.to);
+  }
+}
+
+function filterClauses(owner_id: string, query: MkNoteQuery): SqlQuery {
+  const clauses = ["owner_id = ?", ...viewClauses(query.filter ?? "notes")];
+  const bindings: unknown[] = [owner_id];
   if (query.labelId !== undefined) {
     clauses.push(
       "EXISTS (SELECT 1 FROM mk_note_labels nl WHERE nl.note_id = mk_notes.id AND nl.label_id = ? AND nl.owner_id = ?)",
@@ -160,7 +232,14 @@ function filterClauses(owner_id: string, query: MkNoteQuery): SqlQuery {
     clauses.push("(title LIKE ? ESCAPE '\\' OR body LIKE ? ESCAPE '\\')");
     bindings.push(pattern, pattern);
   }
+  pushDateClauses(query, clauses, bindings);
   return { sql: `WHERE ${clauses.join(" AND ")}`, bindings };
+}
+
+function sortOrder(sort: MkSort | undefined): string {
+  const parts = mkSortParts(sort ?? MK_DEFAULT_SORT);
+  const column = parts.field === "created" ? "created_at" : "updated_at";
+  return `${column} ${parts.direction === "asc" ? "ASC" : "DESC"}`;
 }
 
 async function listNotes(
@@ -170,7 +249,7 @@ async function listNotes(
 ): Promise<Result<MkNote[], MkRepositoryError>> {
   const filter = filterClauses(owner_id, query ?? {});
   const result = await db
-    .prepare(`${MK_SELECT} ${filter.sql} ORDER BY pinned DESC, updated_at DESC, id ASC LIMIT 200`)
+    .prepare(`${MK_SELECT} ${filter.sql} ORDER BY pinned DESC, ${sortOrder(query?.sort)}, id ASC LIMIT 200`)
     .bind(...filter.bindings)
     .all<Record<string, unknown>>();
   return ok(result.results.map(toMkNote).filter((note): note is MkNote => note !== undefined));
@@ -213,21 +292,31 @@ async function findNote(
   return ok(row === null ? undefined : toMkNote(row));
 }
 
+function noteContentValues(note: MkNote): readonly unknown[] {
+  return [note.title, note.body, note.color, note.pinned ? 1 : 0];
+}
+
+/** The writable columns in `MK_COLUMNS` order, excluding the fixed `created_at`. */
+function mutableNoteValues(note: MkNote): readonly unknown[] {
+  return [...noteContentValues(note), note.updated_at, ...noteStateValues(note)];
+}
+
+function noteStateValues(note: MkNote): readonly unknown[] {
+  return [
+    note.archived_at,
+    note.deleted_at,
+    note.preview_title,
+    note.preview_description,
+    note.preview_image,
+    note.preview_domain,
+    note.preview_fetched_at,
+  ];
+}
+
 async function insertNote(db: D1Database, note: MkNote): Promise<Result<MkNote, MkRepositoryError>> {
   await db
-    .prepare(`INSERT INTO mk_notes (${MK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .bind(
-      note.id,
-      note.owner_id,
-      note.title,
-      note.body,
-      note.color,
-      note.pinned ? 1 : 0,
-      note.created_at,
-      note.updated_at,
-      note.archived_at,
-      note.deleted_at,
-    )
+    .prepare(`INSERT INTO mk_notes (${MK_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(note.id, note.owner_id, ...noteContentValues(note), note.created_at, note.updated_at, ...noteStateValues(note))
     .run();
   return ok(note);
 }
@@ -235,19 +324,9 @@ async function insertNote(db: D1Database, note: MkNote): Promise<Result<MkNote, 
 async function updateNote(db: D1Database, note: MkNote): Promise<Result<MkNote, MkRepositoryError>> {
   const result = await db
     .prepare(
-      "UPDATE mk_notes SET title = ?, body = ?, color = ?, pinned = ?, updated_at = ?, archived_at = ?, deleted_at = ? WHERE id = ? AND owner_id = ?",
+      "UPDATE mk_notes SET title = ?, body = ?, color = ?, pinned = ?, updated_at = ?, archived_at = ?, deleted_at = ?, preview_title = ?, preview_description = ?, preview_image = ?, preview_domain = ?, preview_fetched_at = ? WHERE id = ? AND owner_id = ?",
     )
-    .bind(
-      note.title,
-      note.body,
-      note.color,
-      note.pinned ? 1 : 0,
-      note.updated_at,
-      note.archived_at,
-      note.deleted_at,
-      note.id,
-      note.owner_id,
-    )
+    .bind(...mutableNoteValues(note), note.id, note.owner_id)
     .run();
   return changes(result) === 0 ? err({ code: "NOT_FOUND" }) : ok(note);
 }

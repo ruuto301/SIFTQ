@@ -14,6 +14,35 @@ export const MK_LABEL_NAME_MAX_CODE_POINTS = 100;
 export const MK_MAX_LABELS_PER_NOTE = 20;
 export const MK_MAX_IMAGES = 10;
 
+/** The timestamp a date range filters on. */
+export const MK_DATE_KINDS = ["created", "updated"] as const;
+export type MkDateKind = (typeof MK_DATE_KINDS)[number];
+
+export const MK_SORT_FIELDS = ["updated", "created"] as const;
+export const MK_SORT_DIRECTIONS = ["asc", "desc"] as const;
+export type MkSortField = (typeof MK_SORT_FIELDS)[number];
+export type MkSortDirection = (typeof MK_SORT_DIRECTIONS)[number];
+/** A `field:direction` pair such as `updated:desc`, as carried by the `sort` query. */
+export type MkSort = `${MkSortField}:${MkSortDirection}`;
+export const MK_DEFAULT_SORT: MkSort = "updated:desc";
+
+/** The link card metadata fetched from the first URL in a note. */
+export type MkLinkPreview = {
+  title: string;
+  description: string;
+  image: string | null;
+  domain: string;
+};
+
+/** The link card metadata columns, shared by the note and its persistence layer. */
+export type MkPreviewFields = {
+  preview_title: string | null;
+  preview_description: string | null;
+  preview_image: string | null;
+  preview_domain: string | null;
+  preview_fetched_at: string | null;
+};
+
 export type MkNote = {
   id: string;
   owner_id: string;
@@ -25,7 +54,7 @@ export type MkNote = {
   updated_at: string;
   archived_at: string | null;
   deleted_at: string | null;
-};
+} & MkPreviewFields;
 
 export type MkLabel = {
   id: string;
@@ -64,6 +93,10 @@ export type MkErrorCode =
   | "INVALID_LABEL_NAME"
   | "INVALID_LABEL"
   | "INVALID_IMAGE"
+  | "INVALID_DATE"
+  | "INVALID_SORT"
+  | "INVALID_URL"
+  | "PREVIEW_FAILED"
   | "INVALID_STATE"
   | "IMAGE_LIMIT_EXCEEDED"
   | "CONFLICT"
@@ -83,6 +116,47 @@ export function isMkColor(value: unknown): value is MkColor {
   return typeof value === "string" && MK_COLORS.some((color) => color === value);
 }
 
+export function isMkDateKind(value: unknown): value is MkDateKind {
+  return typeof value === "string" && MK_DATE_KINDS.some((kind) => kind === value);
+}
+
+export function isMkSortField(value: unknown): value is MkSortField {
+  return typeof value === "string" && MK_SORT_FIELDS.some((field) => field === value);
+}
+
+export function isMkSortDirection(value: unknown): value is MkSortDirection {
+  return typeof value === "string" && MK_SORT_DIRECTIONS.some((direction) => direction === value);
+}
+
+/** Reads a `field:direction` sort; a bare field keeps the default descending direction. */
+export function parseMkSort(value: unknown): MkSort | null {
+  if (typeof value !== "string") return null;
+  const separator = value.indexOf(":");
+  const field = separator < 0 ? value : value.slice(0, separator);
+  const direction = separator < 0 ? "desc" : value.slice(separator + 1);
+  return isMkSortField(field) && isMkSortDirection(direction) ? `${field}:${direction}` : null;
+}
+
+export function mkSortParts(sort: MkSort): { field: MkSortField; direction: MkSortDirection } {
+  const separator = sort.indexOf(":");
+  const field = sort.slice(0, separator);
+  const direction = sort.slice(separator + 1);
+  return {
+    field: isMkSortField(field) ? field : "updated",
+    direction: isMkSortDirection(direction) ? direction : "desc",
+  };
+}
+
+function hasMkPreviewFields(value: Record<string, unknown>): boolean {
+  return (
+    isNullableString(value["preview_title"]) &&
+    isNullableString(value["preview_description"]) &&
+    isNullableString(value["preview_image"]) &&
+    isNullableString(value["preview_domain"]) &&
+    isNullableString(value["preview_fetched_at"])
+  );
+}
+
 export function isMkNote(value: unknown): value is MkNote {
   if (!isMkRecord(value)) return false;
   return (
@@ -95,7 +169,8 @@ export function isMkNote(value: unknown): value is MkNote {
     typeof value["created_at"] === "string" &&
     typeof value["updated_at"] === "string" &&
     isNullableString(value["archived_at"]) &&
-    isNullableString(value["deleted_at"])
+    isNullableString(value["deleted_at"]) &&
+    hasMkPreviewFields(value)
   );
 }
 
@@ -232,14 +307,27 @@ export function noteMatchesFilter(note: MkNote, filter: MkFilter): boolean {
   return true;
 }
 
+/** Pinned notes first, then the requested sort, then id for a stable order. */
+export function sortMkNotesByQuery<T extends MkNote>(notes: readonly T[], sort: MkSort = MK_DEFAULT_SORT): T[] {
+  return [...notes].sort((left, right) => compareMkNotes(left, right, sort));
+}
+
+function mkSortValue(note: MkNote, field: MkSortField): string {
+  return field === "created" ? note.created_at : note.updated_at;
+}
+
+export function compareMkNotes(left: MkNote, right: MkNote, sort: MkSort): number {
+  const pinned = Number(right.pinned) - Number(left.pinned);
+  if (pinned !== 0) return pinned;
+  const parts = mkSortParts(sort);
+  const order = parts.direction === "asc" ? -1 : 1;
+  const values = mkSortValue(right, parts.field).localeCompare(mkSortValue(left, parts.field)) * order;
+  return values !== 0 ? values : left.id.localeCompare(right.id);
+}
+
 /** Pinned notes first, then most recently updated, then id for a stable order. */
 export function sortMkNotes<T extends MkNote>(notes: readonly T[]): T[] {
-  return [...notes].sort(
-    (left, right) =>
-      Number(right.pinned) - Number(left.pinned) ||
-      right.updated_at.localeCompare(left.updated_at) ||
-      left.id.localeCompare(right.id),
-  );
+  return sortMkNotesByQuery(notes, MK_DEFAULT_SORT);
 }
 
 export type MkNoteQuery = {
@@ -248,6 +336,12 @@ export type MkNoteQuery = {
   color?: MkColor;
   /** Repository-side filter; a note does not carry its labels. */
   labelId?: string;
+  dateKind?: MkDateKind;
+  /** Inclusive lower bound, as an ISO instant. */
+  from?: string;
+  /** Inclusive upper bound, as an ISO instant. */
+  to?: string;
+  sort?: MkSort;
 };
 
 function matchesText(note: MkNote, text: string): boolean {
@@ -256,9 +350,18 @@ function matchesText(note: MkNote, text: string): boolean {
   return `${note.title}\n${note.body}`.toLowerCase().includes(needle);
 }
 
+/** Date bounds compare as ISO instants, so a missing bound leaves that side open. */
+export function matchesMkDateRange(note: MkNote, kind: MkDateKind, from?: string, to?: string): boolean {
+  const value = mkSortValue(note, kind);
+  if (from !== undefined && value < from) return false;
+  if (to !== undefined && value > to) return false;
+  return true;
+}
+
 export function matchesMkNoteQuery(note: MkNote, query: MkNoteQuery): boolean {
   if (!noteMatchesFilter(note, query.filter ?? "notes")) return false;
   if (query.color !== undefined && note.color !== query.color) return false;
+  if (query.dateKind !== undefined && !matchesMkDateRange(note, query.dateKind, query.from, query.to)) return false;
   return matchesText(note, query.text ?? "");
 }
 
@@ -272,6 +375,29 @@ export type MkNotePatch = {
   color?: MkColor;
   pinned?: boolean;
 };
+
+const MK_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A date-only bound covers the whole local day; the client sends exact ISO instants instead. */
+export function normalizeMkDateBound(value: string, endOfDay: boolean): string | null {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if (MK_DATE_ONLY.test(trimmed)) return `${trimmed}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`;
+  const parsed = Date.parse(trimmed);
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
+}
+
+/** Preview metadata keeps empty fields null so the card can fall back to a plain link. */
+export function applyMkNotePreview(note: MkNote, preview: MkLinkPreview, fetched_at: string): MkNote {
+  return {
+    ...note,
+    preview_title: preview.title === "" ? null : preview.title,
+    preview_description: preview.description === "" ? null : preview.description,
+    preview_image: preview.image,
+    preview_domain: preview.domain === "" ? null : preview.domain,
+    preview_fetched_at: fetched_at,
+  };
+}
 
 export function parseMkNotePatch(body: Record<string, unknown>): Result<MkNotePatch, MkError> {
   const patch: MkNotePatch = {};
@@ -355,5 +481,10 @@ export function createMkNote(input: CreateMkNoteInput): Result<MkNote, MkError> 
     updated_at: input.created_at,
     archived_at: null,
     deleted_at: null,
+    preview_title: null,
+    preview_description: null,
+    preview_image: null,
+    preview_domain: null,
+    preview_fetched_at: null,
   });
 }

@@ -1,20 +1,25 @@
 import type { Context, Hono } from "hono";
 import {
   applyMkNotePatch,
+  applyMkNotePreview,
   createMkLabel,
   createMkNote,
   isMkBodyValid,
   isMkColor,
+  isMkDateKind,
   isMkFilter,
   isMkLabelNameValid,
   isMkRecord,
   isMkTitleValid,
+  normalizeMkDateBound,
   normalizeMkLabelName,
   parseMkIdList,
   parseMkLabelIds,
   parseMkNotePatch,
+  parseMkSort,
 } from "../mk";
-import type { MkError, MkFilter, MkNote, MkNoteQuery } from "../mk";
+import type { MkColor, MkDateKind, MkError, MkFilter, MkNote, MkNoteQuery, MkSort } from "../mk";
+import { extractMkPreviewUrl, fetchMkLinkPreview } from "../mk-link-preview";
 import { errorStatus, findOwned, problem, readJsonRecord, respondRemoved } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
@@ -31,24 +36,83 @@ function normalizeFilter(value: string): MkFilter | null {
   return isMkFilter(candidate) ? candidate : null;
 }
 
+/** A null result means "present but invalid"; undefined means "absent". */
+function readFilterValue(value: string | undefined): MkFilter | null | undefined {
+  if (value === undefined || value === "") return undefined;
+  const normalized = normalizeFilter(value);
+  if (normalized === null) return null;
+  return normalized === "notes" ? undefined : normalized;
+}
+
+function readColorValue(value: string | undefined): MkColor | null | undefined {
+  if (value === undefined || value === "" || value === "all") return undefined;
+  return isMkColor(value) ? value : null;
+}
+
+function readSortValue(value: string | undefined): MkSort | null | undefined {
+  if (value === undefined || value === "") return undefined;
+  return parseMkSort(value);
+}
+
 function readQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
+  const core = readCoreQuery(c);
+  if (!core.ok) return core;
+  const extra = readExtraQuery(c);
+  if (!extra.ok) return extra;
+  return ok({ ...core.value, ...extra.value });
+}
+
+function readCoreQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
   const query: MkNoteQuery = {};
-  const filter = c.req.query("filter");
-  if (filter !== undefined && filter !== "") {
-    const normalized = normalizeFilter(filter);
-    if (normalized === null) return err({ code: "INVALID_FILTER" });
-    if (normalized !== "notes") query.filter = normalized;
-  }
-  const color = c.req.query("color");
-  if (color !== undefined && color !== "" && color !== "all") {
-    if (!isMkColor(color)) return err({ code: "INVALID_COLOR" });
-    query.color = color;
-  }
+  const filter = readFilterValue(c.req.query("filter"));
+  if (filter === null) return err({ code: "INVALID_FILTER" });
+  if (filter !== undefined) query.filter = filter;
+  const color = readColorValue(c.req.query("color"));
+  if (color === null) return err({ code: "INVALID_COLOR" });
+  if (color !== undefined) query.color = color;
   const label = c.req.query("label");
   if (label !== undefined && label !== "") query.labelId = label;
   const text = c.req.query("q")?.trim() ?? "";
   if (text !== "") query.text = text;
   return ok(query);
+}
+
+function readExtraQuery(c: Context<AppEnv>): Result<MkNoteQuery, MkError> {
+  const query: MkNoteQuery = {};
+  const sort = readSortValue(c.req.query("sort"));
+  if (sort === null) return err({ code: "INVALID_SORT" });
+  if (sort !== undefined) query.sort = sort;
+  const dates = readDateQuery(c);
+  if (!dates.ok) return dates;
+  if (dates.value.dateKind !== undefined) query.dateKind = dates.value.dateKind;
+  if (dates.value.from !== undefined) query.from = dates.value.from;
+  if (dates.value.to !== undefined) query.to = dates.value.to;
+  return ok(query);
+}
+
+type MkDateQuery = { dateKind?: MkDateKind; from?: string; to?: string };
+
+/** Accepts an exact ISO instant or a date-only field; the API rejects anything else. */
+function readDateBound(c: Context<AppEnv>, name: string, dateName: string, endOfDay: boolean): Result<string | undefined, MkError> {
+  const value = c.req.query(name) || c.req.query(dateName) || "";
+  if (value === "") return ok(undefined);
+  const bound = normalizeMkDateBound(value, endOfDay);
+  return bound === null ? err({ code: "INVALID_DATE" }) : ok(bound);
+}
+
+function readDateQuery(c: Context<AppEnv>): Result<MkDateQuery, MkError> {
+  const raw = c.req.query("dateKind");
+  const dateKind = raw === undefined || raw === "" ? undefined : raw;
+  if (dateKind !== undefined && !isMkDateKind(dateKind)) return err({ code: "INVALID_DATE" });
+  const from = readDateBound(c, "from", "fromDate", false);
+  if (!from.ok) return from;
+  const to = readDateBound(c, "to", "toDate", true);
+  if (!to.ok) return to;
+  const dates: MkDateQuery = {};
+  if (from.value !== undefined) dates.from = from.value;
+  if (to.value !== undefined) dates.to = to.value;
+  if (dates.from === undefined && dates.to === undefined) return ok(dates);
+  return ok({ ...dates, dateKind: dateKind ?? "created" });
 }
 
 type MkLookup = { ok: true; value: MkNote } | { ok: false; error: MkError };
@@ -116,6 +180,21 @@ async function deleteMkNote(c: Context<AppEnv>, repository: Repository) {
   const id = c.req.param("id");
   if (id === undefined) return problem(c, 404, "NOT_FOUND");
   return respondRemoved(c, repository(c).remove(id, OWNER_ID));
+}
+
+/** Fetches the first link in the note and stores its metadata; failures store nothing. */
+async function previewMkNote(c: Context<AppEnv>, repository: Repository) {
+  const id = c.req.param("id");
+  if (id === undefined) return problem(c, 404, "NOT_FOUND");
+  const found = await findMkNote(c, repository, id);
+  if (!found.ok) return problem(c, errorStatus(found.error.code), found.error.code);
+  const url = extractMkPreviewUrl(`${found.value.title}\n${found.value.body}`);
+  if (url === null) return problem(c, 400, "INVALID_URL");
+  const preview = await fetchMkLinkPreview(url);
+  if (!preview.ok) return problem(c, preview.error === "INVALID_URL" ? 400 : 502, preview.error);
+  const updated = await repository(c).update(applyMkNotePreview(found.value, preview.value, new Date().toISOString()));
+  if (!updated.ok) return problem(c, errorStatus(updated.error.code), updated.error.code);
+  return c.json(updated.value);
 }
 
 function readBulkIds(value: unknown): string[] | null {
@@ -218,6 +297,7 @@ export function registerMkApiRoutes(app: Hono<AppEnv>, repository: Repository) {
   app.post("/api/mk/notes", (c) => createMkNoteAtBoundary(c, repository));
   app.post("/api/mk/notes/bulk", (c) => bulkMkNotes(c, repository));
   app.post("/api/mk/notes/:id/labels", (c) => setMkNoteLabels(c, repository));
+  app.post("/api/mk/notes/:id/preview", (c) => previewMkNote(c, repository));
   app.get("/api/mk/labels", (c) => listMkLabels(c, repository));
   app.post("/api/mk/labels", (c) => createMkLabelAtBoundary(c, repository));
   app.patch("/api/mk/labels/:id", (c) => renameMkLabel(c, repository));
