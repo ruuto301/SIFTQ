@@ -3,6 +3,8 @@ export function schema(properties: Record<string, unknown>, required: readonly s
   return { type: "object", properties, required: [...required], additionalProperties: false };
 }
 
+import { isRecord } from "../records";
+
 export const TASK_STATUS_SCHEMA = { type: "string", enum: ["do", "done", "skip"] };
 
 export function isArgs(value: unknown): value is Record<string, unknown> {
@@ -27,9 +29,6 @@ export function readOptionalBoolean(args: Record<string, unknown>, key: string):
   return typeof value === "boolean" ? value : null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 export type OrderUpdate = { id: string; order: number };
 

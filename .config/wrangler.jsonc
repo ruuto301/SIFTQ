@@ -10,5 +10,9 @@
       "database_id": "20ca1496-cadc-4b40-9265-1d59d55d5b82",
       "migrations_dir": "../migrations"
     }
+  ],
+  "triggers": { "crons": ["0 18 * * *"] },
+  "r2_buckets": [
+    { "binding": "BACKUPS", "bucket_name": "siftq-backups" }
   ]
 }

@@ -80,6 +80,7 @@
 | [ADR 0074: LLMクライアントをopencodeからdshへ変更する](0074-switch-llm-client-to-dsh.md) | Accepted. | 主クライアントをDeepSeek Harnessへ変更し、指示とスキルは標準探索に任せ、opencode依存を削除する。 |
 | [ADR 0075: taqt loopをdshのskillとhookへ移行する](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | Accepted. | フローをskill、検証をdshフックと外側の再検証に移し、汎用loopエンジンを削除する。 |
 | [ADR 0076: dshのセッションをageで暗号化してバックアップする](0076-back-up-dsh-sessions-with-age.md) | Accepted. | dshのセッションログをファイル単位でzstd + ageし、opencodeのDBバックアップを廃止する。 |
+| [ADR 0077: D1 を Cloudflare 内で毎日 R2 へ暗号化バックアップする](0077-d1-backup-to-r2-with-hkdf-key.md) | Accepted. | D1 は Cron Trigger と R2 で日次バックアップし、鍵は既存シークレットから HKDF で導出する。 |
 
 ## 検証待ち
 
@@ -98,3 +99,4 @@
 | V-075-001 | [ADR 0075](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | フックは検証失敗時にcommitをブロックできるか | commitが実行されず失敗理由が返る | 暫定 | フック単体テストで確認 | - | dsh実セッションで確認後 |
 | V-075-002 | [ADR 0075](0075-move-taqt-loop-to-dsh-skill-and-hooks.md) | 停止前の再試行は上限で停止できるか | 上限到達後に停止する | 暫定 | フック単体テストで確認 | - | dsh実セッションで確認後 |
 | V-071-002 | [ADR 0071](0071-adopt-cloudflare-unified-cli.md) | 統合 CLI の採用で Cloudflare 操作の入口が一つに揃うか | 主要操作が統合 CLI で完結する | 各操作が統合 CLI で実行できる | 主要操作が統合 CLI で完結する | 暫定 | 主要操作の追加・変更時 |
+| V-077-001 | [ADR 0077](0077-d1-backup-to-r2-with-hkdf-key.md) | 日次バックアップが作成され、復号して復元できるか | 30日分のアーカイブが生成される | 暫定 | 実装後に日次で確認 | - | 初回リリース後 |
