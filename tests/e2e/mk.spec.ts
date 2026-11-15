@@ -49,3 +49,18 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await actAndWaitForReload(page, () => page.locator(".matrix-modal-button--danger").click());
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveCount(0);
 });
+
+test("switches the MK screen to the dark theme", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/mk");
+
+  const shell = page.locator("[data-mk-page]");
+  const before = await shell.evaluate((element) => getComputedStyle(element).backgroundColor);
+
+  await page.locator("[data-mk-theme]").selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  const after = await shell.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(after).not.toBe(before);
+  expect(after).toBe("rgb(24, 25, 27)");
+});

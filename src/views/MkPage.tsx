@@ -1,5 +1,6 @@
-import { MK_COLORS, MK_FILTERS } from "../mk";
-import type { MkColor, MkCounts, MkFilter, MkImage, MkLabel, MkNote } from "../mk";
+import { MK_COLORS, MK_DATE_KINDS, MK_DEFAULT_SORT, MK_FILTERS, mkSortParts } from "../mk";
+import type { MkColor, MkCounts, MkDateKind, MkFilter, MkImage, MkLabel, MkNote, MkSort } from "../mk";
+import { extractMkPreviewUrl } from "../mk-link-preview";
 
 const MK_FILTER_LABELS: Record<MkFilter, string> = {
   notes: "メモ",
@@ -9,13 +10,45 @@ const MK_FILTER_LABELS: Record<MkFilter, string> = {
   trash: "ゴミ箱",
 };
 
-export function mkListHref(filter: MkFilter, query: string, color: MkColor | undefined, labelId = ""): string {
+const MK_DATE_KIND_LABELS: Record<MkDateKind, string> = {
+  created: "作成日",
+  updated: "更新日",
+};
+
+/** Every list control reads and writes this one shape, so a link can carry the whole filter. */
+export type MkState = {
+  readonly filter: MkFilter;
+  readonly labelId: string;
+  readonly query: string;
+  readonly color: MkColor | undefined;
+  readonly dateKind: MkDateKind | undefined;
+  readonly from: string | undefined;
+  readonly to: string | undefined;
+  readonly sort: MkSort | undefined;
+};
+
+export function mkListHref(state: MkState): string {
   const params = new URLSearchParams();
-  params.set("filter", filter);
-  if (labelId !== "") params.set("label", labelId);
-  if (query.trim() !== "") params.set("q", query);
-  if (color !== undefined) params.set("color", color);
+  params.set("filter", state.filter);
+  if (state.labelId !== "") params.set("label", state.labelId);
+  if (state.query.trim() !== "") params.set("q", state.query);
+  if (state.color !== undefined) params.set("color", state.color);
+  if (state.dateKind !== undefined && (state.from !== undefined || state.to !== undefined)) {
+    params.set("dateKind", state.dateKind);
+  }
+  if (state.from !== undefined) params.set("from", state.from);
+  if (state.to !== undefined) params.set("to", state.to);
+  if (state.sort !== undefined) params.set("sort", state.sort);
   return `/mk?${params.toString()}`;
+}
+
+function activeDateRange(state: MkState): boolean {
+  return (state.from !== undefined || state.to !== undefined) && state.dateKind !== undefined;
+}
+
+function mkRangeLabel(state: MkState): string {
+  const kind = state.dateKind === undefined ? "created" : state.dateKind;
+  return `${MK_DATE_KIND_LABELS[kind]}: ${state.from?.slice(0, 10) ?? ""} 〜 ${state.to?.slice(0, 10) ?? ""}`;
 }
 
 function MkComposerColors() {
@@ -158,21 +191,18 @@ function MkLabelManager({ labels }: { readonly labels: readonly MkLabel[] }) {
 type SidebarProps = {
   readonly counts: MkCounts;
   readonly labels: readonly MkLabel[];
-  readonly filter: MkFilter;
-  readonly labelId: string;
-  readonly query: string;
-  readonly color: MkColor | undefined;
+  readonly state: MkState;
 };
 
-function MkFilterLinks({ counts, filter, labelId, query, color }: SidebarProps) {
+function MkFilterLinks({ counts, state }: SidebarProps) {
   return (
     <nav class="mk-filters" aria-label="メモの絞り込み">
       {MK_FILTERS.map((candidate) => (
         <a
           key={candidate}
-          class={candidate === filter ? "mk-filter is-active" : "mk-filter"}
-          aria-current={candidate === filter ? "true" : undefined}
-          href={mkListHref(candidate, query, color, labelId)}
+          class={candidate === state.filter ? "mk-filter is-active" : "mk-filter"}
+          aria-current={candidate === state.filter ? "true" : undefined}
+          href={mkListHref({ ...state, filter: candidate })}
         >
           <span class="mk-filter__label">{MK_FILTER_LABELS[candidate]}</span>
           <span class="mk-filter__count" data-mk-count={candidate}>
@@ -184,18 +214,18 @@ function MkFilterLinks({ counts, filter, labelId, query, color }: SidebarProps) 
   );
 }
 
-function MkColorFilters({ filter, labelId, query, color }: SidebarProps) {
+function MkColorFilters({ state }: SidebarProps) {
   return (
     <div class="mk-color-filters" role="group" aria-label="色で絞り込む">
       {MK_COLORS.map((candidate) => {
-        const active = color === candidate;
+        const active = state.color === candidate;
         return (
           <a
             key={candidate}
             class={active ? "mk-color-filter is-active" : "mk-color-filter"}
             aria-current={active ? "true" : undefined}
             // The active color clears the filter so the row keeps the agreed seven swatches.
-            href={active ? mkListHref(filter, query, undefined, labelId) : mkListHref(filter, query, candidate, labelId)}
+            href={mkListHref({ ...state, color: active ? undefined : candidate })}
             data-mk-color-filter={candidate}
             aria-label={active ? `${candidate} の絞り込みを解除` : `${candidate} のメモ`}
           >
@@ -207,7 +237,118 @@ function MkColorFilters({ filter, labelId, query, color }: SidebarProps) {
   );
 }
 
-function MkLabelSection({ counts, labels, filter, labelId, query, color }: SidebarProps) {
+function MkDateRange({ state }: SidebarProps) {
+  const kind = state.dateKind ?? "created";
+  const active = activeDateRange(state);
+  return (
+    <form class="mk-dates" action="/mk" method="get" data-mk-date-form>
+      <h2 class="mk-sidebar__title">期間</h2>
+      <input type="hidden" name="filter" value={state.filter} />
+      {state.labelId === "" ? null : <input type="hidden" name="label" value={state.labelId} />}
+      {state.color === undefined ? null : <input type="hidden" name="color" value={state.color} />}
+      {state.query.trim() === "" ? null : <input type="hidden" name="q" value={state.query} />}
+      {state.sort === undefined ? null : <input type="hidden" name="sort" value={state.sort} />}
+      <label class="mk-dates__row">
+        <span>対象</span>
+        <select name="dateKind" data-mk-date-kind>
+          {MK_DATE_KINDS.map((candidate) => (
+            <option key={candidate} value={candidate} selected={candidate === kind}>
+              {MK_DATE_KIND_LABELS[candidate]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label class="mk-dates__row">
+        <span>開始日</span>
+        <input type="date" name="fromDate" value={state.from?.slice(0, 10) ?? ""} data-mk-date-from />
+        <input type="hidden" name="from" data-mk-date-from-value />
+      </label>
+      <label class="mk-dates__row">
+        <span>終了日</span>
+        <input type="date" name="toDate" value={state.to?.slice(0, 10) ?? ""} data-mk-date-to />
+        <input type="hidden" name="to" data-mk-date-to-value />
+      </label>
+      <div class="mk-dates__actions">
+        <button class="button small" type="submit">
+          適用
+        </button>
+        {active ? (
+          <a
+            class="mk-dates__clear"
+            href={mkListHref({ ...state, from: undefined, to: undefined })}
+            data-mk-date-clear
+            aria-label="期間を解除"
+          >
+            ×
+          </a>
+        ) : null}
+      </div>
+      {active ? (
+        <p class="mk-dates__active" data-mk-date-active>
+          {mkRangeLabel(state)}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+function MkSortControl({ state }: SidebarProps) {
+  const parts = mkSortParts(state.sort ?? MK_DEFAULT_SORT);
+  return (
+    <div class="mk-sort" data-mk-sort>
+      <h2 class="mk-sidebar__title">並び順</h2>
+      <label class="mk-sort__row">
+        <span>基準</span>
+        <select data-mk-sort-field>
+          <option value="updated" selected={parts.field === "updated"}>
+            更新日
+          </option>
+          <option value="created" selected={parts.field === "created"}>
+            作成日
+          </option>
+        </select>
+      </label>
+      <label class="mk-sort__row">
+        <span>順序</span>
+        <select data-mk-sort-direction>
+          <option value="desc" selected={parts.direction === "desc"}>
+            新しい順
+          </option>
+          <option value="asc" selected={parts.direction === "asc"}>
+            古い順
+          </option>
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function MkSavedSearches() {
+  return (
+    <div class="mk-saved" data-mk-saved-searches>
+      <h2 class="mk-sidebar__title">保存した検索</h2>
+      <form class="mk-saved__create" data-mk-saved-create>
+        <input
+          class="mk-saved__input"
+          type="text"
+          maxlength={50}
+          placeholder="検索名"
+          aria-label="保存する検索名"
+          data-mk-saved-name
+        />
+        <button class="button small" type="submit" data-mk-saved-save>
+          保存
+        </button>
+      </form>
+      <p class="mk-saved__empty" data-mk-saved-empty>
+        保存した検索はありません。
+      </p>
+      <ul class="mk-saved__list" data-mk-saved-list></ul>
+    </div>
+  );
+}
+
+function MkLabelSection({ counts, labels, state }: SidebarProps) {
   return (
     <div class="mk-labels">
       <div class="mk-labels__header">
@@ -221,9 +362,9 @@ function MkLabelSection({ counts, labels, filter, labelId, query, color }: Sideb
         {labels.map((label) => (
           <li key={label.id}>
             <a
-              class={label.id === labelId ? "mk-label-link is-active" : "mk-label-link"}
-              aria-current={label.id === labelId ? "true" : undefined}
-              href={mkListHref(filter, query, color, label.id)}
+              class={label.id === state.labelId ? "mk-label-link is-active" : "mk-label-link"}
+              aria-current={label.id === state.labelId ? "true" : undefined}
+              href={mkListHref({ ...state, labelId: label.id })}
               data-mk-label-link={label.id}
             >
               <span class="mk-label-link__name">{label.name}</span>
@@ -238,15 +379,18 @@ function MkLabelSection({ counts, labels, filter, labelId, query, color }: Sideb
   );
 }
 
-function MkSidebar({ counts, labels, filter, labelId, query, color }: SidebarProps) {
+function MkSidebar({ counts, labels, state }: SidebarProps) {
   return (
     <aside class="mk-sidebar">
       <button class="mk-side-new" type="button" data-mk-side-new>
         ＋ 新規メモ
       </button>
-      <MkFilterLinks counts={counts} labels={labels} filter={filter} labelId={labelId} query={query} color={color} />
-      <MkColorFilters counts={counts} labels={labels} filter={filter} labelId={labelId} query={query} color={color} />
-      <MkLabelSection counts={counts} labels={labels} filter={filter} labelId={labelId} query={query} color={color} />
+      <MkFilterLinks counts={counts} labels={labels} state={state} />
+      <MkColorFilters counts={counts} labels={labels} state={state} />
+      <MkDateRange counts={counts} labels={labels} state={state} />
+      <MkSortControl counts={counts} labels={labels} state={state} />
+      <MkSavedSearches />
+      <MkLabelSection counts={counts} labels={labels} state={state} />
       <MkLabelManager labels={labels} />
     </aside>
   );
@@ -331,6 +475,9 @@ function MkCardLabels({ labels }: { readonly labels: readonly MkLabel[] }) {
 function MkCardActions({ note }: { readonly note: MkNote }) {
   return (
     <div class="mk-card__actions">
+      <button class="mk-card__preview-fetch" type="button" data-mk-preview-fetch aria-label="リンクプレビューを取得">
+        🔗 プレビュー取得
+      </button>
       <button
         class="mk-card__pin"
         type="button"
@@ -361,6 +508,52 @@ function MkCardImage({ image }: { readonly image: MkImage | undefined }) {
   );
 }
 
+function mkPreviewDomain(note: MkNote, url: string): string {
+  if (note.preview_domain !== null && note.preview_domain !== "") return note.preview_domain;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+function hasMkPreview(note: MkNote): boolean {
+  return note.preview_domain !== null || note.preview_title !== null || note.preview_image !== null;
+}
+
+/** The note body keeps the raw link; the card upgrades it to a preview once metadata exists. */
+function MkCardPreview({ note }: { readonly note: MkNote }) {
+  const url = extractMkPreviewUrl(`${note.title}\n${note.body}`);
+  if (url === null) return null;
+  const link = (
+    <a class="mk-card__link" href={url} target="_blank" rel="noopener noreferrer nofollow" data-mk-link>
+      {mkPreviewDomain(note, url)}
+    </a>
+  );
+  if (!hasMkPreview(note)) return <p class="mk-card__plain-link">{link}</p>;
+  return (
+    <div class="mk-card__preview" data-mk-preview>
+      {note.preview_image === null ? null : (
+        <img
+          class="mk-card__preview-image"
+          src={note.preview_image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+        />
+      )}
+      <div class="mk-card__preview-text">
+        {link}
+        {note.preview_title === null ? null : <p class="mk-card__preview-title">{note.preview_title}</p>}
+        {note.preview_description === null ? null : (
+          <p class="mk-card__preview-description">{note.preview_description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MkCard({
   note,
   images,
@@ -385,39 +578,36 @@ function MkCard({
       <h2 class="mk-card__title">{note.title}</h2>
       <MkCardImage image={images[0]} />
       {note.body === "" ? null : <p class="mk-card__body">{note.body}</p>}
+      <MkCardPreview note={note} />
       <MkCardLabels labels={labels} />
     </article>
   );
 }
 
-function MkSearch({
-  filter,
-  labelId,
-  query,
-  color,
-}: {
-  readonly filter: MkFilter;
-  readonly labelId: string;
-  readonly query: string;
-  readonly color: MkColor | undefined;
-}) {
+function MkSearch({ state }: { readonly state: MkState }) {
   return (
     <form class="mk-search" action="/mk" method="get" data-mk-search>
-      <input type="hidden" name="filter" value={filter} />
-      {labelId === "" ? null : <input type="hidden" name="label" value={labelId} />}
-      {color === undefined ? null : <input type="hidden" name="color" value={color} />}
+      <input type="hidden" name="filter" value={state.filter} />
+      {state.labelId === "" ? null : <input type="hidden" name="label" value={state.labelId} />}
+      {state.color === undefined ? null : <input type="hidden" name="color" value={state.color} />}
+      {state.dateKind === undefined || !activeDateRange(state) ? null : (
+        <input type="hidden" name="dateKind" value={state.dateKind} />
+      )}
+      {state.from === undefined ? null : <input type="hidden" name="from" value={state.from} />}
+      {state.to === undefined ? null : <input type="hidden" name="to" value={state.to} />}
+      {state.sort === undefined ? null : <input type="hidden" name="sort" value={state.sort} />}
       <input
         type="search"
         name="q"
         aria-label="メモを検索"
-        value={query}
+        value={state.query}
         placeholder="メモを検索（タイトル / 本文）"
         data-mk-search-input
       />
-      {query.trim() === "" ? null : (
+      {state.query.trim() === "" ? null : (
         <a
           class="mk-search__clear"
-          href={mkListHref(filter, "", color)}
+          href={mkListHref({ ...state, query: "" })}
           aria-label="検索を解除"
           data-mk-search-clear
         >
@@ -425,6 +615,19 @@ function MkSearch({
         </a>
       )}
     </form>
+  );
+}
+
+function MkThemeToggle() {
+  return (
+    <label class="mk-theme">
+      <span class="mk-theme__label">表示</span>
+      <select class="mk-theme__select" data-mk-theme aria-label="表示テーマ">
+        <option value="system">システム</option>
+        <option value="light">ライト</option>
+        <option value="dark">ダーク</option>
+      </select>
+    </label>
   );
 }
 
@@ -439,56 +642,73 @@ function MkSnackbar() {
   );
 }
 
+function MkHeader() {
+  return (
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">MK</h1>
+        <p class="muted">メモを色とピンとラベルで整理する。</p>
+      </div>
+      <MkThemeToggle />
+    </div>
+  );
+}
+
+function MkGrid({
+  notes,
+  labelsByNote,
+  images,
+}: {
+  readonly notes: readonly MkNote[];
+  readonly labelsByNote: Readonly<Record<string, readonly MkLabel[]>>;
+  readonly images: Readonly<Record<string, readonly MkImage[]>>;
+}) {
+  if (notes.length === 0) {
+    return (
+      <p class="mk-empty" data-mk-empty>
+        メモはありません。
+      </p>
+    );
+  }
+  return (
+    <div class="mk-grid" data-mk-grid>
+      {notes.map((note) => (
+        <MkCard key={note.id} note={note} images={images[note.id] ?? []} labels={labelsByNote[note.id] ?? []} />
+      ))}
+    </div>
+  );
+}
+
 export function MkPage({
   notes,
   counts,
   labels,
   labelsByNote,
-  filter,
-  labelId,
-  query,
-  color,
+  state,
   images,
 }: {
   readonly notes: readonly MkNote[];
   readonly counts: MkCounts;
   readonly labels: readonly MkLabel[];
   readonly labelsByNote: Readonly<Record<string, readonly MkLabel[]>>;
-  readonly filter: MkFilter;
-  readonly labelId: string;
-  readonly query: string;
-  readonly color: MkColor | undefined;
+  readonly state: MkState;
   readonly images: Readonly<Record<string, readonly MkImage[]>>;
 }) {
   return (
-    <div class="page page--mk" data-mk-page data-mk-selecting="false">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">MK</h1>
-          <p class="muted">メモを色とピンとラベルで整理する。</p>
-        </div>
-      </div>
+    <div class="page page--mk" data-mk-page data-mk-selecting="false" data-mk-sort={state.sort ?? MK_DEFAULT_SORT}>
+      <MkHeader />
       <div class="mk-layout">
-        <MkSidebar counts={counts} labels={labels} filter={filter} labelId={labelId} query={query} color={color} />
+        <MkSidebar counts={counts} labels={labels} state={state} />
         <section class="mk-main">
           <div class="mk-toolbar">
-            <MkSearch filter={filter} labelId={labelId} query={query} color={color} />
+            <MkSearch state={state} />
             <button class="button small" type="button" data-mk-selection-toggle aria-pressed="false">
               ☑ 選択
             </button>
           </div>
           <MkBulkBar labels={labels} />
           <MkComposer labels={labels} />
-          {notes.length === 0 ? (
-            <p class="mk-empty" data-mk-empty>
-              メモはありません。
-            </p>
-          ) : null}
-          <div class="mk-grid" data-mk-grid>
-            {notes.map((note) => (
-              <MkCard key={note.id} note={note} images={images[note.id] ?? []} labels={labelsByNote[note.id] ?? []} />
-            ))}
-          </div>
+          <MkGrid notes={notes} labelsByNote={labelsByNote} images={images} />
         </section>
       </div>
       <MkSnackbar />

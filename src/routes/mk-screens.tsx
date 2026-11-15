@@ -2,8 +2,18 @@ import type { Context, Hono } from "hono";
 import type { JSX } from "hono/jsx/jsx-runtime";
 import { Layout } from "../components/Layout";
 import { MkPage } from "../views/MkPage";
-import { isMkColor, isMkFilter, sortMkNotes } from "../mk";
-import type { MkColor, MkFilter, MkImage, MkNote, MkNoteLabelMap, MkNoteQuery } from "../mk";
+import type { MkState } from "../views/MkPage";
+import { isMkColor, isMkDateKind, isMkFilter, normalizeMkDateBound, parseMkSort, sortMkNotesByQuery } from "../mk";
+import type {
+  MkColor,
+  MkDateKind,
+  MkFilter,
+  MkImage,
+  MkNote,
+  MkNoteLabelMap,
+  MkNoteQuery,
+  MkSort,
+} from "../mk";
 import type { AppEnv } from "../app-env";
 import type { MkRepository } from "../repository/mk-repository";
 
@@ -26,12 +36,34 @@ function readColor(value: unknown): MkColor | undefined {
   return isMkColor(value) ? value : undefined;
 }
 
-function listQuery(filter: MkFilter, color: MkColor | undefined, text: string, labelId: string): MkNoteQuery {
+function readDateKind(value: unknown): MkDateKind | undefined {
+  return isMkDateKind(value) ? value : undefined;
+}
+
+/** A malformed date simply drops the bound; the API returns a 400 for the same input. */
+function readDateBound(c: Context<AppEnv>, name: string, dateName: string, endOfDay: boolean): string | undefined {
+  const value = c.req.query(name) || c.req.query(dateName) || "";
+  if (value === "") return undefined;
+  return normalizeMkDateBound(value, endOfDay) ?? undefined;
+}
+
+function readSort(value: unknown): MkSort | undefined {
+  return parseMkSort(value) ?? undefined;
+}
+
+function listQuery(state: MkState): MkNoteQuery {
+  const text = state.query.trim();
   return {
-    filter,
-    ...(color === undefined ? {} : { color }),
+    filter: state.filter,
+    ...(state.color === undefined ? {} : { color: state.color }),
     ...(text === "" ? {} : { text }),
-    ...(labelId === "" ? {} : { labelId }),
+    ...(state.labelId === "" ? {} : { labelId: state.labelId }),
+    ...(state.dateKind === undefined || (state.from === undefined && state.to === undefined)
+      ? {}
+      : { dateKind: state.dateKind }),
+    ...(state.from === undefined ? {} : { from: state.from }),
+    ...(state.to === undefined ? {} : { to: state.to }),
+    ...(state.sort === undefined ? {} : { sort: state.sort }),
   };
 }
 
@@ -68,13 +100,18 @@ export function registerMkScreenRoutes(app: Hono<AppEnv>, repository: Repository
     const color = readColor(c.req.query("color"));
     const labelId = c.req.query("label") ?? "";
     const query = c.req.query("q") ?? "";
+    const dateKind = readDateKind(c.req.query("dateKind"));
+    const from = readDateBound(c, "from", "fromDate", false);
+    const to = readDateBound(c, "to", "toDate", true);
+    const sort = readSort(c.req.query("sort"));
+    const state: MkState = { filter, labelId, query, color, dateKind, from, to, sort };
     const [listed, counts, labels] = await Promise.all([
-      repositoryForRequest.list(OWNER_ID, listQuery(filter, color, query.trim(), labelId)),
+      repositoryForRequest.list(OWNER_ID, listQuery(state)),
       repositoryForRequest.counts(OWNER_ID),
       repositoryForRequest.listLabels(OWNER_ID),
     ]);
     if (!listed.ok || !counts.ok || !labels.ok) return c.text("Internal Server Error", 500);
-    const notes = sortMkNotes(listed.value);
+    const notes = sortMkNotesByQuery(listed.value, sort);
     const [images, labelsByNote] = await Promise.all([
       imagesByNote(repositoryForRequest, notes),
       labelsForNotes(repositoryForRequest, notes),
@@ -86,10 +123,7 @@ export function registerMkScreenRoutes(app: Hono<AppEnv>, repository: Repository
         counts={counts.value}
         labels={labels.value}
         labelsByNote={labelsByNote}
-        filter={filter}
-        labelId={labelId}
-        query={query}
-        color={color}
+        state={state}
         images={images}
       />,
     );

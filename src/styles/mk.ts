@@ -670,4 +670,252 @@ export const MK_CSS = `
   background: #fff;
   color: #1b1f24;
 }
+
+.mk-dates,
+.mk-sort,
+.mk-saved {
+  display: grid;
+  gap: 6px;
+}
+
+.mk-dates__row,
+.mk-sort__row {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.mk-dates__row select,
+.mk-dates__row input,
+.mk-sort__row select,
+.mk-saved__input {
+  background: #ffffff;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  font: inherit;
+  min-width: 0;
+  padding: 3px 6px;
+}
+
+.mk-dates__actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.mk-dates__clear {
+  color: #555555;
+  font-size: 16px;
+  text-decoration: none;
+}
+
+.mk-dates__active {
+  color: #555555;
+  font-size: 12px;
+  margin: 0;
+}
+
+.mk-saved__create {
+  display: flex;
+  gap: 6px;
+}
+
+.mk-saved__input {
+  flex: 1 1 auto;
+}
+
+.mk-saved__empty {
+  color: #555555;
+  font-size: 12px;
+  margin: 0;
+}
+
+.mk-saved__list {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-saved__row {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+}
+
+.mk-saved__name {
+  color: #303030;
+  flex: 1 1 auto;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mk-saved__action {
+  background: transparent;
+  border: 0;
+  color: #555555;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.mk-theme {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.mk-theme__select {
+  background: #ffffff;
+  border: 1px solid #bdbdbd;
+  border-radius: 4px;
+  font: inherit;
+  padding: 3px 6px;
+}
+
+.mk-card__preview-fetch {
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: #555555;
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.mk-card__preview {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  margin-top: 8px;
+}
+
+.mk-card__preview-image {
+  border: 1px solid #bdbdbd;
+  border-radius: 6px;
+  height: 72px;
+  object-fit: cover;
+  width: 72px;
+}
+
+.mk-card__preview-text {
+  min-width: 0;
+}
+
+.mk-card__link {
+  color: #1b4b8f;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.mk-card__preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 2px 0 0;
+}
+
+.mk-card__preview-description {
+  color: #555555;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 2px 0 0;
+  max-height: 54px;
+  overflow: hidden;
+}
+
+.mk-card__plain-link {
+  margin: 8px 0 0;
+}
+
+/* MK だけのダークテーマ。MyKeep の暗色値を [data-mk-page] 配下に限定して適用する。 */
+html[data-theme="dark"] .page--mk {
+  background: #18191b;
+  color: #eeeae0;
+}
+
+html[data-theme="dark"] .page--mk .mk-card {
+  background: #2c2e31;
+  border-color: #55565a;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--red {
+  background: #563433;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--orange {
+  background: #58402d;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--yellow {
+  background: #544b2d;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--green {
+  background: #304a37;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--blue {
+  background: #2c4059;
+}
+
+html[data-theme="dark"] .page--mk .mk-card--purple {
+  background: #473851;
+}
+
+html[data-theme="dark"] .page--mk .mk-card__body,
+html[data-theme="dark"] .page--mk .mk-card__preview-description,
+html[data-theme="dark"] .page--mk .mk-empty,
+html[data-theme="dark"] .page--mk .mk-dates__active,
+html[data-theme="dark"] .page--mk .mk-saved__empty,
+html[data-theme="dark"] .page--mk .muted {
+  color: #bcbdbd;
+}
+
+html[data-theme="dark"] .page--mk .mk-card__link {
+  color: #a3caff;
+}
+
+html[data-theme="dark"] .page--mk .mk-filter,
+html[data-theme="dark"] .page--mk .mk-label-link,
+html[data-theme="dark"] .page--mk .mk-saved__name {
+  color: #eeeae0;
+}
+
+html[data-theme="dark"] .page--mk .mk-filter:hover,
+html[data-theme="dark"] .page--mk .mk-filter:focus-visible {
+  background: #2c2e31;
+}
+
+html[data-theme="dark"] .page--mk .mk-filter.is-active {
+  background: #2c2e31;
+  border-color: #55565a;
+  color: #eeeae0;
+}
+
+html[data-theme="dark"] .page--mk .mk-composer,
+html[data-theme="dark"] .page--mk .mk-bulk-bar,
+html[data-theme="dark"] .page--mk .mk-label-manager {
+  background: #2c2e31;
+  border-color: #55565a;
+  color: #eeeae0;
+}
+
+html[data-theme="dark"] .page--mk input,
+html[data-theme="dark"] .page--mk select,
+html[data-theme="dark"] .page--mk textarea {
+  background: #232527;
+  border-color: #55565a;
+  color: #eeeae0;
+}
+
+html[data-theme="dark"] .page--mk .mk-label-chip {
+  background: #3a3c40;
+  border-color: #55565a;
+  color: #eeeae0;
+}
 `;

@@ -375,6 +375,14 @@
         "code": "INVALID_COLOR"
       },
       {
+        "status": 400,
+        "code": "INVALID_DATE"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_SORT"
+      },
+      {
         "status": 500
       }
     ]
@@ -447,6 +455,22 @@
       {
         "status": 404,
         "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "mk_notes_id_preview": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_URL"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 502,
+        "code": "PREVIEW_FAILED"
       }
     ]
   },

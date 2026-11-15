@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import app from "../../src/index";
 import { SESSION_COOKIE_NAME, createSession } from "../../src/auth";
 import { createMemoryMkRepository } from "../../src/preview/MemoryMkRepository";
@@ -443,5 +443,149 @@ describe("MK screen follows the agreed mock (BDD-TM-037)", () => {
     const filtered = await (await request("/mk?q=memo")).text();
     expect(filtered).toContain("data-mk-search-clear");
     expect(filtered).toContain('value="memo"');
+  });
+});
+
+describe("MK date range and sort API", () => {
+  it("filters by the created date range with inclusive bounds", async () => {
+    const first = await createNote("古いメモ");
+    const second = await createNote("新しいメモ");
+    const both = [first.id, second.id].sort();
+
+    const future = "2999-01-01";
+    const past = "2000-01-01";
+
+    expect((await readNotes(await request(`/api/mk/notes?dateKind=created&from=${past}`))).map((note) => note.id).sort()).toEqual(both);
+    expect(await readNotes(await request(`/api/mk/notes?dateKind=created&from=${future}`))).toEqual([]);
+    expect(await readNotes(await request(`/api/mk/notes?dateKind=created&to=${past}`))).toEqual([]);
+    expect((await readNotes(await request(`/api/mk/notes?dateKind=created&to=${future}`)))).toHaveLength(2);
+  });
+
+  it("filters by the updated date range", async () => {
+    const note = await createNote("更新対象");
+    await jsonRequest(`/api/mk/notes/${note.id}`, "PATCH", { title: "更新済み" });
+
+    expect((await readNotes(await request("/api/mk/notes?dateKind=updated&from=2000-01-01"))).map((item) => item.id)).toEqual([
+      note.id,
+    ]);
+    expect(await readNotes(await request("/api/mk/notes?dateKind=updated&from=2999-01-01"))).toEqual([]);
+  });
+
+  it("rejects malformed date and sort values", async () => {
+    expect((await request("/api/mk/notes?from=not-a-date")).status).toBe(400);
+    expect((await request("/api/mk/notes?dateKind=deleted")).status).toBe(400);
+    expect((await request("/api/mk/notes?sort=updated:sideways")).status).toBe(400);
+    expect((await request("/api/mk/notes?sort=deleted:asc")).status).toBe(400);
+    expect((await request("/api/mk/notes?sort=created:asc")).status).toBe(200);
+  });
+
+  it("orders notes by the requested field and direction", async () => {
+    await createNote("A");
+    const middle = await createNote("B");
+    await jsonRequest(`/api/mk/notes/${middle.id}`, "PATCH", { title: "B 更新" });
+    await createNote("C");
+
+    const readTimes = async (sort: string, field: "created_at" | "updated_at") =>
+      (await readNotes(await request(`/api/mk/notes?sort=${sort}`))).map((note) => note[field]);
+
+    const ascending = await readTimes("updated:asc", "updated_at");
+    expect(ascending).toEqual([...ascending].sort());
+    const descending = await readTimes("updated:desc", "updated_at");
+    expect(descending).toEqual([...descending].sort().reverse());
+    const created = await readTimes("created:asc", "created_at");
+    expect(created).toEqual([...created].sort());
+  });
+});
+
+describe("MK link preview API", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubPreviewFetch(body: string): void {
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }),
+    );
+  }
+
+  it("fetches and stores the metadata of the first note URL", async () => {
+    const note = await createNote("リンク", "参考 https://example.com/post");
+    stubPreviewFetch(
+      `<meta property="og:title" content="Example post"><meta property="og:description" content="説明"><meta property="og:image" content="https://cdn.example.com/a.png">`,
+    );
+
+    const response = await request(`/api/mk/notes/${note.id}/preview`, { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(await readNote(response)).toEqual(
+      expect.objectContaining({
+        id: note.id,
+        preview_title: "Example post",
+        preview_description: "説明",
+        preview_image: "https://cdn.example.com/a.png",
+        preview_domain: "example.com",
+      }),
+    );
+
+    const rendered = await (await request("/mk")).text();
+    expect(rendered).toContain("data-mk-preview");
+    expect(rendered).toContain("data-mk-link");
+  });
+
+  it("rejects a note without a URL and a note with a local URL", async () => {
+    const plain = await createNote("URL なし", "本文だけ");
+    expect((await request(`/api/mk/notes/${plain.id}/preview`, { method: "POST" })).status).toBe(400);
+
+    const local = await createNote("ローカル", "http://127.0.0.1/secret");
+    expect((await request(`/api/mk/notes/${local.id}/preview`, { method: "POST" })).status).toBe(400);
+    expect((await request("/api/mk/notes/missing/preview", { method: "POST" })).status).toBe(404);
+  });
+
+  it("records nothing when the fetch fails", async () => {
+    const note = await createNote("失敗", "https://example.com/down");
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("down");
+    });
+
+    expect((await request(`/api/mk/notes/${note.id}/preview`, { method: "POST" })).status).toBe(502);
+    const listed = await readNotes(await request("/api/mk/notes"));
+    expect(listed[0]?.preview_fetched_at).toBeNull();
+    expect(listed[0]?.preview_title).toBeNull();
+  });
+});
+
+describe("MK phase 3 screen controls", () => {
+  it("renders the date range, sort, saved search, and theme controls", async () => {
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain("data-mk-date-form");
+    expect(html).toContain("data-mk-date-kind");
+    expect(html).toContain("data-mk-sort-field");
+    expect(html).toContain("data-mk-saved-searches");
+    expect(html).toContain("data-mk-theme");
+    expect(html).toContain('data-mk-sort="updated:desc"');
+  });
+
+  it("shows the active date range with its clear control", async () => {
+    const html = await (await request("/mk?dateKind=updated&from=2026-01-01&to=2026-01-31")).text();
+
+    expect(html).toContain("data-mk-date-active");
+    expect(html).toContain("data-mk-date-clear");
+    expect(html).toContain("2026-01-01");
+  });
+
+  it("keeps the sort parameter in the sidebar links", async () => {
+    const html = await (await request("/mk?sort=created:asc")).text();
+
+    expect(html).toContain("sort=created%3Aasc");
+  });
+
+  it("serves the phase 3 client hooks in /mk.js", async () => {
+    const body = await (await request("/mk.js")).text();
+
+    expect(body).toContain("/preview");
+    expect(body).toContain("mk-saved-searches:v1");
+    expect(body).toContain("mk-theme:v1");
+    expect(body).toContain("data-mk-date-form");
   });
 });
