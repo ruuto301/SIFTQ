@@ -18,7 +18,8 @@ test("creates, pins, searches, bulk recolors, and deletes an MK note", async ({ 
   await expect(card).toHaveAttribute("data-mk-color", "blue");
   await expect(card.locator(".mk-card__body")).toHaveText("e2e body");
 
-  await card.locator("[data-mk-pin]").click();
+  await page.goto("/mk");
+  await page.locator(".mk-card").filter({ hasText: title }).locator("[data-mk-pin]").click();
   await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveAttribute("data-mk-pinned", "true");
 
   await page.getByLabel("メモを検索").fill(title);

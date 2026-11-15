@@ -41,6 +41,6 @@ export async function respondRemoved<E extends { code: string }>(
 
 export function errorStatus(code: string): ContentfulStatusCode {
   if (code === "NOT_FOUND") return 404;
-  if (code === "CONFLICT") return 409;
+  if (code === "CONFLICT" || code === "INVALID_STATE") return 409;
   return 400;
 }
