@@ -28,13 +28,13 @@ describe("styles", () => {
     expect(sidePanel?.[0]).toContain("margin-bottom: 8px;");
   });
 
-  it("styles the project label and the unassigned variant in a lighter tone", () => {
+  it("styles the project label and the unassigned variant with outline tones", () => {
     const label = STYLES_CSS.match(/(?:^|\n)\.label\s*\{[^}]*\}/);
     const project = STYLES_CSS.match(/(?:^|\n)\.label--project\s*\{[^}]*\}/);
     const none = STYLES_CSS.match(/(?:^|\n)\.label--project-none\s*\{[^}]*\}/);
     expect(label?.[0]).toContain("border-radius: 999px;");
-    expect(project?.[0]).toContain("color: #1b1f24;");
-    expect(none?.[0]).toContain("color: #3f4854;");
+    expect(project?.[0]).toContain("color: #303030;");
+    expect(none?.[0]).toContain("color: #555555;");
     expect(STYLES_CSS).toContain(".project-select");
   });
 
@@ -46,7 +46,7 @@ describe("styles", () => {
 
   it("keeps the disabled DS composer button label visible", () => {
     const disabled = STYLES_CSS.match(/(?:^|\n)\.ds__new-add:disabled\s*\{[^}]*\}/);
-    expect(disabled?.[0]).toContain("color: #8b949e;");
+    expect(disabled?.[0]).toContain("color: #8a8a8a;");
   });
 
   it("does not change the DS status tab colors on hover", () => {
@@ -97,16 +97,16 @@ describe("DS project groups", () => {
 
   it("uses the header as the top edge and the count badge as an outline", () => {
     const head = cssBlock(/(?:^|\n)\.ds__group-head\s*\{[^}]*\}/);
-    expect(head).toContain("background: #000;");
-    expect(head).toContain("color: #fff;");
-    expect(head).toContain("border: 0;");
+    expect(head).toContain("background: #d8d8d8;");
+    expect(head).toContain("color: #303030;");
+    expect(head).toContain("border: 2px solid #1f1f1f;");
     expect(head).toContain("border-radius: 0;");
     expect(head).toContain("cursor: pointer;");
 
     const count = cssBlock(/(?:^|\n)\.ds__group-count\s*\{[^}]*\}/);
     expect(count).toContain("background: transparent;");
-    expect(count).toContain("border: 1px solid #8b949e;");
-    expect(count).toContain("color: #fff;");
+    expect(count).toContain("border: 1px solid #bdbdbd;");
+    expect(count).toContain("color: #555555;");
   });
 
   it("pads the framed body and drops the card shadow", () => {
@@ -114,7 +114,7 @@ describe("DS project groups", () => {
     expect(tasks).toContain("padding: 8px;");
 
     const card = cssBlock(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
-    expect(card).toContain("border: 1px solid #d8dde3;");
+    expect(card).toContain("border: 2px solid #1f1f1f;");
     expect(card).toContain("border-radius: 10px;");
     expect(card).not.toContain("box-shadow");
   });
@@ -161,7 +161,7 @@ describe("Idea height cap", () => {
 describe("Idea card description divider", () => {
   it("draws a top border above the description but not on empty cards", () => {
     const description = STYLES_CSS.match(/(?:^|\n)\.idea-card__description\s*\{[^}]*\}/);
-    expect(description?.[0]).toContain("border-top: 1px solid #8b949e;");
+    expect(description?.[0]).toContain("border-top: 1px solid #bdbdbd;");
 
     const empty = STYLES_CSS.match(/(?:^|\n)\.idea-card__description--empty\s*\{[^}]*\}/);
     expect(empty?.[0]).toContain("border-top: 0;");
@@ -171,8 +171,8 @@ describe("Idea card description divider", () => {
 describe("Idea detail description divider", () => {
   it("draws a top border above the detail description but not when empty", () => {
     const description = STYLES_CSS.match(/(?:^|\n)\.idea-detail__description\s*\{[^}]*\}/g);
-    const bordered = description?.find((rule) => rule.includes("border-top: 1px solid #8b949e;"));
-    expect(bordered).toContain("border-top: 1px solid #8b949e;");
+    const bordered = description?.find((rule) => rule.includes("border-top: 1px solid #bdbdbd;"));
+    expect(bordered).toContain("border-top: 1px solid #bdbdbd;");
     expect(bordered).toContain("padding: 12px 0 0;");
 
     const empty = STYLES_CSS.match(/(?:^|\n)\.idea-detail__description--empty\s*\{[^}]*\}/);
@@ -182,38 +182,38 @@ describe("Idea detail description divider", () => {
 });
 
 describe("unified palette", () => {
-  it("puts the header on a white surface with a black outline", () => {
+  it("puts the header on the page tone with a hairline outline", () => {
     const topbar = STYLES_CSS.match(/(?:^|\n)\.topbar\s*\{[^}]*\}/);
-    expect(topbar?.[0]).toContain("background: #fff;");
-    expect(topbar?.[0]).toContain("border: 1px solid #1b1f24;");
+    expect(topbar?.[0]).toContain("background: #cccccc;");
+    expect(topbar?.[0]).toContain("border: 1px solid #bdbdbd;");
   });
 
-  it("renders nav and buttons as black and white pills", () => {
+  it("renders nav and buttons as outlined pills with inverted active states", () => {
     const button = STYLES_CSS.match(/(?:^|\n)\.nav a,\s*\n?\.button\s*\{[^}]*\}/);
-    expect(button?.[0]).toContain("background: #fff;");
+    expect(button?.[0]).toContain("background: #e4e4e4;");
     expect(button?.[0]).toContain("border-radius: 999px;");
     const active = STYLES_CSS.match(/(?:^|\n)\.nav \.active,\s*\n?\.button\.primary\s*\{[^}]*\}/);
-    expect(active?.[0]).toContain("background: #1b1f24;");
+    expect(active?.[0]).toContain("background: #262626;");
     const filter = STYLES_CSS.match(/(?:^|\n)\.task-status-filter \.button\.is-active\s*\{[^}]*\}/);
-    expect(filter?.[0]).toContain("background: #1b1f24;");
+    expect(filter?.[0]).toContain("background: #262626;");
   });
 
-  it("keeps done and skip as outlined muted accents", () => {
+  it("keeps done and skip as monochrome accents", () => {
     const done = STYLES_CSS.match(/(?:^|\n)\.status--done\s*\{[^}]*\}/);
-    expect(done?.[0]).toContain("background: transparent;");
-    expect(done?.[0]).toContain("border-color: #3f6b4f;");
-    expect(done?.[0]).toContain("color: #2f4a38;");
+    expect(done?.[0]).toContain("background: #262626;");
+    expect(done?.[0]).toContain("border: 2px solid #dcdcdc;");
+    expect(done?.[0]).toContain("color: #dcdcdc;");
     const skip = STYLES_CSS.match(/(?:^|\n)\.status--skip\s*\{[^}]*\}/);
-    expect(skip?.[0]).toContain("border-color: #6b7280;");
+    expect(skip?.[0]).toContain("border-color: #6b6b6b;");
   });
 
-  it("uses white surfaces for the page, DS and login", () => {
+  it("uses the monochrome page and surface tones", () => {
     const ds = STYLES_CSS.match(/(?:^|\n)\.ds\s*\{[^}]*\}/);
-    expect(ds?.[0]).toContain("background: #fff;");
+    expect(ds?.[0]).toContain("background: #cccccc;");
     const login = STYLES_CSS.match(/(?:^|\n)\.login\s*\{[^}]*\}/);
-    expect(login?.[0]).toContain("background: #fff;");
+    expect(login?.[0]).toContain("background: #cccccc;");
     const list = STYLES_CSS.match(/(?:^|\n)\.list\s*\{[^}]*\}/);
-    expect(list?.[0]).toContain("background: #fff;");
+    expect(list?.[0]).toContain("background: #d8d8d8;");
   });
 
   it("no longer carries the old gray and green accents", () => {

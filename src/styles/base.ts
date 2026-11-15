@@ -1,9 +1,9 @@
 export const BASE_CSS = `
 :root {
-  color: #1b1f24;
-  background: #fff;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+  color: #303030;
+  background: #cccccc;
+  font-family: "Atkinson Hyperlegible", "Noto Sans JP", Inter, ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -18,7 +18,27 @@ export const BASE_CSS = `
 }
 
 body {
+  background: #cccccc;
+  color: #303030;
+  font-size: 14.5px;
+  letter-spacing: 0.005em;
+  line-height: 1.7;
   margin: 0;
+}
+
+/* Compact rows keep their density; the taller reading rhythm is for prose. */
+.task-row,
+.ds__task-item,
+.ds__group-head,
+.ds__task,
+.task-bulk-menu-items button,
+.task-label-menu a,
+.nav a,
+.button,
+.label,
+.status,
+.task-list-toolbar {
+  line-height: 1.4;
 }
 
 html:has(dialog[open]) {
@@ -26,13 +46,12 @@ html:has(dialog[open]) {
 }
 
 ::selection {
-  background: #444444;
-  color: #ffffff;
+  background: #d9d9d9;
+  color: #1f1f1f;
 }
 
 :focus-visible {
-  box-shadow: 0 0 0 4px rgb(27 31 36 / 18%);
-  outline: 2px solid #1b1f24;
+  outline: 2px solid #1f1f1f;
   outline-offset: 2px;
 }
 
@@ -40,7 +59,7 @@ html:has(dialog[open]) {
 .ideas-composer__description,
 .idea-detail-modal .idea-detail__form,
 .idea-detail__description {
-  scrollbar-color: #8b949e transparent;
+  scrollbar-color: #8a8a8a transparent;
   scrollbar-width: thin;
 }
 
@@ -84,7 +103,7 @@ html:has(dialog[open]) {
 .ideas-composer__description:focus-within::-webkit-scrollbar-thumb,
 .idea-detail-modal .idea-detail__form:focus-within::-webkit-scrollbar-thumb,
 .idea-detail__description:focus-within::-webkit-scrollbar-thumb {
-  background: #8b949e;
+  background: #8a8a8a;
 }
 
 a {
@@ -98,8 +117,8 @@ a {
 
 .topbar {
   align-items: center;
-  background: #fff;
-  border: 1px solid #1b1f24;
+  background: #cccccc;
+  border: 1px solid #bdbdbd;
   display: flex;
   gap: 16px;
   justify-content: flex-start;
@@ -113,9 +132,9 @@ a {
 }
 
 .move-error {
-  background: #f8d7da;
-  border-bottom: 1px solid #d73a49;
-  color: #7a1c24;
+  background: #e8e8e8;
+  border: 1px solid #1f1f1f;
+  color: #303030;
   font-weight: 600;
   margin: 0;
   padding: 12px 20px;
@@ -140,10 +159,10 @@ a {
 
 .nav a,
 .button {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #e4e4e4;
+  border: 2px solid #1f1f1f;
   border-radius: 999px;
-  color: #1b1f24;
+  color: #303030;
   display: inline-flex;
   font-size: 14px;
   font-weight: 600;
@@ -153,9 +172,9 @@ a {
 
 .nav .active,
 .button.primary {
-  background: #1b1f24;
-  border-color: #1b1f24;
-  color: #ffffff;
+  background: #262626;
+  border-color: #dcdcdc;
+  color: #dcdcdc;
 }
 
 .page {
@@ -177,9 +196,9 @@ a {
 }
 
 .task-status-filter .button.is-active {
-  background: #1b1f24;
-  border-color: #1b1f24;
-  color: #ffffff;
+  background: #262626;
+  border-color: #dcdcdc;
+  color: #dcdcdc;
 }
 
 .task-status-filter--toolbar {
@@ -193,7 +212,7 @@ a {
 
 .task-selection-summary {
   align-items: center;
-  color: #1b1f24;
+  color: #303030;
   display: flex;
   font-size: 14px;
   font-weight: 600;
@@ -214,13 +233,13 @@ a {
 }
 
 .page-title {
-  color: #1b1f24;
+  color: #303030;
   font-size: 24px;
   margin: 0;
 }
 
 .muted {
-  color: #57606a;
+  color: #555555;
   font-size: 13px;
 }
 
@@ -235,35 +254,34 @@ a {
 }
 
 .label--project {
-  background: #fff;
-  border-color: #d8dde3;
-  color: #1b1f24;
+  background: #e4e4e4;
+  border-color: #1f1f1f;
+  color: #303030;
 }
 
 .label--project-none {
-  background: #fff;
-  border-color: #d8dde3;
-  color: #3f4854;
+  background: #e4e4e4;
+  border-color: #bdbdbd;
+  color: #555555;
 }
 
 .task-card,
 .task-row {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
 }
 
 .form-panel,
 .side-panel,
 .state-card {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
 }
 
 .task-card {
-  border-color: #1b1f24;
-  box-shadow: 0 1px 2px rgb(31 35 40 / 12%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
   display: flex;
   flex-direction: column;
   margin-bottom: 12px;
@@ -273,12 +291,12 @@ a {
 
 .task-card--working,
 .task-row--working {
-  border-left: 4px solid #3f6b4f;
+  border-left: 4px solid #6b6b6b;
 }
 
 .task-card:hover {
-  border-color: #1b1f24;
-  box-shadow: 0 0 0 2px #e5e7eb;
+  border-color: #1f1f1f;
+  box-shadow: 0 0 0 2px #bdbdbd;
 }
 
 .task-card-header {
@@ -304,28 +322,28 @@ a {
 
 .status--do {
   background: transparent;
-  border-color: #1b1f24;
-  color: #1b1f24;
+  border-color: #1f1f1f;
+  color: #303030;
 }
 
 .status--done {
-  background: transparent;
-  border-color: #3f6b4f;
-  color: #2f4a38;
+  background: #262626;
+  border: 2px solid #dcdcdc;
+  color: #dcdcdc;
 }
 
 .status--skip {
   background: transparent;
-  border-color: #6b7280;
-  color: #3f4854;
+  border-color: #6b6b6b;
+  color: #3f3f3f;
 }
 
 .working-badge {
   align-items: center;
   background: transparent;
-  border: 1px solid #3f6b4f;
+  border: 1px solid #6b6b6b;
   border-radius: 999px;
-  color: #3f6b4f;
+  color: #6b6b6b;
   display: inline-flex;
   font-size: 12px;
   font-weight: 700;
@@ -335,7 +353,7 @@ a {
 }
 
 .working-badge::before {
-  background: #3f6b4f;
+  background: #6b6b6b;
   border-radius: 50%;
   content: "";
   height: 6px;
@@ -347,14 +365,14 @@ a {
 }
 
 .project-select--none {
-  color: #3f4854;
+  color: #555555;
 }
 
 .matrix-menu {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgb(31 35 40 / 18%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   display: grid;
   min-width: 220px;
   padding: 6px;
@@ -373,16 +391,16 @@ a {
 }
 
 .matrix-menu-item:hover {
-  background: #f3f6fa;
+  background: #e4e4e4;
 }
 
 .matrix-menu-item--delete {
-  color: #1b1f24;
+  color: #303030;
 }
 
 .matrix-modal-backdrop {
   align-items: center;
-  background: rgb(31 35 40 / 45%);
+  background: rgb(0 0 0 / 45%);
   display: flex;
   inset: 0;
   justify-content: center;
@@ -392,10 +410,10 @@ a {
 }
 
 .matrix-modal {
-  background: #fff;
-  border: 1px solid #d8dde3;
+  background: #d8d8d8;
+  border: 2px solid #1f1f1f;
   border-radius: 12px;
-  box-shadow: 0 16px 36px rgb(31 35 40 / 30%);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 30%);
   display: flex;
   flex-direction: column;
   height: 160px;
@@ -418,7 +436,7 @@ a {
 }
 
 .matrix-modal-button {
-  border: 1px solid #d8dde3;
+  border: 2px solid #1f1f1f;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -428,21 +446,21 @@ a {
 }
 
 .matrix-modal-button--cancel {
-  background: #fff;
+  background: #e4e4e4;
 }
 
 .matrix-modal-button--cancel:hover {
-  background: #f3f6fa;
+  background: #d8d8d8;
 }
 
 .matrix-modal-button--danger {
-  background: #1b1f24;
-  border-color: #1b1f24;
-  color: #ffffff;
+  background: #262626;
+  border-color: #dcdcdc;
+  color: #dcdcdc;
 }
 
 .matrix-modal-button--danger:hover {
-  background: #1b1f24;
+  background: #303030;
 }
 
 @media (width < 40rem) {

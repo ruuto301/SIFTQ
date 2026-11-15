@@ -220,7 +220,10 @@ function saveMkComposer(composer) {
     return mkSetNoteLabels(note.id, mkComposerLabelIds(composer)).then(function () {
       return mkLinkComposerImages(composer, note.id);
     });
-  }).then(mkReload).catch(function () {
+  }).then(function () {
+    // 作成したメモが必ず見えるよう、絞り込み・検索・色の条件を外した一覧へ戻る。
+    window.location.assign("/mk");
+  }).catch(function () {
     mkShowComposerError(composer, "保存に失敗しました。");
   });
 }
@@ -462,6 +465,14 @@ function initializeMkComposer(page) {
   });
   initializeMkComposerImageInput(composer);
 }
+function initializeMkSideNew(page) {
+  var button = page.querySelector("[data-mk-side-new]");
+  if (!button) return;
+  button.addEventListener("click", function () {
+    var composer = page.querySelector("[data-mk-composer]");
+    if (composer) setMkComposerOpen(composer, true);
+  });
+}
 function initializeMkActions(page) {
   page.addEventListener("click", function (event) {
     var target = event.target;
@@ -543,6 +554,7 @@ function initializeMk() {
   if (!page || page.getAttribute("data-mk-initialized") === "true") return;
   page.setAttribute("data-mk-initialized", "true");
   initializeMkComposer(page);
+  initializeMkSideNew(page);
   initializeMkActions(page);
   initializeMkToolbar(page);
   initializeMkLabelManager(page);

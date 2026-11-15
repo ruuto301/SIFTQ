@@ -57,7 +57,7 @@ export const SCREENS: readonly Screen[] = [
     path: "/settings",
     pageId: "html_settings_page",
     clientFiles: ["settings-scripts.ts"],
-    nav: { label: "Settings", order: 3, activeKey: "settings" },
+    nav: { label: "Settings", order: 4, activeKey: "settings" },
   },
   {
     path: "/ideas",

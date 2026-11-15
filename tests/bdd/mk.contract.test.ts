@@ -406,3 +406,42 @@ describe("MK note images API", () => {
     expect(rendered).toContain(`/api/images/${second.id}`);
   });
 });
+
+describe("MK screen follows the agreed mock (BDD-TM-037)", () => {
+  it("renders the seven color filters without an all-colors chip", async () => {
+    const html = await (await request("/mk")).text();
+
+    for (const color of ["default", "red", "orange", "yellow", "green", "blue", "purple"]) {
+      expect(html).toContain(`data-mk-color-filter="${color}"`);
+    }
+    expect(html).not.toContain('data-mk-color-filter="all"');
+    expect(html).not.toContain("mk-color-filter__dot--all");
+  });
+
+  it("lets the active color clear the filter instead of adding an all-colors chip", async () => {
+    const html = await (await request("/mk?color=red")).text();
+
+    // The active swatch links back to the unfiltered list.
+    expect(html).toContain('href="/mk?filter=notes" data-mk-color-filter="red"');
+    expect(html).toContain('aria-label="red の絞り込みを解除"');
+  });
+
+  it("renders the sidebar new-memo button, search, selection and composer wording", async () => {
+    const html = await (await request("/mk")).text();
+
+    expect(html).toContain("data-mk-side-new");
+    expect(html).toContain("＋ 新規メモ");
+    expect(html).toContain('placeholder="メモを検索（タイトル / 本文）"');
+    expect(html).toContain("☑ 選択");
+    expect(html).toContain('placeholder="新しいメモのタイトル"');
+    expect(html).toContain("Ctrl+V で画像を貼り付け");
+  });
+
+  it("shows the search clear control only when a query is present", async () => {
+    expect(await (await request("/mk")).text()).not.toContain("data-mk-search-clear");
+
+    const filtered = await (await request("/mk?q=memo")).text();
+    expect(filtered).toContain("data-mk-search-clear");
+    expect(filtered).toContain('value="memo"');
+  });
+});
