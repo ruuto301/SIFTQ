@@ -48,6 +48,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-021 | ユーザーは、DS を見ながら選択中タスクの title と description を直したい。 | screens.md |
 | REQ-TM-022 | ユーザーは、メモ画面を参照元と同じ色数と導線で使いたい。 | screens.md |
 | REQ-TM-023 | ユーザーは、長時間の利用でも目が疲れにくい画面で SIFTQ を使いたい。 | screens.md |
+| REQ-TM-024 | ユーザーは、作成したタスクを DS の同じプロジェクトの先頭で見つけたい。 | screens.md |
 
 ## 仕様
 
@@ -87,6 +88,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-030 | REQ-TM-021 | DS の中央ペインは `task` / `Chat` / `設定` の順にタブを表示し、`task` タブで選択中 task の title と description を編集して `PATCH /api/tasks/<id>` で保存する。保存に成功したら version と左ペインのカード title を更新し、409 のときは入力を保持してエラーを表示する。 | BDD-TM-036 |
 | SPEC-TM-031 | REQ-TM-022 | MK 画面の色絞り込みは 7 色のみとし、選択中の色をもう一度押すと解除する。サイドバーに `＋ 新規メモ` を置き、検索は `メモを検索（タイトル / 本文）` と解除の × を、選択は `☑ 選択` を、入力欄は `新しいメモのタイトル` と `本文。Ctrl+V で画像を貼り付けできます。` を表示する。 | BDD-TM-037 |
 | SPEC-TM-032 | REQ-TM-023 | 全画面は無彩色（彩度 0）のモノクロームとし、ページ `#cccccc`、面板 `#d8d8d8`、操作要素 `#e4e4e4`、本文 `#303030`、補助 `#555555` を使う。一覧・パネル・ポップオーバー・操作要素は 2px `#1f1f1f` の黒縁、黒地の要素は `#262626` + 2px `#dcdcdc` の軟白縁、タスク一覧は外周 1 枠で行間は 1px `#bdbdbd` のヘアライン、ドロップダウンは本体 2px・項目 1px の黒縁とする。本文は Atkinson Hyperlegible と Noto Sans JP を優先するフォントスタック、行間 1.7 とし、文字コントラスト 4.5:1 以上・境界 3:1 以上を満たす（外部フォントは読み込まない）。 | BDD-TM-038 |
+| SPEC-TM-033 | REQ-TM-024 | task の作成は、既存 task の `order` を 1 つずつ繰り下げてから新しい task を `order = 1` で挿入する。`/tasks` の新規作成フォームと `POST /api/tasks` の `position: "first"` で同じ並びになる。 | BDD-TM-039 |
 
 ## BDD 候補
 
@@ -128,6 +130,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-036 | SPEC-TM-030 | DS の `task` タブで title と description を編集して保存すると、その内容がタスクに反映され、左ペインのカードも更新される。 | 正常 |
 | BDD-TM-037 | SPEC-TM-031 | MK 画面に色が 7 つ並び、`＋ 新規メモ` から入力欄が開き、検索・選択・入力欄の文言が合意どおりである。 | 正常 |
 | BDD-TM-038 | SPEC-TM-032 | Tasks・New task・DS・ログインのいずれでもモノクロームの色・2px 黒縁・1 枠のタスク一覧・黒縁のドロップダウンが適用され、フォントスタックに Atkinson Hyperlegible と Noto Sans JP が含まれる。 | 正常 |
+| BDD-TM-039 | SPEC-TM-033 | `/tasks` から新規作成した task が、DS の同じ project グループの先頭に表示される。 | 正常 |
 
 ## 未決事項
 

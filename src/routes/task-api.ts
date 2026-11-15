@@ -3,12 +3,14 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   applyTaskPatch,
   createTask,
+  FIRST_TASK_ORDER,
   isRecord,
   isTaskOrderValid,
   isTaskStatus,
   nextTaskOrder,
   parseTaskPatch,
   parseTaskVersionInputs,
+  tasksShiftedForFirstPlace,
 } from "../task";
 import type { DomainError, Result, Task, TaskStatus, TaskVersionInput } from "../task";
 import type { Project } from "../project";
@@ -82,18 +84,6 @@ function readOrderUpdates(value: unknown, isValidOrder: (order: number) => boole
 function readCreatePosition(value: unknown): "first" | "last" | null {
   if (value === undefined || value === "last") return "last";
   return value === "first" ? "first" : null;
-}
-
-/** Shifts every existing task down by one so a new task can take the first position. */
-async function shiftTasksForFirstPlace<T extends ApiEnv>(
-  c: Context<T>,
-  deps: TaskDeps<T>,
-  tasks: readonly Task[],
-) {
-  const updates = tasks
-    .map((task) => ({ id: task.id, order: task.order + 1 }))
-    .sort((left, right) => right.order - left.order);
-  return deps.repository(c).move(updates);
 }
 
 function createTaskAtBoundary({
@@ -222,12 +212,12 @@ async function createApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>)
   const listed = await deps.repository(c).list();
   if (!listed.ok) return problem(c, 500, listed.error.code);
   if (position === "first" && listed.value.length > 0) {
-    const shifted = await shiftTasksForFirstPlace(c, deps, listed.value);
+    const shifted = await deps.repository(c).move(tasksShiftedForFirstPlace(listed.value));
     if (!shifted.ok) return problem(c, 500, shifted.error.code);
   }
   const inserted = await deps.repository(c).insert({
     ...created.value,
-    order: position === "first" ? 1 : nextTaskOrder(listed.value),
+    order: position === "first" ? FIRST_TASK_ORDER : nextTaskOrder(listed.value),
   });
   if (!inserted.ok) return problem(c, 500, inserted.error.code);
   c.header("Location", `/api/tasks/${inserted.value.id}`);
