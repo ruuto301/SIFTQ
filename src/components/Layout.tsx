@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import type { JSX } from "hono/jsx/jsx-runtime";
-import { BRAND_NAME, FAVICON_HREF } from "../brand";
+import { BRAND_NAME } from "../brand";
+import { DocumentHead } from "./DocumentHead";
 import { CLIENT_ASSETS } from "../client/scripts";
 import { NAV_SCREENS } from "../screens";
 import type { ActiveKey } from "../screens";
@@ -16,23 +17,15 @@ export const Layout: FC<{ active: ActiveKey; children?: JSX.Element }> = ({
 }) => (
   <html lang="ja">
     <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>{BRAND_NAME}</title>
-      <link rel="icon" type="image/svg+xml" href={FAVICON_HREF} />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
-      />
-      {STYLE_ASSETS.map((asset) => (
-        <link rel="stylesheet" href={asset.path} key={asset.path} />
-      ))}
-      <script src={HTMX_SCRIPT} defer></script>
-      {SCRIPT_ASSETS.map((asset) => (
-        <script src={asset.path} defer key={asset.path}></script>
-      ))}
+      <DocumentHead>
+        {STYLE_ASSETS.map((asset) => (
+          <link rel="stylesheet" href={asset.path} key={asset.path} />
+        ))}
+        <script src={HTMX_SCRIPT} defer></script>
+        {SCRIPT_ASSETS.map((asset) => (
+          <script src={asset.path} defer key={asset.path}></script>
+        ))}
+      </DocumentHead>
     </head>
     <body>
       <header class="topbar">
