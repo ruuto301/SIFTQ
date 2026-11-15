@@ -202,7 +202,10 @@ function saveMkComposer(composer) {
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: mkComposerColor(composer) }),
   }).then(function (note) {
     return mkLinkComposerImages(composer, note.id);
-  }).then(mkReload).catch(function () {
+  }).then(function () {
+    // 作成したメモが必ず見えるよう、絞り込み・検索・色の条件を外した一覧へ戻る。
+    window.location.assign("/mk");
+  }).catch(function () {
     mkShowComposerError(composer, "保存に失敗しました。");
   });
 }
