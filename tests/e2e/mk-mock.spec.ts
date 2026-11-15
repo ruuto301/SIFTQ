@@ -66,3 +66,18 @@ test("has no bulk selection and a full-width search (BDD-TM-045)", async ({ page
   if (search === null || toolbar === null) throw new Error("the toolbar is missing");
   expect(search.width).toBeGreaterThan(toolbar.width * 0.5);
 });
+
+test("has no label controls (BDD-TM-046)", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/mk");
+
+  for (const selector of [
+    "[data-mk-label-manager]",
+    "[data-mk-card-label]",
+    "[data-mk-composer-labels]",
+    "[data-mk-label-create-input]",
+  ]) {
+    await expect(page.locator(selector)).toHaveCount(0);
+  }
+  await expect(page.getByText("新しいラベル")).toHaveCount(0);
+});

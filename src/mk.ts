@@ -10,8 +10,6 @@ export type MkFilter = (typeof MK_FILTERS)[number];
 
 export const MK_TITLE_MAX_CODE_POINTS = TASK_TITLE_MAX_CODE_POINTS;
 export const MK_BODY_MAX_CODE_POINTS = TASK_DESCRIPTION_MAX_CODE_POINTS;
-export const MK_LABEL_NAME_MAX_CODE_POINTS = 100;
-export const MK_MAX_LABELS_PER_NOTE = 20;
 export const MK_MAX_IMAGES = 10;
 
 /** The timestamp a date range filters on. */
@@ -56,23 +54,6 @@ export type MkNote = {
   deleted_at: string | null;
 } & MkPreviewFields;
 
-export type MkLabel = {
-  id: string;
-  owner_id: string;
-  name: string;
-  created_at: string;
-};
-
-/** The link row that attaches a label to a note. */
-export type MkNoteLabel = {
-  note_id: string;
-  label_id: string;
-  owner_id: string;
-};
-
-/** Labels grouped by note id, so a list render avoids one query per note. */
-export type MkNoteLabelMap = Record<string, MkLabel[]>;
-
 export type MkImage = {
   id: string;
   note_id: string;
@@ -90,8 +71,6 @@ export type MkErrorCode =
   | "INVALID_PINNED"
   | "INVALID_INPUT"
   | "INVALID_BULK_INPUT"
-  | "INVALID_LABEL_NAME"
-  | "INVALID_LABEL"
   | "INVALID_IMAGE"
   | "INVALID_DATE"
   | "INVALID_SORT"
@@ -178,53 +157,6 @@ export function isMkFilter(value: unknown): value is MkFilter {
   return typeof value === "string" && MK_FILTERS.some((filter) => filter === value);
 }
 
-export function isMkLabelNameValid(name: string): boolean {
-  const length = Array.from(name.trim()).length;
-  return length >= 1 && length <= MK_LABEL_NAME_MAX_CODE_POINTS;
-}
-
-/** Label names are stored trimmed and compared case-insensitively. */
-export function normalizeMkLabelName(name: string): string {
-  return name.trim();
-}
-
-export function mkLabelNameKey(name: string): string {
-  return normalizeMkLabelName(name).toLowerCase();
-}
-
-export function isMkLabelNameTaken(labels: readonly MkLabel[], name: string, exceptId?: string): boolean {
-  const key = mkLabelNameKey(name);
-  return labels.some((label) => label.id !== exceptId && mkLabelNameKey(label.name) === key);
-}
-
-export function isMkLabel(value: unknown): value is MkLabel {
-  if (!isMkRecord(value)) return false;
-  const { id, owner_id, name, created_at } = value;
-  return (
-    typeof id === "string" &&
-    id !== "" &&
-    typeof owner_id === "string" &&
-    owner_id !== "" &&
-    typeof name === "string" &&
-    isMkLabelNameValid(name) &&
-    typeof created_at === "string" &&
-    created_at !== ""
-  );
-}
-
-export type CreateMkLabelInput = {
-  id: string;
-  owner_id: string;
-  name: string;
-  created_at: string;
-};
-
-export function createMkLabel(input: CreateMkLabelInput): Result<MkLabel, MkError> {
-  const name = normalizeMkLabelName(input.name);
-  if (!isMkLabelNameValid(name)) return err({ code: "INVALID_LABEL_NAME" });
-  return ok({ ...input, name });
-}
-
 /** Reads a list of non-empty unique ids, or null when malformed or over the limit. */
 export function parseMkIdList(value: unknown, max: number): string[] | null {
   if (!Array.isArray(value) || value.length > max) return null;
@@ -234,11 +166,6 @@ export function parseMkIdList(value: unknown, max: number): string[] | null {
     ids.add(item);
   }
   return ids.size === value.length ? [...ids] : null;
-}
-
-/** Accepts a label id list for `setNoteLabels`; an empty list clears the note. */
-export function parseMkLabelIds(value: unknown): string[] | null {
-  return parseMkIdList(value, MK_MAX_LABELS_PER_NOTE);
 }
 
 /** Image positions are 1-based slots so the first attached image sorts first. */
@@ -334,8 +261,6 @@ export type MkNoteQuery = {
   filter?: MkFilter;
   text?: string;
   color?: MkColor;
-  /** Repository-side filter; a note does not carry its labels. */
-  labelId?: string;
   dateKind?: MkDateKind;
   /** Inclusive lower bound, as an ISO instant. */
   from?: string;
@@ -454,7 +379,7 @@ export type MkNoteCounts = {
 };
 
 /** Sidebar counts: note views plus one entry per label id. */
-export type MkCounts = MkNoteCounts & { labels: Record<string, number> };
+
 
 export type CreateMkNoteInput = {
   id: string;
