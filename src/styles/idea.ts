@@ -353,6 +353,8 @@ export const IDEAS_CSS = `
   border-radius: 8px;
   max-height: calc(100vh - 48px);
   max-width: 720px;
+  /* The 2px frame sits outside the inner form, so keep the modal itself from scrolling. */
+  overflow: hidden;
   padding: 0;
   width: calc(100vw - 32px);
 }

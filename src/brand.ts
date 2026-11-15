@@ -10,9 +10,3 @@ const FAVICON_SVG =
   "</svg>";
 
 export const FAVICON_HREF = `data:image/svg+xml,${encodeURIComponent(FAVICON_SVG)}`;
-
-// Reading fonts shared by every rendered document head (Latin + Japanese).
-export const FONT_ORIGIN = "https://fonts.googleapis.com";
-export const FONT_ASSET_ORIGIN = "https://fonts.gstatic.com";
-export const FONT_STYLESHEET_HREF =
-  "https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap";

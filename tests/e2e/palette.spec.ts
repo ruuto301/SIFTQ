@@ -43,9 +43,6 @@ test("renders the monochrome page tone and the reading fonts (BDD-TM-038)", asyn
   expect(body?.color).toBe("rgb(48, 48, 48)");
   expect(body?.fontFamily).toContain("Atkinson Hyperlegible");
   expect(body?.fontFamily).toContain("Noto Sans JP");
-
-  const fontLink = page.locator('head link[href*="Atkinson+Hyperlegible"]');
-  await expect(fontLink).toHaveCount(1);
 });
 
 test("outlines the header and the controls (BDD-TM-038)", async ({ page }) => {
