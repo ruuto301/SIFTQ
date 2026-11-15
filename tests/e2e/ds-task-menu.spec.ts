@@ -16,10 +16,16 @@ test("opens the English action menu on a DS task (BDD-TM-030)", async ({ page })
   await expect(menu.locator(".ds-menu__chip.is-active")).toHaveText("do");
   await expect(menu.locator(".ds-menu__row", { hasText: "project" })).toContainText("Yoriwake");
   await expect(menu.getByText("copy title", { exact: true })).toBeVisible();
+  await expect(menu.getByText("copy id", { exact: true })).toBeVisible();
   await expect(menu.locator(".ds-menu__row", { hasText: "working" })).toContainText("off");
   await expect(menu.getByText("delete", { exact: true })).toBeVisible();
   await expect(menu.getByText("タスク詳細を開く")).toHaveCount(0);
   await expect(menu.getByText("リンクをコピー")).toHaveCount(0);
+  // "copy id" is below copy title and above delete (delete stays last).
+  const actions = await menu
+    .locator(".matrix-menu-item[data-ds-task-action]")
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-ds-task-action")));
+  expect(actions).toEqual(["project", "copy-title", "copy-id", "working", "delete"]);
 });
 
 test("opens the task menu at the pointer and flips inside the viewport", async ({ page }) => {
@@ -82,4 +88,22 @@ test("copies the task title and changes the status from the menu (BDD-TM-030)", 
   await page.locator(".ds__task-item", { hasText: title }).click({ button: "right" });
   await page.locator(".matrix-menu .ds-menu__chip", { hasText: "done" }).click();
   await expect(page.locator(".ds__task-item", { hasText: title })).toHaveCount(0);
+});
+
+test("copies the task id from the menu (BDD-TM-030)", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const title = `menu copy id ${Date.now()}`;
+  await page.goto("/tasks");
+  await createTask(page, title, "Yoriwake");
+  await page.goto("/ds");
+
+  const row = page.locator(".ds__task-item", { hasText: title });
+  const taskId = await row.getAttribute("data-task-id");
+  expect(taskId).toBeTruthy();
+
+  await row.click({ button: "right" });
+  await page.locator(".matrix-menu").getByText("copy id", { exact: true }).click();
+  await expect(page.locator("#ds-groups-status")).toHaveText("copied id");
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toBe(taskId);
 });

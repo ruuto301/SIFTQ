@@ -561,7 +561,7 @@ export const DS_SCRIPT = `(function () {
     });
   }
 
-  // Task list context menu: status, working, project, open and delete.
+  // Task list context menu: status, working, project, copy title / id and delete.
   var taskList = document.querySelector(".ds__groups");
   if (taskList) initTaskMenu(taskList);
 
@@ -762,10 +762,10 @@ export const DS_SCRIPT = `(function () {
       }
       box.appendChild(item);
     }
-    function setCopyStatus(ok) {
+    function setCopyStatus(ok, messages) {
       var status = document.getElementById("ds-groups-status");
       if (status === null) return;
-      var message = ok === true ? "copied" : "copy failed";
+      var message = ok === true ? messages.ok : messages.ng;
       status.textContent = message;
       status.hidden = false;
       status.classList.toggle("ds__groups-status--error", ok !== true);
@@ -776,10 +776,8 @@ export const DS_SCRIPT = `(function () {
         status.classList.remove("ds__groups-status--error");
       }, 2000);
     }
-    function copyTitle(row) {
-      var node = row.querySelector(".ds__task-title");
-      var text = node === null ? "" : node.textContent.trim();
-      if (text === "") return;
+    // 非同期 clipboard API が無い / 失敗したときは隠し textarea + execCommand へ落とす。
+    function writeClipboard(text, messages) {
       function fallback() {
         var area = document.createElement("textarea");
         area.value = text;
@@ -795,15 +793,26 @@ export const DS_SCRIPT = `(function () {
           copied = false;
         }
         area.remove();
-        setCopyStatus(copied);
+        setCopyStatus(copied, messages);
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function () {
-          setCopyStatus(true);
+          setCopyStatus(true, messages);
         }, fallback);
       } else {
         fallback();
       }
+    }
+    function copyTitle(row) {
+      var node = row.querySelector(".ds__task-title");
+      var text = node === null ? "" : node.textContent.trim();
+      if (text === "") return;
+      writeClipboard(text, { ok: "copied", ng: "copy failed" });
+    }
+    function copyTaskId(row) {
+      var id = row.getAttribute("data-task-id") || "";
+      if (id === "") return;
+      writeClipboard(id, { ok: "copied id", ng: "copy failed" });
     }
     function openMenu(row, x, y) {
       closeMenu();
@@ -849,6 +858,7 @@ export const DS_SCRIPT = `(function () {
 
       addValueRow(box, "project", projectName(project), "project", true);
       addItem(box, "copy title", "copy-title", false);
+      addItem(box, "copy id", "copy-id", false);
       addDivider(box);
       addValueRow(box, "working", working ? "on" : "off", "working", false);
       addItem(box, "delete", "delete", true);
@@ -861,6 +871,11 @@ export const DS_SCRIPT = `(function () {
         if (target === null) return;
         if (action === "copy-title") {
           copyTitle(target);
+          closeMenu();
+          return;
+        }
+        if (action === "copy-id") {
+          copyTaskId(target);
           closeMenu();
           return;
         }

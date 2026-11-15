@@ -74,6 +74,18 @@ describe("DS task action menu", () => {
     expect(DS_SCRIPT).not.toContain("進行中");
   });
 
+  it("copies the selected task id with a textarea fallback (BDD-TM-030)", () => {
+    expect(DS_SCRIPT).toContain('addItem(box, "copy id", "copy-id", false)');
+    expect(DS_SCRIPT).toContain('action === "copy-id"');
+    expect(DS_SCRIPT).toContain('row.getAttribute("data-task-id")');
+    // The async clipboard API falls back to a hidden textarea + execCommand("copy").
+    expect(DS_SCRIPT).toContain("document.execCommand(\"copy\")");
+    expect(DS_SCRIPT).toContain("document.createElement(\"textarea\")");
+    expect(DS_SCRIPT).toContain("ds-groups-status");
+    // Same English notification style as `copy title`.
+    expect(DS_SCRIPT).toContain('{ ok: "copied id", ng: "copy failed" }');
+  });
+
   it("positions the menu like the OS context menu (flip at the screen edges)", () => {
     for (const hook of [
       "placeMenuAtPointer",

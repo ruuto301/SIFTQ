@@ -82,7 +82,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-021 | REQ-TM-012 | DS の中央ペインは、選択中 task の title を `task` タブの title 入力欄に表示する。タブ行の直下には重複して表示しない。未選択時は選択を促す案内を表示する。 | BDD-TM-027 |
 | SPEC-TM-022 | REQ-TM-013 | DS 左ペインの status タブ直下で task を作成できる。status は選択中タブ、project は追加先 select（既定は選択中 task、`未分類` も選べる）とし、作成した task は該当 project グループへ追加して件数を更新する。失敗時は入力内容を保持してエラーを表示する。 | BDD-TM-028 |
 | SPEC-TM-023 | REQ-TM-014 | DS 左ペインの project グループは 2px の黒枠で囲み、見出しバーを枠の上辺にする。枠は中身の高さに追従し、task の追加・削除・折りたたみで伸縮する。task が増えても他のグループは潰れず、一覧側がスクロールする。 | BDD-TM-029 |
-| SPEC-TM-024 | REQ-TM-015 | DS の task 行の右クリックメニューは、先頭に task 名と `status ・ project` を表示する。`status` は `do` / `done` / `skip` のピル（現在値は黒地 + 白文字）、`project` は現在の project 名と `▸`、続いて `copy title`、区切りの下に `working`（`on` / `off`）と `delete` を表示する。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。 | BDD-TM-030 |
+| SPEC-TM-024 | REQ-TM-015 | DS の task 行の右クリックメニューは、先頭に task 名と `status ・ project` を表示する。`status` は `do` / `done` / `skip` のピル（現在値は黒地 + 白文字）、`project` は現在の project 名と `▸`、続いて `copy title` と `copy id`、区切りの下に `working`（`on` / `off`）と `delete` を表示する。`copy id` は選択行の task id をクリップボードへ入れ、成功 / 失敗を通知する。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。 | BDD-TM-030 |
 | SPEC-TM-025 | REQ-TM-016 | DS の composer で作成した task は所属 project グループの先頭に挿入し、既存 task の `order` は `+1` する。グループが折りたたまれている場合は折りたたんだまま件数だけを更新する。`/tasks` の新規作成は従来どおり末尾に追加する。 | BDD-TM-031 |
 | SPEC-TM-026 | REQ-TM-017 | `POST /mcp` は OAuth のアクセストークンで認可し、`initialize` / `notifications/initialized` / `ping` / `tools/list` / `tools/call` を提供する。`read` スコープは読み取りツールのみ、`write` スコープは tasks / projects / ideas の全操作を実行できる。書き込みは `version` 必須で、不一致はエラー結果を返す。未認証は 401 と `WWW-Authenticate: Bearer resource_metadata=...` を返す。 | BDD-TM-032 |
 | SPEC-TM-027 | REQ-TM-017 | 外部クライアントへの委任は OAuth 2.1（認可コード + PKCE + 動的クライアント登録）で行う。ユーザーは同意画面で `read` / `write` を許可し、`/connections` からいつでも失効できる。トークンはハッシュのみ保存し、更新トークンは回転する。 | BDD-TM-033 |
@@ -129,7 +129,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-027 | SPEC-TM-021 | DS で task を選択すると、`task` タブの title 入力欄にその title が 1 か所だけ表示される。 | 正常 |
 | BDD-TM-028 | SPEC-TM-022 | DS 左ペインで task を追加すると、選択中 status と追加先 project で作成され、その project グループに表示される。 | 正常 |
 | BDD-TM-029 | SPEC-TM-023 | DS 左ペインの project ごとに黒枠が付き、task を追加すると枠が伸びて他の project は縮まない。折りたたむと枠は見出し 1 行に縮む。 | 正常 |
-| BDD-TM-030 | SPEC-TM-024 | DS 左ペインの task を右クリックすると英語の action menu が開き、status ピルで状態を変更でき、`copy title` でタイトルがクリップボードに入る。 | 正常 |
+| BDD-TM-030 | SPEC-TM-024 | DS 左ペインの task を右クリックすると英語の action menu が開き、status ピルで状態を変更でき、`copy title` でタイトルが、`copy id` で task id がクリップボードに入る。 | 正常 |
 | BDD-TM-031 | SPEC-TM-025 | DS で task を追加すると、その project グループの先頭に表示され、リロード後も先頭のままになる。折りたたみ中のグループでは折りたたみが維持され件数だけ増える。 | 正常 |
 | BDD-TM-032 | SPEC-TM-026 | MCP クライアントが tools/call で task の一覧・作成・更新・削除と project / idea の操作を実行でき、version 不一致は CONFLICT のエラー結果になる。 | 正常 |
 | BDD-TM-033 | SPEC-TM-027 | MCP クライアントが動的登録 → 同意 → トークン取得で /mcp を呼べる。連携アプリ画面で失効すると以後の呼び出しが 401 になる。 | 正常 |
