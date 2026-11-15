@@ -63,7 +63,6 @@ test("has no bulk selection and a full-width search (BDD-TM-045)", async ({ page
   // The search pill takes the toolbar width, so the box is much wider than its old 200px.
   const search = await page.locator("[data-mk-search-input]").boundingBox();
   const toolbar = await page.locator(".mk-toolbar").boundingBox();
-  expect(search).not.toBeNull();
-  expect(toolbar).not.toBeNull();
-  expect(search!.width).toBeGreaterThan(toolbar!.width * 0.5);
+  if (search === null || toolbar === null) throw new Error("the toolbar is missing");
+  expect(search.width).toBeGreaterThan(toolbar.width * 0.5);
 });
