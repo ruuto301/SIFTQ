@@ -47,8 +47,12 @@ test("moves a task between project groups by drag and drop (BDD-TM-025)", async 
 
   const source = group(page, "Yoriwake");
   const target = group(page, "affiliate");
-  const row = source.locator(".ds__task-item").filter({ hasText: title });
-  await expect(row).toHaveCount(1);
+  await expect(source.locator(".ds__task-item").filter({ hasText: title })).toHaveCount(1);
+  // Drag the row next to the target group so the browser never scrolls mid-drag
+  // (a scroll would move another row under the pointer and start the wrong drag).
+  const row = source.locator(".ds__task-item").last();
+  await target.locator(".ds__group-head").scrollIntoViewIfNeeded();
+  await row.scrollIntoViewIfNeeded();
   const taskId = await row.getAttribute("data-task-id");
   expect(taskId).not.toBeNull();
 
@@ -95,17 +99,20 @@ test("reorders tasks inside a project group by drag and drop (BDD-TM-026)", asyn
 
   const before = await taskIds(page, "Yoriwake");
   expect(before.length).toBeGreaterThan(1);
-  const dragged = before[before.length - 1] ?? "";
+  // Both rows are next to each other at the top, so the drag needs no scrolling.
   const anchor = before[0] ?? "";
+  const dragged = before[1] ?? "";
   expect(dragged).not.toBe("");
   expect(anchor).not.toBe("");
 
   const reordered = page.waitForRequest(
     (request) => request.method() === "POST" && request.url().includes("/api/tasks/reorder"),
   );
-  await page
-    .locator(`.ds__task-item[data-task-id="${dragged}"]`)
-    .dragTo(page.locator(`.ds__task-item[data-task-id="${anchor}"]`), { targetPosition: { x: 8, y: 2 } });
+  const source = page.locator(`.ds__task-item[data-task-id="${dragged}"]`);
+  const dropTarget = page.locator(`.ds__task-item[data-task-id="${anchor}"]`);
+  await dropTarget.scrollIntoViewIfNeeded();
+  await source.scrollIntoViewIfNeeded();
+  await source.dragTo(dropTarget, { targetPosition: { x: 8, y: 2 } });
   await reordered;
 
   const after = await taskIds(page, "Yoriwake");
