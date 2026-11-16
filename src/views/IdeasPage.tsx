@@ -317,9 +317,6 @@ function IdeaFilterMenu({ counts, state }: SidebarProps) {
 function IdeaCardActions({ note }: { readonly note: IdeaNote }) {
   return (
     <div class="idea-card__actions">
-      <button class="idea-card__preview-fetch" type="button" data-idea-preview-fetch aria-label="リンクプレビューを取得">
-        🔗 プレビュー取得
-      </button>
       <button
         class="idea-card__pin"
         type="button"
@@ -330,9 +327,6 @@ function IdeaCardActions({ note }: { readonly note: IdeaNote }) {
         <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
           <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.8v6h2.4v-6H20v-2z" />
         </svg>
-      </button>
-      <button class="idea-card__delete" type="button" data-idea-delete aria-label="削除">
-        ×
       </button>
     </div>
   );
@@ -420,11 +414,6 @@ function IdeaCard({
       data-idea-open
     >
       <IdeaCardActions note={note} />
-      {note.pinned ? (
-        <span class="idea-card__pin-badge" aria-hidden="true">
-          📌
-        </span>
-      ) : null}
       <h2 class="idea-card__title">{note.title}</h2>
       <IdeaCardImage image={images[0]} />
       {note.body === "" ? null : <p class="idea-card__body">{note.body}</p>}
@@ -474,6 +463,9 @@ function IdeaDetailMoreMenu() {
         ⋯
       </summary>
       <div class="idea-detail__menu">
+        <button type="button" data-idea-detail-archive>
+          アーカイブ
+        </button>
         <button type="button" data-idea-detail-trash>
           ゴミ箱へ
         </button>
@@ -544,11 +536,8 @@ function IdeaDetailDialog() {
           <div class="idea-detail__images" data-idea-detail-images />
         </div>
         <div class="idea-detail__bar">
-          <button class="idea-detail__icon" type="button" data-idea-detail-archive aria-label="アーカイブ">
-            🗄
-          </button>
           <IdeaDetailMoreMenu />
-          <button class="idea-detail__icon" type="button" data-idea-detail-palette aria-label="背景色">
+          <button class="idea-detail__icon" type="button" data-idea-detail-palette aria-label="パレット">
             🎨
           </button>
           <IdeaDetailSwatches />
@@ -566,9 +555,6 @@ function IdeaSnackbar() {
   return (
     <div class="idea-snackbar" data-idea-snackbar role="status" hidden>
       <span class="idea-snackbar__message" data-idea-snackbar-message></span>
-      <button class="button small" type="button" data-idea-snackbar-undo>
-        取り消す
-      </button>
     </div>
   );
 }
