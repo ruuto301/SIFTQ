@@ -35,3 +35,21 @@ describe("MemoryImageRepository", () => {
     expect(await repository.find("missing", "local")).toEqual({ ok: true, value: undefined });
   });
 });
+
+describe("MemoryImageRepository delete", () => {
+  it("deletes an image for its owner", async () => {
+    const repository = createMemoryImageRepository();
+    await repository.insert(imageFixture());
+
+    expect(await repository.delete("image-1", "local")).toEqual({ ok: true, value: true });
+    expect(await repository.find("image-1", "local")).toEqual({ ok: true, value: undefined });
+  });
+
+  it("does not delete another owner's image", async () => {
+    const repository = createMemoryImageRepository();
+    await repository.insert(imageFixture());
+
+    expect(await repository.delete("image-1", "other")).toEqual({ ok: true, value: false });
+    expect(await repository.find("image-1", "local")).toEqual({ ok: true, value: imageFixture() });
+  });
+});

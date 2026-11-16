@@ -9,6 +9,7 @@ import {
   descriptionPanelId,
   descriptionTabId,
 } from "../components/DescriptionTabs";
+import { DescriptionContent } from "../components/DescriptionContent";
 import { PROJECT_NONE_LABEL } from "../components/task-option-data";
 import { ProjectOptions } from "../components/ProjectOptions";
 
@@ -224,10 +225,21 @@ function TaskDescriptionField({ task }: { task: Task }) {
         data-description-panel="edit"
         hidden={selected !== "edit"}
       >
-        <label class="ds-task__label" for="ds-task-description">
+        <label class="ds-task__label" for="ds-description-editor">
           description
         </label>
-        <textarea class="ds-task__description" id="ds-task-description" name="description" data-description-value rows={12}>
+        <div
+          aria-label="Description"
+          class="description-editor"
+          contenteditable={true}
+          data-description-editor
+          id="ds-description-editor"
+          role="textbox"
+          aria-multiline="true"
+        >
+          <DescriptionContent description={task.description} />
+        </div>
+        <textarea class="ds-task__description" id="ds-task-description" name="description" data-description-value hidden>
           {task.description}
         </textarea>
       </div>

@@ -3,8 +3,8 @@ import { DESCRIPTION_TABS_SCRIPT } from "./description-tabs-scripts";
 export const DESCRIPTION_EDITOR_SCRIPT = [
   DESCRIPTION_TABS_SCRIPT,
   "function syncDescriptionEditor(editor) {",
-  "  const form = editor.closest(\"form\");",
-  "  const hidden = form ? form.querySelector(\"textarea[data-description-value]\") : null;",
+  "  const scope = editor.closest(\"form, [data-description-tabs]\");",
+  "  const hidden = scope ? scope.querySelector(\"textarea[data-description-value]\") : null;",
   "  if (hidden) hidden.value = descriptionEditorValue(editor);",
   "}",
   "function descriptionEditorCaretOffset(editor) {",

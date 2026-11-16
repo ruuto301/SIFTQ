@@ -55,6 +55,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-028 | ユーザーは、Tasks の選択チェックボックスを押し間違えずに操作したい。 | screens.md |
 | REQ-TM-029 | ユーザーは、メモを開いてタイトル・本文・色・画像をまとめて直したい。 | screens.md |
 | REQ-TM-030 | ユーザーは、Cloudflare 障害や誤削除に備えて D1 を退避しておきたい。 | docs/ops/d1-backup-restore.md |
+| REQ-TM-031 | ユーザーは、DS の description に画像を貼り付けて残したい。 | screens.md |
 ## 仕様
 
 | ID | 親要求 | 仕様 | BDD |
@@ -100,6 +101,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-037 | REQ-TM-028 | Tasks の選択 checkbox は当たり判定を 44×44px、チェック本体を 24px とし、hover で背景 `#dcdcdc` を表示する。一覧の checkbox 列は 44px 幅で、タイトルのリンクと重ならない。ツールバーの全選択 checkbox も 44×44px で、一覧の checkbox と同じ中心 x に揃える。行の余白（`a, button, input, label, summary, details` 以外）のクリックで選択をトグルし、ページ遷移しない。 | BDD-TM-043 |
 | SPEC-TM-038 | REQ-TM-029 | MK のカード押下で中央の詳細ダイアログを開く。ダイアログはメモの色で表示し、タイトル・本文・色・画像・ピン・アーカイブ・ゴミ箱・削除を編集できる。編集は自動保存し、閉じても破棄しない。 | BDD-TM-044 |
 | SPEC-TM-039 | REQ-TM-030 | Worker の Cron Trigger（毎日 03:00 JST）が D1 を SQL ダンプにし、gzip 後 AES-256-GCM で暗号化して R2 `siftq-backups` の `d1/<YYYY>/<MM>/<DD>/siftq.sql.gz.enc` へ保存する。鍵は `SESSION_SECRET` から HKDF-SHA256 で導出し、追加の secret を持たない。`d1/manifest.json` に keyId・IV・平文 sha256・行数を記録し、30 日より古いアーカイブは削除する。復元は手元で復号し、既定はローカル・本番は明示指定と確認を必須とする。 | BDD-TM-046 |
+| SPEC-TM-040 | REQ-TM-031 | DS の description はタスク詳細と同じリッチエディタを使い、貼り付け / ドラッグ&ドロップで PNG / JPEG / WebP を追加できる。画像は `/api/images` にアップロードして本文へ `/api/images/<id>` トークンとして保存する。1 MiB 超は最大辺 1600px・品質 0.8 に縮小し、縮小後も超える場合とアニメーション画像はエラーにする。画像だけの description を許可する。保存時に本文から消えた画像が他のタスク・Idea から参照されていなければ画像レコードを削除する。 | BDD-TM-048 |
 ## BDD 候補
 
 BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを正常・準正常・例外に分類する。該当が無い分類は「なし」と明示する。例外は現状なしとし、認証失敗や 5xx は専用の契約テストが担当する。期待値と因子水準は [テスト要求仕様（TRS）](trs.md) の因子表を正本とする。
@@ -149,6 +151,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-045 | SPEC-TM-038 | MK のツールバーに一括選択の切替が無く、検索欄がツールバーの幅いっぱいに広がる。 | 正常 |
 | BDD-TM-047 | SPEC-TM-038 | MK にラベル関連の UI が無く、`/api/mk/labels` 系のエンドポイントは 404 を返す。 | 正常 |
 | BDD-TM-046 | SPEC-TM-039 | 日次実行で暗号化アーカイブと manifest が作成され、復号すると元の SQL と sha256 が一致する。30 日を超えたアーカイブは削除される。 | 正常 |
+| BDD-TM-048 | SPEC-TM-040 | DS の description に画像を貼り付けて保存すると、再読み込み後も画像が表示される。本文から画像を削除して保存すると、参照されていない画像レコードが削除される。 | 正常 |
 ## 未決事項
 
 - `Do`、`Done`、`Skipped` をユーザー表示名の正とするか、日本語表示名を正とするか。

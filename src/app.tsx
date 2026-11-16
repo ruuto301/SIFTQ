@@ -138,7 +138,7 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
   throw new Error("image repository is not configured");
 }
 
-registerTaskApiRoutes(app, repository, ideaRepository, projectRepository);
+registerTaskApiRoutes(app, repository, ideaRepository, projectRepository, imageRepository);
 registerIdeaApiRoutes(app, ideaRepository, repository);
 registerMkApiRoutes(app, mkRepository);
 registerMkImageApiRoutes(app, mkRepository, imageRepository);

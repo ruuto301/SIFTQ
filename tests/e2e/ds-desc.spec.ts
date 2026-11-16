@@ -54,10 +54,10 @@ test("renders the stored description without waiting for the transport (BDD-TM-0
   await createTaskWithDescription(page, title, description);
   await openTaskInDs(page, title);
 
-  const field = page.locator("#ds-task-description");
-  await expect(field).toHaveValue(/手順は https:\/\/example.com\/docs を参照する。/);
-  await expect(field).toHaveValue(/1 つ目/);
-  await expect(field).toHaveValue(/2 つ目/);
+  const field = page.locator("#ds-description-editor");
+  await expect(field).toContainText("手順は https://example.com/docs を参照する。");
+  await expect(field).toContainText("1 つ目");
+  await expect(field).toContainText("2 つ目");
 });
 
 test("keeps an empty description empty (BDD-TM-032)", async ({ page }) => {
@@ -65,7 +65,7 @@ test("keeps an empty description empty (BDD-TM-032)", async ({ page }) => {
   await createTaskWithDescription(page, title, "");
   await openTaskInDs(page, title);
 
-  await expect(page.locator("#ds-task-description")).toHaveValue("");
+  await expect(page.locator("#ds-description-editor")).toHaveText("");
 });
 
 test("edits the task that DS selects by default", async ({ page }) => {
@@ -102,7 +102,7 @@ test("switches the DS description tabs with the arrow keys", async ({ page }) =>
 
   await previewTab.press("ArrowLeft");
   await expect(editTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#ds-task-description")).toBeVisible();
+  await expect(page.locator("#ds-description-editor")).toBeVisible();
 
   await editTab.press("ArrowRight");
   await expect(previewTab).toHaveAttribute("aria-selected", "true");
@@ -115,7 +115,7 @@ test("previews the edited DS description after switching tabs", async ({ page })
   await openTaskInDs(page, title);
 
   await page.getByRole("tab", { name: "編集" }).click();
-  await page.locator("#ds-task-description").fill("~~removed~~ **kept**");
+  await page.locator("#ds-description-editor").fill("~~removed~~ **kept**");
   await page.getByRole("tab", { name: "プレビュー" }).click();
 
   const preview = page.locator("[data-description-preview]");
@@ -129,6 +129,6 @@ test("opens the DS description editor when the description is empty", async ({ p
   await openTaskInDs(page, title);
 
   await expect(page.getByRole("tab", { name: "編集" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#ds-task-description")).toBeVisible();
+  await expect(page.locator("#ds-description-editor")).toBeVisible();
   await expect(page.locator("[data-description-preview]")).toBeHidden();
 });

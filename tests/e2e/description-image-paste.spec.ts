@@ -217,3 +217,27 @@ test("dropping a file with a hidden type into the idea composer renders it on th
 
   await deleteIdea(page, (await card.getAttribute("data-idea-id")) ?? "");
 });
+
+test("pasting an image into the DS description saves and renders it (BDD-TM-048)", async ({ page }) => {
+  await signIn(page);
+  const taskId = await createTask(page, `E2E ds image ${Date.now()}`);
+
+  try {
+    await page.goto(`/ds?task=${taskId}`);
+    const editor = page.locator("#ds-description-editor");
+    await expect(editor).toBeVisible();
+
+    await pasteImage(page, "#ds-description-editor", PIXEL_PNG);
+    await expect(editor.locator("img.description-image")).toHaveCount(1);
+    const token = await page.locator("#ds-task-description").inputValue();
+    expect(token).toMatch(/^\/api\/images\/[0-9A-Za-z_-]+$/);
+
+    await page.locator("#ds-task-save").click();
+    await expect(page.locator("#ds-task-status")).toHaveText(/保存しました/);
+
+    await page.reload();
+    await expect(page.locator("#ds-description-editor img.description-image")).toHaveCount(1);
+  } finally {
+    await deleteTask(page, taskId);
+  }
+});

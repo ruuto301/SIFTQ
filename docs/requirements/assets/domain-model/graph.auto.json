@@ -169,6 +169,22 @@
         }
       ]
     },
+    "images_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/images/{id}",
+      "operation": "delete",
+      "success": 204,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
     "images_get": {
       "kind": "api",
       "method": "GET",

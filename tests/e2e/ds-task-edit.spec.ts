@@ -34,7 +34,7 @@ test("edits title and description in the DS task tab (BDD-TM-036)", async ({ pag
   await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
   // A stored description opens on プレビュー, so switch to 編集 before typing.
   await page.getByRole("tab", { name: "編集" }).click();
-  await page.locator("#ds-task-description").fill(updatedDescription);
+  await page.locator("#ds-description-editor").fill(updatedDescription);
 
   await page.locator("#ds-task-save").click();
   await expect(page.locator("#ds-task-status")).toHaveText("保存しました");

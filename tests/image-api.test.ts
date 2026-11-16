@@ -102,3 +102,24 @@ describe("Image API access", () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe("Image API delete", () => {
+  it("deletes an image and serves 404 afterwards", async () => {
+    const upload = await request("/api/images", { method: "POST", body: uploadForm(bytes(1, 2, 3), "a.png", "image/png") });
+    const created: unknown = await upload.json();
+    if (typeof created !== "object" || created === null || !("id" in created) || typeof created.id !== "string") {
+      throw new Error("upload response is missing an id");
+    }
+
+    const deleted = await request(`/api/images/${created.id}`, { method: "DELETE" });
+    expect(deleted.status).toBe(204);
+
+    const missing = await request(`/api/images/${created.id}`);
+    expect(missing.status).toBe(404);
+  });
+
+  it("returns 404 when deleting an unknown image", async () => {
+    const deleted = await request("/api/images/unknown", { method: "DELETE" });
+    expect(deleted.status).toBe(404);
+  });
+});
