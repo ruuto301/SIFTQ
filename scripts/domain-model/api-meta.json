@@ -595,5 +595,16 @@
         "status": 500
       }
     ]
+  },
+  "images_delete": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 500
+      }
+    ]
   }
 }

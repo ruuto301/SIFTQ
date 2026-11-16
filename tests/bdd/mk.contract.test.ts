@@ -566,7 +566,7 @@ describe("MK without labels (BDD-TM-047)", () => {
   });
 });
 
-describe("MK maximum width (BDD-TM-049)", () => {
+describe("MK maximum width (BDD-TM-050)", () => {
   it("caps the page width and wraps the cards", async () => {
     const css = await (await request("/styles.css")).text();
 

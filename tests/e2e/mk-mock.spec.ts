@@ -82,7 +82,7 @@ test("has no label controls (BDD-TM-047)", async ({ page }) => {
   await expect(page.getByText("新しいラベル")).toHaveCount(0);
 });
 
-test("caps the content width and wraps the cards (BDD-TM-049)", async ({ page }) => {
+test("caps the content width and wraps the cards (BDD-TM-050)", async ({ page }) => {
   await signIn(page);
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/mk");

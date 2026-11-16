@@ -29,11 +29,14 @@ import { nextIdeaOrder } from "../idea";
 import type { Idea } from "../idea";
 import { sortTasksByOrder } from "../task-list";
 import { parseVersion } from "../task-input";
+import type { ImageRepository } from "../repository/image-repository";
+import { cleanupRemovedImages } from "../image-cleanup";
 
 type ApiEnv = { Bindings: Record<string, unknown> };
 type Repository<T extends ApiEnv> = (c: Context<T>) => TaskRepository;
 type ProjectRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => ProjectRepository;
 type IdeaRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => IdeaRepository;
+type ImageRepositoryFactory<T extends ApiEnv> = (c: Context<T>) => ImageRepository;
 
 type TaskDeps<T extends ApiEnv> = {
   repository: Repository<T>;
@@ -248,7 +251,12 @@ async function bulkDeleteApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDep
   return c.body(null, 204);
 }
 
-async function patchApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
+async function patchApiTask<T extends ApiEnv>(
+  c: Context<T>,
+  deps: TaskDeps<T>,
+  ideaRepository: IdeaRepositoryFactory<T>,
+  imageRepository: ImageRepositoryFactory<T>,
+) {
   const item = await readApiTaskItem(deps.repository, c);
   if (!item.ok) return problem(c, item.status, item.code);
   const parsed = parseTaskPatch(item.body);
@@ -261,6 +269,15 @@ async function patchApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) 
   const patched = applyTaskPatch(item.task, parsed.value);
   const updated = await deps.repository(c).update({ ...patched, version: item.version });
   if (!updated.ok) return problem(c, 409, updated.error.code);
+  try {
+    await cleanupRemovedImages(item.task.description, updated.value.description, {
+      tasks: deps.repository(c),
+      ideas: ideaRepository(c),
+      images: imageRepository(c),
+    });
+  } catch {
+    // Best effort: a missing repository must not fail the task update.
+  }
   return c.json(updated.value);
 }
 
@@ -315,7 +332,12 @@ async function reorderApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T
   return c.json(sortTasksByOrder(moved.value));
 }
 
-function registerTaskRoutes<T extends ApiEnv>(app: Hono<T>, deps: TaskDeps<T>) {
+function registerTaskRoutes<T extends ApiEnv>(
+  app: Hono<T>,
+  deps: TaskDeps<T>,
+  ideaRepository: IdeaRepositoryFactory<T>,
+  imageRepository: ImageRepositoryFactory<T>,
+) {
   app.get("/api/tasks", (c) => listApiTasks(c, deps));
   app.get("/api/tasks/:id", (c) => getApiTask(c, deps));
   app.post("/api/tasks", (c) => createApiTask(c, deps));
@@ -323,7 +345,7 @@ function registerTaskRoutes<T extends ApiEnv>(app: Hono<T>, deps: TaskDeps<T>) {
   app.patch("/api/tasks/bulk/status", (c) => bulkStatusApiTasks(c, deps));
   app.patch("/api/tasks/bulk/project", (c) => bulkProjectApiTasks(c, deps));
   app.delete("/api/tasks/bulk", (c) => bulkDeleteApiTasks(c, deps));
-  app.patch("/api/tasks/:id", (c) => patchApiTask(c, deps));
+  app.patch("/api/tasks/:id", (c) => patchApiTask(c, deps, ideaRepository, imageRepository));
   app.delete("/api/tasks/:id", (c) => deleteApiTask(c, deps));
 }
 
@@ -442,9 +464,10 @@ export function registerTaskApiRoutes<T extends ApiEnv>(
   repository: Repository<T>,
   ideaRepository: IdeaRepositoryFactory<T>,
   projectRepository: ProjectRepositoryFactory<T>,
+  imageRepository: ImageRepositoryFactory<T>,
 ) {
   const deps: TaskDeps<T> = { repository, projectRepository };
   registerProjectRoutes(app, repository, projectRepository);
-  registerTaskRoutes(app, deps);
+  registerTaskRoutes(app, deps, ideaRepository, imageRepository);
   app.post("/api/tasks/:id/move-to-idea", (c) => moveApiTaskToIdea(c, deps, ideaRepository));
 }

@@ -16,6 +16,7 @@
 - `src/task-repository.ts` の `TaskRepository` は、D1 と preview の各 adapter が実装する副作用境界の契約である。
 - `src/index.tsx` では、Hono の binding へ repository を注入し、handler が D1 の実装へ依存しないためにだけ利用する。
 - `src/preview/MemoryTaskRepository.ts` とテストの in-memory double は、同じ契約を満たす adapter として利用する。
+- `src/image-cleanup.ts` は、description から消えた画像を削除する境界処理であり、`TaskRepository` / `IdeaRepository` / `ImageRepository` の契約を通してのみデータへ触れる。
 - domain の `src/task.ts` / `src/idea.ts` には interface を置かず、repository、DB、HTTP、時刻、乱数などの副作用へ依存させない。`scripts/ci/check_architecture.py` が domain の副作用 API・副作用 import・class を検知する。
 
 詳細は以下を参照

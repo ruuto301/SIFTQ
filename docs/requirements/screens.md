@@ -159,6 +159,8 @@
   - `task` タブは選択中 task の title と description を表示し、`保存` で確定する。未選択時は選択を促す案内を表示する。
   - `task` タブの description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。タブは `←` / `→` キーでも切り替えられる。
   - `task` タブは初期表示から task の title と description を表示する。DSH transport が使える場合は `desc.get` の応答を description に反映する。
+  - `task` タブの description は、タスク詳細と同じ編集 / プレビューのリッチエディタを使う。`Ctrl`+`V` と画像ファイルのドラッグ&ドロップで画像を追加でき（PNG / JPEG / WebP）、本文には `/api/images/<id>` トークンとして保存される。1 MiB を超える画像はクライアントで縮小し（最大辺 1600px・品質 0.8）、縮小後も超える場合とアニメーション画像はエラーにする。画像だけの description も許可する。
+  - 本文から画像を削除して保存すると、他のタスク・Idea から参照されていない画像レコードも削除する。
   - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
   - `task` タブの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。
   - `task` タブは 409（競合）のとき入力を保持したままエラーを表示する。DSH が description を更新しても、未保存の入力がある間は表示を書き換えない。
