@@ -147,11 +147,11 @@ describe("DS project groups", () => {
 });
 
 describe("DS page width and resizer", () => {
-  it("caps the DS page at 1280px and centers it with horizontal padding", () => {
+  it("keeps the DS page full width without a max-width cap", () => {
     const pageFrame = cssBlock(/(?:^|\n)\.ds-page\s*\{[^}]*\}/);
-    expect(pageFrame).toContain("max-width: 1280px;");
-    expect(pageFrame).toContain("margin: 0 auto;");
-    expect(pageFrame).toContain("padding: 16px 20px;");
+    expect(pageFrame).toContain("width: 100%;");
+    expect(pageFrame).not.toContain("max-width:");
+    expect(pageFrame).not.toContain("margin: 0 auto;");
   });
 
   it("uses a 12px resizer column with a grip, tooltip and drag colour", () => {

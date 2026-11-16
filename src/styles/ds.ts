@@ -1,9 +1,7 @@
 export const DS_CSS = `
-/* DS page frame: the two-pane screen is capped at 1280px and centered. */
+/* DS page frame: full width; the shell below owns the two-pane grid. */
 .ds-page {
-  margin: 0 auto;
-  max-width: 1280px;
-  padding: 16px 20px;
+  width: 100%;
 }
 
 /* DS shell: task list and selected task detail as cards on a gray page background. */
