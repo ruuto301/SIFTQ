@@ -61,6 +61,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | ID | 親要求 | 仕様 | BDD |
 | --- | --- | --- | --- |
 | SPEC-TM-001 | REQ-TM-001 | Task は title、description、status、project、working、order を持つ。 | BDD-TM-001 |
+| SPEC-TM-043 | REQ-TM-029 | desc の画像は本文幅を上限にした原寸で表示し（拡大しない）、高さが 320px を超える場合は 320px に収めて全体を見せる（`object-fit: contain`・切り取らない）。画像を押すと原寸のライトボックスを開き、`Esc` / 背景クリック / 閉じるで閉じる。編集中の画像にも同じ上限を適用する。 | BDD-TM-051 |
 | SPEC-TM-002 | REQ-TM-001, REQ-TM-003 | Task は project を 1 つ持ち、`projects.id` または未設定をとる。未知の project は受け付けない。 | BDD-TM-002 |
 | SPEC-TM-003 | REQ-TM-001 | Task list の検索は `project:<id>` で指定 project、`project:none` で未設定の Task に絞り込む。 | BDD-TM-003 |
 | SPEC-TM-004 | REQ-TM-004 | ユーザーは選択した複数 Task の project を一括で設定し、未設定へ戻せる。 | BDD-TM-004 |
@@ -110,6 +111,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | ID | 対象仕様 | シナリオ | 振る舞い |
 | --- | --- | --- | --- |
 | BDD-TM-001 | SPEC-TM-001 | Task を作成すると、表示と編集に必要な属性を持つ。 | 正常 |
+| BDD-TM-051 | SPEC-TM-043 | desc の画像が高さ 320px 以内で表示され、押すと拡大が開いて Esc で閉じる。 | 正常 |
 | BDD-TM-002 | SPEC-TM-002 | Task に既知の project を設定でき、未知の project は拒否される。 | 正常 |
 | BDD-TM-003 | SPEC-TM-003 | 検索で `project:<id>` は指定 project、`project:none` は未設定の Task だけを表示する。 | 正常 |
 | BDD-TM-004 | SPEC-TM-004 | 選択した複数 Task の project を一括で設定し、未設定へ戻せる。 | 正常 |
