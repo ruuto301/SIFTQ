@@ -227,13 +227,6 @@ function ideaSetPinned(card) {
     body: JSON.stringify({ pinned: card.getAttribute("data-idea-pinned") !== "true" }),
   });
 }
-function ideaDeleteCard(card) {
-  var id = ideaCardId(card);
-  if (!id) return;
-  ideaConfirm("このメモを削除しますか？", function () {
-    ideaRun("/api/ideas/notes/" + encodeURIComponent(id), { method: "DELETE" });
-  });
-}
 function ideaBulk(body) {
   if (body.ids.length === 0) return;
   ideaRun("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify(body) });
@@ -245,33 +238,24 @@ function ideaHideSnackbar() {
   if (bar) bar.hidden = true;
   if (ideaSnackbarTimer) { clearTimeout(ideaSnackbarTimer); ideaSnackbarTimer = null; }
 }
-function ideaShowSnackbar(message, undo) {
+function ideaShowSnackbar(message) {
   var bar = ideaSnackbar();
   ideaHideSnackbar();
   if (!bar) { ideaReload(); return; }
   var text = bar.querySelector("[data-idea-snackbar-message]");
   if (text) text.textContent = message;
   bar.hidden = false;
-  var button = bar.querySelector("[data-idea-snackbar-undo]");
-  if (button) {
-    button.onclick = function () {
-      ideaHideSnackbar();
-      undo().then(ideaReload).catch(function () {});
-    };
-  }
   ideaSnackbarTimer = setTimeout(ideaReload, 5000);
 }
-function ideaBulkAction(body, undoBody, message) {
+function ideaBulkAction(body, message) {
   ideaApi("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify(body) }).then(function () {
-    ideaShowSnackbar(message, function () {
-      return ideaApi("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify(undoBody) });
-    });
+    ideaShowSnackbar(message);
   }).catch(function () {});
 }
 function ideaBulkArchive() {
   var ids = ideaSelectedIds();
   if (ids.length === 0) return;
-  ideaBulkAction({ ids: ids, action: "archive" }, { ids: ids, action: "unarchive" }, ids.length + "件をアーカイブしました。");
+  ideaBulkAction({ ids: ids, action: "archive" }, ids.length + "件をアーカイブしました。");
 }
 function ideaBulkTrash() {
   var ids = ideaSelectedIds();
@@ -380,7 +364,6 @@ function initializeIdeaActions(page) {
     }
     var card = target.closest("[data-idea-id]");
     if (card && target.closest("[data-idea-pin]")) { event.preventDefault(); ideaSetPinned(card); return; }
-    if (card && target.closest("[data-idea-delete]")) { event.preventDefault(); ideaDeleteCard(card); return; }
   });
 }
 function initializeIdeaPaste(page) {
@@ -545,18 +528,6 @@ function initializeIdeaSaved(page) {
   });
   ideaSavedRender();
 }
-function initializeIdeaPreview(page) {
-  page.addEventListener("click", function (event) {
-    var target = event.target;
-    if (!target || !target.closest) return;
-    if (!target.closest("[data-idea-preview-fetch]")) return;
-    var card = target.closest("[data-idea-id]");
-    var id = card ? ideaCardId(card) : "";
-    if (!id) return;
-    event.preventDefault();
-    ideaRun("/api/ideas/notes/" + encodeURIComponent(id) + "/preview", { method: "POST" });
-  });
-}
 var IDEA_COMPOSER_MAX_ROWS = 12;
 function ideaAutoGrow(field, maxRows) {
   if (!field) return;
@@ -649,6 +620,53 @@ function ideaDetailSave(root) {
     .then(function (note) { ideaDetailError(root, ""); ideaDetailApply(root, note); })
     .catch(function () { ideaDetailError(root, "保存に失敗しました。"); });
 }
+function ideaPreviewUrl(text) {
+  var match = /https?:\\/\\/[^\\s<>"')]+/.exec(text || "");
+  return match ? match[0] : null;
+}
+function ideaCardPreviewNode(note) {
+  if (!note || (!note.preview_title && !note.preview_image && !note.preview_description)) return null;
+  var wrap = document.createElement("div");
+  wrap.className = "idea-card__preview";
+  wrap.setAttribute("data-idea-preview", "");
+  if (note.preview_image) {
+    var image = document.createElement("img");
+    image.className = "idea-card__preview-image";
+    image.src = note.preview_image;
+    image.alt = "";
+    wrap.appendChild(image);
+  }
+  var text = document.createElement("div");
+  text.className = "idea-card__preview-text";
+  if (note.preview_title) {
+    var title = document.createElement("p");
+    title.className = "idea-card__preview-title";
+    title.textContent = note.preview_title;
+    text.appendChild(title);
+  }
+  if (note.preview_description) {
+    var description = document.createElement("p");
+    description.className = "idea-card__preview-description";
+    description.textContent = note.preview_description;
+    text.appendChild(description);
+  }
+  wrap.appendChild(text);
+  return wrap;
+}
+// 詳細を開いたときにプレビューが無ければ、本文の URL から自動で取得する。
+function ideaDetailFetchPreview(card) {
+  if (!card || card.querySelector("[data-idea-preview]")) return;
+  var id = ideaCardId(card);
+  if (!id) return;
+  if (ideaPreviewUrl(card.getAttribute("data-idea-body") || "") === null) return;
+  ideaApi("/api/ideas/notes/" + encodeURIComponent(id) + "/preview", { method: "POST" }).then(function (note) {
+    var next = ideaCardPreviewNode(note);
+    if (next === null) return;
+    var previous = card.querySelector(".idea-card__preview, .idea-card__plain-link");
+    if (previous) card.replaceChild(next, previous);
+    else card.appendChild(next);
+  }).catch(function () {});
+}
 function ideaDetailOpen(card) {
   var root = ideaDetail();
   if (!root) return;
@@ -665,6 +683,7 @@ function ideaDetailOpen(card) {
   ideaDetailError(root, "");
   root.hidden = false;
   ideaGrowDetail(root);
+  ideaDetailFetchPreview(card);
   if (title) title.focus();
 }
 function ideaDetailClose() {
@@ -755,7 +774,6 @@ function initializeIdea() {
   initializeIdeaSort(page);
   initializeIdeaDates(page);
   initializeIdeaSaved(page);
-  initializeIdeaPreview(page);
 }
 document.addEventListener("DOMContentLoaded", initializeIdea);
 document.addEventListener("htmx:load", initializeIdea);

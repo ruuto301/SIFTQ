@@ -85,31 +85,31 @@ export const IDEA_CSS = `
 }
 
 .idea-color-filter__dot--default {
-  background: #ffffff;
+  background: #2c2e31;
 }
 
 .idea-color-filter__dot--red {
-  background: #ffe9e7;
+  background: #563433;
 }
 
 .idea-color-filter__dot--orange {
-  background: #ffeddc;
+  background: #58402d;
 }
 
 .idea-color-filter__dot--yellow {
-  background: #fff5cf;
+  background: #544b2d;
 }
 
 .idea-color-filter__dot--green {
-  background: #e4f3df;
+  background: #304a37;
 }
 
 .idea-color-filter__dot--blue {
-  background: #e1efff;
+  background: #2c4059;
 }
 
 .idea-color-filter__dot--purple {
-  background: #efe7fb;
+  background: #473851;
 }
 
 .idea-main {
@@ -308,7 +308,7 @@ export const IDEA_CSS = `
 }
 
 .idea-swatch {
-  border: 1px solid #1f1f1f;
+  border: 1px solid #eeeae0a6;
   border-radius: 50%;
   cursor: pointer;
   height: 24px;
@@ -317,37 +317,38 @@ export const IDEA_CSS = `
 }
 
 .idea-swatch[aria-pressed="true"] {
-  border-color: #1f1f1f;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px #ffffff33;
   outline: 2px solid #1f1f1f;
   outline-offset: 1px;
 }
 
 .idea-swatch--default {
-  background: #ffffff;
+  background: #2c2e31;
 }
 
 .idea-swatch--red {
-  background: #ffe9e7;
+  background: #563433;
 }
 
 .idea-swatch--orange {
-  background: #ffeddc;
+  background: #58402d;
 }
 
 .idea-swatch--yellow {
-  background: #fff5cf;
+  background: #544b2d;
 }
 
 .idea-swatch--green {
-  background: #e4f3df;
+  background: #304a37;
 }
 
 .idea-swatch--blue {
-  background: #e1efff;
+  background: #2c4059;
 }
 
 .idea-swatch--purple {
-  background: #efe7fb;
+  background: #473851;
 }
 
 /* 入る分だけ並べ、余れば次の行へ折り返す（最大幅 1400px の中で 4 列前後になる）。 */
@@ -378,23 +379,19 @@ export const IDEA_CSS = `
   justify-content: flex-end;
 }
 
-.idea-card__pin,
-.idea-card__delete {
+.idea-card__pin {
   background: transparent;
   border: 0;
   border-radius: 4px;
-  color: #555555;
+  color: #eeeae0;
   cursor: pointer;
   font: inherit;
   padding: 2px 6px;
 }
 
 .idea-card__pin:hover,
-.idea-card__delete:hover,
-.idea-card__pin:focus-visible,
-.idea-card__delete:focus-visible {
-  background: #e4e4e4;
-  color: #303030;
+.idea-card__pin:focus-visible {
+  background: #ffffff1f;
 }
 
 .idea-card__pin svg {
@@ -405,8 +402,9 @@ export const IDEA_CSS = `
   width: 16px;
 }
 
+/* ピン中は輪郭を強調する（塗りは使わない: 背景色と同化するため） */
 .idea-card[data-idea-pinned="true"] .idea-card__pin svg {
-  fill: currentColor;
+  stroke-width: 2;
 }
 
 .idea-card__title {
@@ -577,16 +575,6 @@ export const IDEA_CSS = `
   padding: 2px 4px;
 }
 
-.idea-card__preview-fetch {
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  color: #555555;
-  cursor: pointer;
-  font: inherit;
-  padding: 2px 6px;
-}
-
 .idea-card__preview {
   display: grid;
   gap: 8px;
@@ -670,11 +658,15 @@ export const IDEA_CSS = `
 .idea-card--blue { background: #2c4059; }
 .idea-card--purple { background: #473851; }
 
-/* Keep: カードの操作はホバー/フォーカスで出す */
+/* Keep: カードの操作はホバー/フォーカスで出し、ピン中は常に出す */
 .idea-card__actions {
+  position: absolute;
+  right: 8px;
+  top: 8px;
   visibility: hidden;
 }
 
+.idea-card[data-idea-pinned="true"] .idea-card__actions,
 .idea-card:hover .idea-card__actions,
 .idea-card:focus-within .idea-card__actions {
   visibility: visible;
@@ -682,12 +674,6 @@ export const IDEA_CSS = `
 
 @media (hover: none) {
   .idea-card__actions { visibility: visible; }
-}
-
-.idea-card__pin-badge {
-  color: #eeeae0a6;
-  font-size: 12px;
-  margin-left: auto;
 }
 
 /* 検索欄の右に置く絞り込みメニュー */
