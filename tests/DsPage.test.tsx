@@ -113,6 +113,41 @@ describe("DsPage two-pane layout", () => {
   });
 });
 
+describe("DsPage responsive width and resizer", () => {
+  it("wraps the two panes in a centered max-width page frame", () => {
+    const html = renderToString(page([taskFixture({ id: "t1", project: "dsh" })], taskFixture({ id: "t1", project: "dsh" })));
+
+    expect(html).toContain('class="ds-page"');
+    expect(html).toContain('class="ds" id="ds-root"');
+  });
+
+  it("exposes the resizer as a keyboard separator with a grip and width tag", () => {
+    const html = renderToString(page([], undefined));
+
+    expect(html).toContain('role="separator"');
+    expect(html).toContain('aria-orientation="vertical"');
+    expect(html).toContain('aria-label="左ペインの幅"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-valuemin="160"');
+    expect(html).toContain('aria-valuenow="320"');
+    expect(html).toContain('aria-valuemax="1280"');
+    expect(html).toContain('class="ds__grip"');
+    expect(html).toContain("data-ds-width-tag");
+    expect(html).toContain("320px");
+  });
+
+  it("renders the narrow-view back control and the initial view state", () => {
+    const selected = taskFixture({ id: "t1", project: "dsh" });
+    const detail = renderToString(page([selected], selected));
+
+    expect(detail).toContain('data-ds-view="detail"');
+    expect(detail).toContain("data-ds-back");
+    expect(detail).toContain("一覧へ戻る");
+
+    expect(renderToString(page([], undefined))).toContain('data-ds-view="list"');
+  });
+});
+
 describe("DsPage task composer", () => {
   it("renders the composer above the group list with the selected project and status", () => {
     const html = renderToString(

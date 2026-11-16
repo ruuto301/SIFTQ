@@ -252,14 +252,39 @@ export const DsPage: FC<{
     name: project.name,
   }));
   return (
-    <div class="ds" id="ds-root" data-ds-projects={JSON.stringify(projectOptions)}>
-      <TaskPane groups={groups} projects={projects} selected={selected} status={status} />
+    <div class="ds-page">
+      <div
+        class="ds"
+        id="ds-root"
+        data-ds-projects={JSON.stringify(projectOptions)}
+        data-ds-view={selected === undefined ? "list" : "detail"}
+      >
+        <TaskPane groups={groups} projects={projects} selected={selected} status={status} />
 
-      <div class="ds__resizer" data-resize="left" role="separator" aria-orientation="vertical" aria-label="左ペインの幅"></div>
+        <div
+          class="ds__resizer"
+          data-resize="left"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="左ペインの幅"
+          aria-valuemin="160"
+          aria-valuenow="320"
+          aria-valuemax="1280"
+          tabindex={0}
+        >
+          <span class="ds__grip" aria-hidden="true"></span>
+          <span class="ds__width-tag" data-ds-width-tag aria-hidden="true">
+            320px
+          </span>
+        </div>
 
-      <section class="ds__pane ds__pane--detail">
-        <TaskEditPane selected={selected} />
-      </section>
+        <section class="ds__pane ds__pane--detail">
+          <button type="button" class="ds__back" data-ds-back>
+            一覧へ戻る
+          </button>
+          <TaskEditPane selected={selected} />
+        </section>
+      </div>
     </div>
   );
 };
