@@ -12,7 +12,7 @@ export const DESCRIPTION_TABS_SCRIPT = [
   "    image.parentNode.replaceChild(span, image);",
   "    return { image: image, span: span };",
   "  });",
-  '  const value = editor.innerText.replace(/\\n$/, "");',
+  '  const value = editor.innerText.replace(/\\n$/, "").replace(/\\u00a0/g, " ");',
   "  replacements.forEach(function (replacement) {",
   "    if (replacement.span.parentNode) replacement.span.parentNode.replaceChild(replacement.image, replacement.span);",
   "  });",

@@ -29,3 +29,10 @@ describe("description tabs browser script", () => {
     expect(DESCRIPTION_TABS_SCRIPT).toContain("aria-selected");
   });
 });
+
+// covers: BDD-TM-053
+describe("description indentation (BDD-TM-053)", () => {
+  it("normalizes non-breaking spaces so indentation survives", () => {
+    expect(DESCRIPTION_TABS_SCRIPT).toContain('replace(/\\u00a0/g, " ")');
+  });
+});
