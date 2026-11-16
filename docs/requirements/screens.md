@@ -15,13 +15,11 @@
 | P04 | New task | 新規タスク作成画面 |
 | P05 | Status popover | 新規作成・詳細画面内のステータス選択パネル |
 | P07 | Delete confirmation dialog | Task list 上の選択タスクを完全削除する確認ダイアログ |
-| P08 | Idea list | Ideaをカード一覧で管理する画面 |
-| P09 | Idea detail | Idea詳細画面 title、description、pinned を確認・編集する |
 | P10 | DS | project ごとに区切ったタスク一覧と選択中タスクの title / description 編集を 1 画面で扱う |
 | P11 | Connections | 連携した MCP クライアント（OAuth）の一覧と失効 |
 | P12 | Consent | MCP クライアントへ権限を委任する同意画面 |
 | P13 | Settings | project の一覧・追加・改名・削除・並べ替えを行う画面 |
-| P14 | MK | メモを色・ピン・画像で整理する画面 |
+| P14 | Ideas | アイデアメモを色・ピン・画像で整理する画面 |
 
 ## 画面詳細
 
@@ -49,31 +47,6 @@
   - bulk 操作は選択中のtaskへ適用し、delete前には選択件数を含む確認ダイアログを表示する。
   - bulk 操作で競合または通信エラーが発生した場合は一覧上にエラーを表示し、競合時は再読み込みを促す。
   - `New task` は検索で絞り込んだ project を引き継ぎ、`/tasks/new?project=<id>` で既定 project とする。
-
-- `Idea list` (`/ideas`)
-  - Task とは独立したIdeaをカード一覧で表示する。
-  - Ideaは`title`、`description`、`order`、`pinned`を持つ。`order`はpinned / unpinned各グループ内の表示順である。
-  - `pinned = true` のカードを先に表示し、各グループ内を`order`の昇順にする。
-  - カードはtitleとdescを表示する。
-  - Ideaがない場合は空状態メッセージを表示する。
-  - composerからtitleとdescriptionを入力してIdeaを作成する。
-  - カードを開くとtitleとdescriptionを編集でき、自動保存する。
-  - pin操作でカードの固定状態を切り替える。
-  - カードをdrag and dropして同じグループ内の`order`を変更する。
-  - ピン留め状態を切り替えたカードは移動先グループの末尾へ移動し、グループ内の`order`を振り直す。
-  - カードを右クリックすると、`Matrixに移動` と `削除` をこの順で表示する。
-  - `Matrixに移動` を選択すると Idea を一覧から除外し、同じ title / description の task を `status = do`、`project = 未設定`、`working = false` で末尾に作成する。
-  - カードの `…` メニューは `削除` だけを表示する。
-  - 削除操作の確認後、Ideaを一覧から除外する。
-  - Idea 詳細モーダルの表示中、および移動処理中は移動メニューを開かない。
-  - 移動に失敗した場合はカードを変更せず、画面上部に「移動に失敗しました。もう一度お試しください。」を表示する。
-
-- `Idea detail` (`/ideas/:id` と Ideas 一覧から開く詳細モーダル)
-  - title と description を編集し、自動保存する。
-  - description 内の http/https URL は編集領域内でリンクとして表示する。
-  - URL の通常クリックは同じタブ、Ctrl クリック / Command クリックは別タブで開く。
-  - URL を貼り付けた場合もリンクとして表示し、保存する description はプレーンテキストとする。
-  - 一覧カード内の title / description はリンク化の対象外とする。
 
 - `Task detail` (`/tasks/:id`)
   - title と description を編集する。
@@ -182,9 +155,9 @@
 - `↑` `↓` で並び順を入れ替える。並びは task list と DS のグループに反映される。
 - `削除` は確認ダイアログを表示する。その project にタスクがあるときは「N 件のタスクは未分類になります」を併記し、確定するとタスクは未分類へ移ってから project を削除する。
 
-### P14 MK
+### P14 Ideas
 
-  - ナビは `Ideas`、`MK`、`Tasks`、`DS`、`Settings` の順で表示する。
+  - ナビは `Ideas`、`Tasks`、`DS`、`Settings` の順で表示する。
   - サイドバーは `メモ`、`アーカイブ`、`ゴミ箱` を表示する（Keep と同じ構成）。
   - ページ全体の最大幅は 1400px とし、中央に寄せる。
   - メモの一覧は、カード 1 枚が 220px を下回らない範囲で入る分だけ横に並べ、余れば次の行へ折り返す。
@@ -223,7 +196,7 @@
 - `bun run preview:mock` で起動する。
 - `http://127.0.0.1:8787` を開き、パスワード `preview` でログインする。
 - `DS` は Task list と同じ task API だけで動作する。
-- Task list と DS は固定初期データを表示する。Idea list は固定初期データにブラウザのlocalStorageで作成・編集・削除・ピン留め・並べ替えの変更を重ねる。localStorageを削除するとIdeaだけ初期状態に戻る。
+- Task list、Ideas、DS は固定初期データを表示する。
 
 ## 表示テーマ（モノクロ・快適テーマ）
 

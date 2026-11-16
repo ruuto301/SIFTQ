@@ -18,18 +18,6 @@ async function createTask(page: Page, title: string) {
   expect(status).toBe(201);
 }
 
-async function createIdea(page: Page, title: string): Promise<{ id: string }> {
-  return page.evaluate(async (ideaTitle) => {
-    const response = await fetch("/api/ideas", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: ideaTitle, description: "" }),
-    });
-    if (!response.ok) throw new Error(`create idea failed: ${response.status}`);
-    return response.json();
-  }, title);
-}
-
 async function selectTask(page: Page, title: string) {
   await page.goto("/tasks?status=do");
   for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -60,21 +48,6 @@ test("cancels the task list delete modal with Escape", async ({ page }) => {
   await expect(page.locator("[data-task-row]", { hasText: title })).toBeVisible();
 });
 
-test("closes the idea delete modal with Escape", async ({ page }) => {
-  await signIn(page);
-  const created = await createIdea(page, `E2E Escape idea modal ${Date.now()}`);
-  await page.goto("/ideas");
-
-  const card = page.locator(`.idea-card[data-idea-id="${created.id}"]`);
-  await card.click({ button: "right" });
-  await page.locator('.matrix-menu [data-idea-action="delete"]').click();
-  await expect(page.locator(".matrix-modal")).toBeVisible();
-
-  await page.keyboard.press("Escape");
-  await expect(page.locator(".matrix-modal")).toHaveCount(0);
-  await expect(card).toHaveCount(1);
-});
-
 test("closes the New Task popover with Escape without leaving the form", async ({ page }) => {
   await signIn(page);
   await page.goto("/tasks/new");
@@ -99,42 +72,3 @@ test("leaves the New Task form with Escape like the Cancel control", async ({ pa
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 });
 
-test("closes the idea composer with Escape", async ({ page }) => {
-  await signIn(page);
-  await page.goto("/ideas");
-
-  const composer = page.locator("[data-idea-composer]");
-  await composer.locator("[data-idea-composer-trigger]").click();
-  await expect(composer).toHaveAttribute("data-idea-composer-open", "true");
-
-  await page.keyboard.press("Escape");
-  await expect(composer).toHaveAttribute("data-idea-composer-open", "false");
-});
-
-test("saves and closes the idea detail modal with Escape", async ({ page }) => {
-  await signIn(page);
-  await createIdea(page, `E2E Escape detail ${Date.now()}`);
-  await page.goto("/ideas");
-
-  const card = page.locator(".idea-card").first();
-  await card.locator("h2").click();
-  const modal = page.locator("[data-idea-modal]");
-  await expect(modal).toBeVisible();
-  await modal.locator("input[name='title']").fill("E2E Escape detail saved");
-
-  const saved = page.waitForResponse(
-    (response) => response.url().includes("/api/ideas/") && response.request().method() === "PATCH",
-  );
-  await page.keyboard.press("Escape");
-  await saved;
-  await expect(modal).toBeHidden();
-});
-
-test("navigates the idea detail page to the list with Escape", async ({ page }) => {
-  await signIn(page);
-  const created = await createIdea(page, `E2E Escape page ${Date.now()}`);
-  await page.goto(`/ideas/${created.id}`);
-
-  await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(/\/ideas$/);
-});

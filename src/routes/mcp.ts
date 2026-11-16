@@ -6,7 +6,6 @@ import type { ToolContext } from "../mcp/types";
 import { oauthChallenge, recordMcpAudit, verifyMcpToken } from "../oauth";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
-import type { IdeaRepository } from "../repository/idea-repository";
 
 type RepositoryFactory<T> = (c: Context<AppEnv>) => T;
 
@@ -110,7 +109,6 @@ export function registerMcpRoutes(
   app: Hono<AppEnv>,
   repository: RepositoryFactory<TaskRepository>,
   projectRepository: RepositoryFactory<ProjectRepository>,
-  ideaRepository: RepositoryFactory<IdeaRepository>,
 ) {
   app.get("/mcp", (c) => c.body(null, 405, { allow: "POST" }));
 
@@ -127,7 +125,6 @@ export function registerMcpRoutes(
       env: c.env,
       tasks: repository(c),
       projects: projectRepository(c),
-      ideas: ideaRepository(c),
     };
     try {
       return await handleRpc(c, body, ctx, info.clientId, info.scopes);

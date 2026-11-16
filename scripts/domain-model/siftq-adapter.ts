@@ -76,10 +76,38 @@ function parseDroppedColumns(sql: string, into: Migrations): void {
   }
 }
 
+function parseDroppedTables(statement: string, into: Migrations): void {
+  const drop = /DROP TABLE(?:\s+IF EXISTS)?\s+"?([a-z_]+)"?/i.exec(statement);
+  const table = drop?.[1];
+  if (table === undefined) return;
+  Reflect.deleteProperty(into, table);
+}
+
+function parseRenamedTables(statement: string, into: Migrations): void {
+  const rename = /ALTER TABLE\s+"?([a-z_]+)"?\s+RENAME TO\s+"?([a-z_]+)"?/i.exec(statement);
+  const from = rename?.[1];
+  const to = rename?.[2];
+  if (from === undefined || to === undefined) return;
+  const columns = into[from];
+  if (columns === undefined) return;
+  into[to] = columns;
+  Reflect.deleteProperty(into, from);
+}
+
+/** Applies migrations in file order so drops and renames are reflected in the final schema. */
 export function parseMigrations(sql: string, into: Migrations): void {
-  parseCreateTables(sql, into);
-  parseAddedColumns(sql, into);
-  parseDroppedColumns(sql, into);
+  const withoutComments = sql
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
+  for (const statement of withoutComments.split(";")) {
+    if (!/\S/.test(statement)) continue;
+    if (/\bCREATE TABLE\b/i.test(statement)) parseCreateTables(`${statement};`, into);
+    else if (/\bADD COLUMN\b/i.test(statement)) parseAddedColumns(statement, into);
+    else if (/\bDROP COLUMN\b/i.test(statement)) parseDroppedColumns(statement, into);
+    else if (/\bRENAME TO\b/i.test(statement)) parseRenamedTables(statement, into);
+    else if (/\bDROP TABLE\b/i.test(statement)) parseDroppedTables(statement, into);
+  }
 }
 
 export function checkMigrations(model: Model, migrations: Migrations): string[] {

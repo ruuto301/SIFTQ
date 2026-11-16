@@ -4,7 +4,6 @@ import { MCP_TOOLS, findTool } from "../src/mcp";
 import type { ToolContext, ToolResult } from "../src/mcp/types";
 import { createMemoryTaskRepository } from "../src/preview/MemoryTaskRepository";
 import { createMemoryProjectRepository } from "../src/preview/MemoryProjectRepository";
-import { createMemoryIdeaRepository } from "../src/preview/MemoryIdeaRepository";
 import { PREVIEW_PROJECTS } from "../src/preview/projects";
 import { createMemoryOAuthRepository } from "../src/preview/MemoryOAuthRepository";
 import { taskFixture } from "./helpers/task-fixture";
@@ -18,7 +17,6 @@ function context(): ToolContext {
       taskFixture({ id: "b", title: "beta", order: 2, status: "done" }),
     ]),
     projects: createMemoryProjectRepository(PREVIEW_PROJECTS),
-    ideas: createMemoryIdeaRepository(),
   };
 }
 
@@ -47,7 +45,7 @@ function code(result: ToolResult): string {
 }
 
 describe("MCP tool registry", () => {
-  it("exposes every operation for tasks, projects and ideas", () => {
+  it("exposes every operation for tasks and projects", () => {
     const names = MCP_TOOLS.map((tool) => tool.name);
     for (const name of [
       "list_tasks",
@@ -60,17 +58,10 @@ describe("MCP tool registry", () => {
       "bulk_update_task_status",
       "bulk_update_task_project",
       "bulk_delete_tasks",
-      "move_task_to_idea",
       "list_projects",
       "create_project",
       "update_project",
       "reorder_projects",
-      "list_ideas",
-      "create_idea",
-      "update_idea",
-      "delete_idea",
-      "reorder_ideas",
-      "move_idea_to_task",
     ]) {
       expect(names, name).toContain(name);
     }
@@ -81,10 +72,9 @@ describe("MCP tool registry", () => {
     expect(scopeOf("list_tasks")).toBe("read");
     expect(scopeOf("task_summary")).toBe("read");
     expect(scopeOf("list_projects")).toBe("read");
-    expect(scopeOf("list_ideas")).toBe("read");
     expect(scopeOf("create_task")).toBe("write");
     expect(scopeOf("delete_task")).toBe("write");
-    expect(scopeOf("move_idea_to_task")).toBe("write");
+    expect(scopeOf("bulk_delete_tasks")).toBe("write");
   });
 
   it("gives every tool a JSON Schema input", () => {
@@ -166,16 +156,9 @@ describe("MCP task mutation tools", () => {
     expect(code(await call(ctx, "bulk_delete_tasks", { tasks: [] }))).toBe("INVALID_INPUT");
   });
 
-  it("moves a task back to the idea list", async () => {
-    const ctx = context();
-    const idea = await payload(await call(ctx, "move_task_to_idea", { id: "a", version: 1 }));
-    expect(idea).toMatchObject({ title: "alpha" });
-    expect(await payload(await call(ctx, "list_tasks"))).toHaveLength(1);
-    expect(await payload(await call(ctx, "list_ideas"))).toHaveLength(1);
-  });
 });
 
-describe("MCP project and idea tools", () => {
+describe("MCP project tools", () => {
   it("creates and updates a project", async () => {
     const ctx = context();
     const created = await payload(await call(ctx, "create_project", { id: "new_project", name: "New Project" }));
@@ -185,17 +168,6 @@ describe("MCP project and idea tools", () => {
     expect(code(await call(ctx, "create_project", { id: "bad id!", name: "x" }))).toBe("INVALID_PROJECT_ID");
   });
 
-  it("creates, updates and converts ideas", async () => {
-    const ctx = context();
-    const idea = await payload(await call(ctx, "create_idea", { title: "memo" }));
-    expect(idea).toMatchObject({ title: "memo", pinned: false });
-    const id = textOf(recordOf(idea)["id"]);
-    const pinned = await payload(await call(ctx, "update_idea", { id, pinned: true }));
-    expect(pinned).toMatchObject({ id, pinned: true });
-    const task = await payload(await call(ctx, "move_idea_to_task", { id }));
-    expect(task).toMatchObject({ title: "memo", status: "do" });
-    expect(await payload(await call(ctx, "list_ideas"))).toHaveLength(0);
-  });
 });
 
 describe("MCP endpoint (BDD-TM-032)", () => {

@@ -20,9 +20,7 @@ async function previewRequest(path: string): Promise<Response> {
 describe("mock backend preview", () => {
   it("renders the production Ideas, Task list and DS with fixed scenario data", async () => {
     const ideas = await previewRequest("/ideas");
-    const ideasDnd = await previewRequest("/ideas-dnd.js");
-    const ideaDetail = await previewRequest("/ideas/1");
-    const ideaDetailScript = await previewRequest("/idea-detail.js");
+    const ideasScript = await previewRequest("/idea.js");
     const list = await previewRequest("/tasks?status=done");
     const ds = await previewRequest("/ds");
 
@@ -31,28 +29,10 @@ describe("mock backend preview", () => {
     expect(ideasBody).toContain("Ideas");
     expect(ideasBody).toContain("毎朝の振り返りを1分で終える");
     expect(ideasBody).toContain("資産の種類と共通点");
-    expect(ideasBody).toContain('class="ideas-group-gap"');
-    expect(ideasBody).toContain('draggable="true"');
-    expect(ideasBody).toContain('href="/ideas/1"');
-    expect(ideasBody).toContain('data-idea-modal="true"');
-    expect(ideasBody).not.toContain(">Title</label>");
-    expect(ideasBody).not.toContain(">Description</label>");
-    expect(ideasBody.indexOf("毎朝の振り返りを1分で終える")).toBeLessThan(
-      ideasBody.indexOf("あとで読みたい記事を集める"),
-    );
-    expect(ideasDnd.status).toBe(200);
-    expect(await ideasDnd.text()).toContain("ideasSameGroup");
-    expect(ideaDetail.status).toBe(200);
-    const ideaDetailBody = await ideaDetail.text();
-    expect(ideaDetailBody).toContain('data-idea-form="true"');
-    expect(ideaDetailBody).toContain('href="/ideas"');
-    expect(ideaDetailBody).toContain(">閉じる</a>");
-    expect(ideaDetailBody).not.toContain("Automatically saved");
-    expect(ideaDetailBody).not.toContain(">Idea</h1>");
-    expect(ideaDetailScript.status).toBe(200);
-    const ideaDetailScriptBody = await ideaDetailScript.text();
-    expect(ideaDetailScriptBody).toContain("saveIdeaDraft");
-    expect(ideaDetailScriptBody).toContain("openIdeaModal");
+    expect(ideasBody).toContain('data-idea-page="true"');
+    expect(ideasBody).toContain("メモを取る...");
+    expect(ideasScript.status).toBe(200);
+    expect(await ideasScript.text()).toContain("data-idea-page");
     expect(list.status).toBe(200);
     const listBody = await list.text();
     expect(listBody).toContain("完了したタスクの表示を確認する");

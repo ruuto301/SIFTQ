@@ -1,4 +1,4 @@
-export type ActiveKey = "ideas" | "mk" | "tasks" | "ds" | "settings";
+export type ActiveKey = "ideas" | "tasks" | "ds" | "settings";
 
 type Nav = {
   label: string;
@@ -47,13 +47,6 @@ export const SCREENS: readonly Screen[] = [
     nav: { label: "DS", order: 3, activeKey: "ds" },
   },
   {
-    path: "/mk",
-    pageId: "html_mk_page",
-    presentationId: "P13",
-    clientFiles: ["mk-scripts.ts"],
-    nav: { label: "MK", order: 1, activeKey: "mk" },
-  },
-  {
     path: "/settings",
     pageId: "html_settings_page",
     clientFiles: ["settings-scripts.ts"],
@@ -63,11 +56,10 @@ export const SCREENS: readonly Screen[] = [
     path: "/ideas",
     pageId: "html_ideas_page",
     entity: "ideas",
-    presentationId: "P08",
+    presentationId: "P14",
     clientFiles: ["idea-scripts.ts"],
     nav: { label: "Ideas", order: 0, activeKey: "ideas" },
   },
-  { path: "/ideas/:id", pageId: "html_ideas_detail", entity: "ideas", presentationId: "P09" },
 ];
 
 export type NavItem = { path: string; label: string; activeKey: ActiveKey };

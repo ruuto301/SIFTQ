@@ -12,24 +12,6 @@ describe("siftq adapter", () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("parseMigrations collects columns from CREATE and ALTER", () => {
-    const into: Record<string, Record<string, string>> = {};
-    parseMigrations(
-      `CREATE TABLE IF NOT EXISTS tasks (\n  id TEXT PRIMARY KEY,\n  "order" INTEGER NOT NULL\n);\nALTER TABLE tasks ADD COLUMN working INTEGER NOT NULL DEFAULT 0;\nALTER TABLE tasks ADD COLUMN project TEXT;`,
-      into,
-    );
-    expect(into["tasks"]).toEqual({ id: "TEXT", order: "INTEGER", working: "INTEGER", project: "TEXT" });
-  });
-
-  it("parseMigrations removes columns dropped by ALTER", () => {
-    const into: Record<string, Record<string, string>> = {};
-    parseMigrations(
-      `CREATE TABLE tasks (\n  id TEXT PRIMARY KEY,\n  area INTEGER NOT NULL\n);\nALTER TABLE tasks DROP COLUMN area;`,
-      into,
-    );
-    expect(into["tasks"]).toEqual({ id: "TEXT" });
-  });
-
   it("checkMigrations detects a missing column", () => {
     const model: Model = {
       domains: { string: { kind: "primitive" } },
@@ -68,4 +50,41 @@ describe("siftq adapter", () => {
       'api-meta.tasks_list の code "INVALID_TITEL" が既知の error code に無い',
     );
   });
+});
+
+describe("siftq adapter migrations", () => {
+  it("parseMigrations collects columns from CREATE and ALTER", () => {
+    const into: Record<string, Record<string, string>> = {};
+    parseMigrations(
+      `CREATE TABLE IF NOT EXISTS tasks (\n  id TEXT PRIMARY KEY,\n  "order" INTEGER NOT NULL\n);\nALTER TABLE tasks ADD COLUMN working INTEGER NOT NULL DEFAULT 0;\nALTER TABLE tasks ADD COLUMN project TEXT;`,
+      into,
+    );
+    expect(into["tasks"]).toEqual({ id: "TEXT", order: "INTEGER", working: "INTEGER", project: "TEXT" });
+  });
+
+  it("parseMigrations removes columns dropped by ALTER", () => {
+    const into: Record<string, Record<string, string>> = {};
+    parseMigrations(
+      `CREATE TABLE tasks (\n  id TEXT PRIMARY KEY,\n  area INTEGER NOT NULL\n);\nALTER TABLE tasks DROP COLUMN area;`,
+      into,
+    );
+    expect(into["tasks"]).toEqual({ id: "TEXT" });
+  });
+
+  it("parseMigrations drops a table removed by DROP TABLE", () => {
+    const into: Record<string, Record<string, string>> = {};
+    parseMigrations(`CREATE TABLE ideas (\n  id TEXT\n);\nDROP TABLE IF EXISTS ideas;`, into);
+    expect(into["ideas"]).toBeUndefined();
+  });
+
+  it("parseMigrations renames a table with ALTER TABLE RENAME TO", () => {
+    const into: Record<string, Record<string, string>> = {};
+    parseMigrations(
+      `CREATE TABLE ideas (\n  id TEXT\n);\nCREATE TABLE mk_notes (\n  id TEXT,\n  body TEXT\n);\nDROP TABLE IF EXISTS ideas;\nALTER TABLE mk_notes RENAME TO ideas;`,
+      into,
+    );
+    expect(into["ideas"]).toEqual({ id: "TEXT", body: "TEXT" });
+    expect(into["mk_notes"]).toBeUndefined();
+  });
+
 });

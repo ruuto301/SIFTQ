@@ -1,13 +1,13 @@
-import type { MkLinkPreview } from "./mk";
+import type { IdeaLinkPreview } from "./idea";
 import { err, ok } from "./task";
 import type { Result } from "./task";
 
-export type MkPreviewErrorCode = "INVALID_URL" | "PREVIEW_FAILED";
+export type IdeaPreviewErrorCode = "INVALID_URL" | "PREVIEW_FAILED";
 
-export const MK_PREVIEW_TIMEOUT_MS = 5_000;
-export const MK_PREVIEW_MAX_BYTES = 512 * 1024;
-export const MK_PREVIEW_MAX_REDIRECTS = 3;
-export const MK_PREVIEW_USER_AGENT = "siftq-mk-preview/1.0";
+export const IDEA_PREVIEW_TIMEOUT_MS = 5_000;
+export const IDEA_PREVIEW_MAX_BYTES = 512 * 1024;
+export const IDEA_PREVIEW_MAX_REDIRECTS = 3;
+export const IDEA_PREVIEW_USER_AGENT = "siftq-idea-preview/1.0";
 
 const ALLOWED_PROTOCOLS = ["http:", "https:"];
 const HTML_CONTENT_TYPES = ["text/html", "application/xhtml+xml"];
@@ -81,7 +81,7 @@ export function isBlockedPreviewHostname(hostname: string): boolean {
 }
 
 /** Accepts only http(s) URLs whose host is not a local or private address. */
-export function parseMkPreviewUrl(raw: string): URL | null {
+export function parseIdeaPreviewUrl(raw: string): URL | null {
   const trimmed = raw.trim();
   if (trimmed === "") return null;
   try {
@@ -100,11 +100,11 @@ function trimTrailingPunctuation(value: string): string {
 }
 
 /** Finds the first safe URL in free text, so a note body can carry a bare link. */
-export function extractMkPreviewUrl(text: string): string | null {
+export function extractIdeaPreviewUrl(text: string): string | null {
   for (const token of text.split(/\s+/)) {
     const candidate = trimTrailingPunctuation(token.replace(LEADING_PUNCTUATION, ""));
     if (!candidate.includes(":")) continue;
-    if (parseMkPreviewUrl(candidate) !== null) return candidate;
+    if (parseIdeaPreviewUrl(candidate) !== null) return candidate;
   }
   return null;
 }
@@ -176,7 +176,7 @@ function resolvePreviewImage(value: string, base: string): string | null {
 }
 
 /** Reads Open Graph, Twitter, and plain HTML metadata into the preview columns. */
-export function extractMkLinkPreview(html: string, finalUrl: string): MkLinkPreview {
+export function extractIdeaLinkPreview(html: string, finalUrl: string): IdeaLinkPreview {
   const metas = readMetaTags(html);
   const title = firstFilled([metas["og:title"], metas["twitter:title"], TITLE_TAG.exec(html)?.[1]]);
   const description = firstFilled([metas["og:description"], metas["twitter:description"], metas["description"]]);
@@ -200,12 +200,12 @@ function isHtmlContentType(value: string | null): boolean {
 
 async function requestPreviewPage(url: URL): Promise<Response | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), MK_PREVIEW_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), IDEA_PREVIEW_TIMEOUT_MS);
   try {
     return await fetch(url.toString(), {
       redirect: "manual",
       signal: controller.signal,
-      headers: { accept: HTML_CONTENT_TYPES.join(", "), "user-agent": MK_PREVIEW_USER_AGENT },
+      headers: { accept: HTML_CONTENT_TYPES.join(", "), "user-agent": IDEA_PREVIEW_USER_AGENT },
     });
   } catch {
     return null;
@@ -216,7 +216,7 @@ async function requestPreviewPage(url: URL): Promise<Response | null> {
 
 async function readCappedText(response: Response): Promise<string | null> {
   const declared = Number(response.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MK_PREVIEW_MAX_BYTES) return null;
+  if (Number.isFinite(declared) && declared > IDEA_PREVIEW_MAX_BYTES) return null;
   if (response.body === null) return "";
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -227,7 +227,7 @@ async function readCappedText(response: Response): Promise<string | null> {
     if (step.done) break;
     total += step.value.byteLength;
     text += decoder.decode(step.value, { stream: true });
-    if (total >= MK_PREVIEW_MAX_BYTES) {
+    if (total >= IDEA_PREVIEW_MAX_BYTES) {
       await reader.cancel();
       break;
     }
@@ -241,7 +241,7 @@ function redirectTarget(response: Response, base: URL): URL | null {
   const location = response.headers.get("location");
   if (location === null) return null;
   try {
-    return parseMkPreviewUrl(new URL(location, base).toString());
+    return parseIdeaPreviewUrl(new URL(location, base).toString());
   } catch {
     return null;
   }
@@ -251,7 +251,7 @@ type PreviewPage = { finalUrl: URL; html: string };
 
 async function readPreviewPage(start: URL): Promise<PreviewPage | null> {
   let current = start;
-  for (let hop = 0; hop <= MK_PREVIEW_MAX_REDIRECTS; hop += 1) {
+  for (let hop = 0; hop <= IDEA_PREVIEW_MAX_REDIRECTS; hop += 1) {
     const response = await requestPreviewPage(current);
     if (response === null) return null;
     const next = redirectTarget(response, current);
@@ -267,10 +267,10 @@ async function readPreviewPage(start: URL): Promise<PreviewPage | null> {
 }
 
 /** Fetches the page behind one note URL; failures record nothing so the card stays a plain link. */
-export async function fetchMkLinkPreview(rawUrl: string): Promise<Result<MkLinkPreview, MkPreviewErrorCode>> {
-  const start = parseMkPreviewUrl(rawUrl);
+export async function fetchIdeaLinkPreview(rawUrl: string): Promise<Result<IdeaLinkPreview, IdeaPreviewErrorCode>> {
+  const start = parseIdeaPreviewUrl(rawUrl);
   if (start === null) return err("INVALID_URL");
   const page = await readPreviewPage(start);
   if (page === null) return err("PREVIEW_FAILED");
-  return ok(extractMkLinkPreview(page.html, page.finalUrl.toString()));
+  return ok(extractIdeaLinkPreview(page.html, page.finalUrl.toString()));
 }

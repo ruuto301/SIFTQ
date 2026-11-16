@@ -25,12 +25,11 @@ import {
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
 import type { IdeaRepository } from "../repository/idea-repository";
-import { nextIdeaOrder } from "../idea";
-import type { Idea } from "../idea";
 import { sortTasksByOrder } from "../task-list";
 import { parseVersion } from "../task-input";
 import type { ImageRepository } from "../repository/image-repository";
 import { cleanupRemovedImages } from "../image-cleanup";
+import { problem, respondList } from "./api-helpers";
 
 type ApiEnv = { Bindings: Record<string, unknown> };
 type Repository<T extends ApiEnv> = (c: Context<T>) => TaskRepository;
@@ -42,10 +41,6 @@ type TaskDeps<T extends ApiEnv> = {
   repository: Repository<T>;
   projectRepository: ProjectRepositoryFactory<T>;
 };
-
-function problem<T extends ApiEnv>(c: Context<T>, status: ContentfulStatusCode, code: string) {
-  return c.json({ code }, status);
-}
 
 function bulkProblem<T extends ApiEnv>(c: Context<T>, code: string) {
   return problem(c, code === "NOT_FOUND" ? 404 : 409, code);
@@ -183,9 +178,7 @@ function respondBulk<T extends ApiEnv>(
 }
 
 async function listApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
-  const result = await deps.repository(c).list();
-  if (!result.ok) return problem(c, 500, result.error.code);
-  return c.json(result.value);
+  return respondList(c, await deps.repository(c).list());
 }
 
 async function getApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
@@ -291,35 +284,6 @@ async function deleteApiTask<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>)
       : problem(c, 404, removed.error.code);
   }
   return c.body(null, 204);
-}
-
-async function moveApiTaskToIdea<T extends ApiEnv>(
-  c: Context<T>,
-  deps: TaskDeps<T>,
-  ideaRepository: IdeaRepositoryFactory<T>,
-) {
-  const item = await readApiTaskItem(deps.repository, c);
-  if (!item.ok) return problem(c, item.status, item.code);
-  const ideas = await ideaRepository(c).list("local");
-  if (!ideas.ok) return problem(c, 500, ideas.error.code);
-  const idea: Idea = {
-    id: crypto.randomUUID(),
-    owner_id: "local",
-    title: item.task.title,
-    description: item.task.description,
-    order: nextIdeaOrder(ideas.value, false),
-    pinned: false,
-  };
-  const inserted = await ideaRepository(c).insert(idea);
-  if (!inserted.ok) return problem(c, 500, inserted.error.code);
-  const removed = await deps.repository(c).remove(item.task.id, "local", item.version);
-  if (!removed.ok) {
-    await ideaRepository(c).remove(inserted.value.id, "local");
-    return removed.error.code === "CONFLICT"
-      ? problem(c, 409, removed.error.code)
-      : problem(c, 404, removed.error.code);
-  }
-  return c.json(inserted.value, 200);
 }
 
 async function reorderApiTasks<T extends ApiEnv>(c: Context<T>, deps: TaskDeps<T>) {
@@ -469,5 +433,4 @@ export function registerTaskApiRoutes<T extends ApiEnv>(
   const deps: TaskDeps<T> = { repository, projectRepository };
   registerProjectRoutes(app, repository, projectRepository);
   registerTaskRoutes(app, deps, ideaRepository, imageRepository);
-  app.post("/api/tasks/:id/move-to-idea", (c) => moveApiTaskToIdea(c, deps, ideaRepository));
 }

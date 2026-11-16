@@ -3,19 +3,19 @@ import { signIn } from "./task-helpers";
 import type { Locator, Page } from "@playwright/test";
 
 async function createNote(page: Page, title: string, body: string) {
-  await page.goto("/mk");
-  await page.locator("[data-mk-composer-trigger]").click();
-  const composer = page.locator("[data-mk-composer]");
+  await page.goto("/ideas");
+  await page.locator("[data-idea-composer-trigger]").click();
+  const composer = page.locator("[data-idea-composer]");
   await composer.getByLabel("メモのタイトル").fill(title);
   await composer.getByLabel("メモの本文").fill(body);
   // The save reloads the page; wait for it before touching the card.
-  await Promise.all([page.waitForEvent("load"), page.locator("[data-mk-composer-save]").click()]);
-  await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveCount(1);
+  await Promise.all([page.waitForEvent("load"), page.locator("[data-idea-composer-save]").click()]);
+  await expect(page.locator(".idea-card").filter({ hasText: title })).toHaveCount(1);
 }
 
 async function openDetail(page: Page, title: string) {
-  await page.locator(".mk-card").filter({ hasText: title }).locator(".mk-card__title").click();
-  const dialog = page.locator("[data-mk-detail-dialog]");
+  await page.locator(".idea-card").filter({ hasText: title }).locator(".idea-card__title").click();
+  const dialog = page.locator("[data-idea-detail-dialog]");
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -30,7 +30,7 @@ test("opens the Keep-style detail dialog from a card (BDD-TM-044)", async ({ pag
   await expect(dialog.getByLabel("メモの本文")).toHaveValue("最初の本文");
   // Keep's toolbar: image, archive, more, background colour and close.
   for (const control of ["archive", "palette", "close", "pin"]) {
-    await expect(dialog.locator(`[data-mk-detail-${control}]`)).toBeVisible();
+    await expect(dialog.locator(`[data-idea-detail-${control}]`)).toBeVisible();
   }
 });
 
@@ -45,29 +45,29 @@ test("autosaves the title and body, and keeps them after closing (BDD-TM-044)", 
   await dialog.getByLabel("メモの本文").fill("更新した本文");
 
   // The card follows the autosave without closing the dialog.
-  await expect(page.locator(".mk-card").filter({ hasText: updated })).toHaveCount(1);
+  await expect(page.locator(".idea-card").filter({ hasText: updated })).toHaveCount(1);
 
   await dialog.getByRole("button", { name: "閉じる" }).click();
-  await expect(page.locator("[data-mk-detail-dialog]")).toBeHidden();
+  await expect(page.locator("[data-idea-detail-dialog]")).toBeHidden();
 
   await page.reload();
-  await expect(page.locator(".mk-card").filter({ hasText: updated })).toHaveCount(1);
-  await expect(page.locator(".mk-card").filter({ hasText: updated })).toContainText("更新した本文");
+  await expect(page.locator(".idea-card").filter({ hasText: updated })).toHaveCount(1);
+  await expect(page.locator(".idea-card").filter({ hasText: updated })).toContainText("更新した本文");
 });
 
 test("changes the colour and pins the note from the dialog (BDD-TM-044)", async ({ page }) => {
   await signIn(page);
   const title = `detail color ${Date.now()}`;
   await createNote(page, title, "");
-  const card = page.locator(".mk-card").filter({ hasText: title });
+  const card = page.locator(".idea-card").filter({ hasText: title });
 
   const dialog = await openDetail(page, title);
-  await dialog.locator("[data-mk-detail-palette]").click();
-  await dialog.locator('[data-mk-detail-color="red"]').click();
-  await expect(card).toHaveAttribute("data-mk-color", "red");
+  await dialog.locator("[data-idea-detail-palette]").click();
+  await dialog.locator('[data-idea-detail-color="red"]').click();
+  await expect(card).toHaveAttribute("data-idea-color", "red");
 
-  await dialog.locator("[data-mk-detail-pin]").click();
-  await expect(card).toHaveAttribute("data-mk-pinned", "true");
+  await dialog.locator("[data-idea-detail-pin]").click();
+  await expect(card).toHaveAttribute("data-idea-pinned", "true");
 });
 
 test("deletes the note from the dialog with a confirmation (BDD-TM-044)", async ({ page }) => {
@@ -76,13 +76,13 @@ test("deletes the note from the dialog with a confirmation (BDD-TM-044)", async 
   await createNote(page, title, "");
 
   const dialog = await openDetail(page, title);
-  await dialog.locator(".mk-detail__more summary").click();
-  await dialog.locator("[data-mk-detail-delete]").click();
+  await dialog.locator(".idea-detail__more summary").click();
+  await dialog.locator("[data-idea-detail-delete]").click();
 
   await expect(page.locator(".matrix-modal-text")).toContainText("このメモを削除しますか？");
   await page.locator(".matrix-modal-button--danger").click();
 
-  await expect(page.locator(".mk-card").filter({ hasText: title })).toHaveCount(0);
+  await expect(page.locator(".idea-card").filter({ hasText: title })).toHaveCount(0);
 });
 
 test("closes the dialog with Escape (BDD-TM-044)", async ({ page }) => {
@@ -112,8 +112,8 @@ test("grows with the memo body and keeps a single scrollbar (BDD-TM-048)", async
   await createNote(page, title, "短い本文");
 
   const dialog = await openDetail(page, title);
-  const body = dialog.locator("[data-mk-detail-body]");
-  const scroller = dialog.locator("[data-mk-detail-scroll]");
+  const body = dialog.locator("[data-idea-detail-body]");
+  const scroller = dialog.locator("[data-idea-detail-scroll]");
 
   // A short memo makes a small dialog and the body never scrolls on its own.
   const short = await boxHeight(dialog);
@@ -133,10 +133,10 @@ test("grows with the memo body and keeps a single scrollbar (BDD-TM-048)", async
 
 test("grows the composer body while typing (BDD-TM-048)", async ({ page }) => {
   await signIn(page);
-  await page.goto("/mk");
-  await page.locator("[data-mk-composer-trigger]").click();
+  await page.goto("/ideas");
+  await page.locator("[data-idea-composer-trigger]").click();
 
-  const composer = page.locator("[data-mk-composer]");
+  const composer = page.locator("[data-idea-composer]");
   const body = composer.getByLabel("メモの本文");
   const before = await boxHeight(body);
 

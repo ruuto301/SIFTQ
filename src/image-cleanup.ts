@@ -13,8 +13,11 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
-function isReferenced(token: string, tasks: readonly { description: string }[], ideas: readonly { description: string }[]): boolean {
-  return tasks.some((task) => task.description.includes(token)) || ideas.some((idea) => idea.description.includes(token));
+function isReferenced(token: string, tasks: readonly { description: string }[], notes: readonly { title: string; body: string }[]): boolean {
+  return (
+    tasks.some((task) => task.description.includes(token)) ||
+    notes.some((note) => note.body.includes(token) || note.title.includes(token))
+  );
 }
 
 export type CleanupDeps = {
