@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import { signIn } from "./task-helpers";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 async function createNote(page: Page, title: string, body: string) {
   await page.goto("/mk");
@@ -93,4 +93,53 @@ test("closes the dialog with Escape (BDD-TM-044)", async ({ page }) => {
   const dialog = await openDetail(page, title);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
+});
+
+/** The body must not scroll on its own; only the dialog body does. A couple of pixels of rounding is fine. */
+async function innerScroll(locator: Locator): Promise<number> {
+  return locator.evaluate((el) => el.scrollHeight - el.clientHeight);
+}
+
+async function boxHeight(locator: Locator): Promise<number> {
+  const box = await locator.boundingBox();
+  if (box === null) throw new Error("the element is missing");
+  return Math.round(box.height);
+}
+
+test("grows with the memo body and keeps a single scrollbar (BDD-TM-048)", async ({ page }) => {
+  await signIn(page);
+  const title = `desc grow ${Date.now()}`;
+  await createNote(page, title, "短い本文");
+
+  const dialog = await openDetail(page, title);
+  const body = dialog.locator("[data-mk-detail-body]");
+  const scroller = dialog.locator("[data-mk-detail-scroll]");
+
+  // A short memo makes a small dialog and the body never scrolls on its own.
+  const short = await boxHeight(dialog);
+  expect(short).toBeLessThan(260);
+  expect(await innerScroll(body)).toBeLessThanOrEqual(2);
+
+  const long = Array.from({ length: 60 }, (_, index) => `- 行 ${index + 1}`).join("\n");
+  await dialog.getByLabel("メモの本文").fill(long);
+
+  await expect.poll(async () => boxHeight(dialog)).toBeGreaterThan(short + 100);
+  const grown = await boxHeight(dialog);
+  expect(grown).toBeLessThanOrEqual(960 * 0.9);
+  // Only the dialog body scrolls once the memo is taller than the cap.
+  expect(await innerScroll(scroller)).toBeGreaterThan(10);
+  expect(await innerScroll(body)).toBeLessThanOrEqual(2);
+});
+
+test("grows the composer body while typing (BDD-TM-048)", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/mk");
+  await page.locator("[data-mk-composer-trigger]").click();
+
+  const composer = page.locator("[data-mk-composer]");
+  const body = composer.getByLabel("メモの本文");
+  const before = await boxHeight(body);
+
+  await body.fill(Array.from({ length: 8 }, (_, index) => `行 ${index + 1}`).join("\n"));
+  expect(await boxHeight(body)).toBeGreaterThan(before);
 });
