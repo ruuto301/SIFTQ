@@ -52,6 +52,19 @@ function dispatchPaste(element: Element, encoded: string): void {
   element.dispatchEvent(event);
 }
 
+/** 同じ画像を 2 つ含むクリップボードでも、挿入は 1 枚だけにする。 */
+function dispatchDuplicatePaste(element: Element, encoded: string): void {
+  const binary = atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const transfer = new DataTransfer();
+  transfer.items.add(new File([bytes], "pixel.png", { type: "image/png" }));
+  transfer.items.add(new File([bytes], "pixel.png", { type: "image/png" }));
+  const event = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", { value: transfer });
+  element.dispatchEvent(event);
+}
+
 async function pasteImage(page: Page, selector: string, base64: string): Promise<void> {
   await page.locator(selector).evaluate(dispatchPaste, base64);
 }
@@ -169,7 +182,7 @@ test("caps the description image and opens it in a lightbox (BDD-TM-051)", async
 
     const editorImage = page.locator("#ds-description-editor img.description-image");
     await expect(editorImage).toHaveCount(1);
-    expect(await editorImage.evaluate((el) => getComputedStyle(el).maxHeight)).toBe("320px");
+    expect(await editorImage.evaluate((el) => getComputedStyle(el).maxHeight)).toBe("180px");
 
     expect(await editorImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe("contain");
 
@@ -177,6 +190,27 @@ test("caps the description image and opens it in a lightbox (BDD-TM-051)", async
     await expect(page.locator("[data-description-lightbox]")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator("[data-description-lightbox]")).toBeHidden();
+  } finally {
+    await deleteTask(page, taskId);
+  }
+});
+
+test("keeps one image when the clipboard holds the same image twice (BDD-TM-052)", async ({ page }) => {
+  await signIn(page);
+  const taskId = await createTask(page, `E2E ds image dedupe ${Date.now()}`);
+
+  try {
+    await page.goto(`/ds?task=${taskId}`);
+    const editor = page.locator("#ds-description-editor");
+    await expect(editor).toBeVisible();
+
+    await editor.evaluate(dispatchDuplicatePaste, PIXEL_PNG);
+    await expect(editor.locator("img.description-image")).toHaveCount(1);
+
+    const image = editor.locator("img.description-image").first();
+    expect(await image.evaluate((el) => getComputedStyle(el).maxHeight)).toBe("180px");
+    const maxWidth = await image.evaluate((el) => getComputedStyle(el).maxWidth);
+    expect(maxWidth).toMatch(/300px/);
   } finally {
     await deleteTask(page, taskId);
   }
