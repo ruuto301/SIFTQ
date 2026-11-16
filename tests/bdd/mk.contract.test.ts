@@ -565,3 +565,14 @@ describe("MK without labels (BDD-TM-047)", () => {
     expect((await jsonRequest(`/api/mk/notes/${note.id}/labels`, "POST", { labelIds: [] })).status).toBe(404);
   });
 });
+
+describe("MK maximum width (BDD-TM-050)", () => {
+  it("caps the page width and wraps the cards", async () => {
+    const css = await (await request("/styles.css")).text();
+
+    expect(css).toMatch(/\.page--mk\s*\{[^}]*max-width: 1400px/);
+    expect(css).toMatch(/\.mk-grid\s*\{[^}]*grid-template-columns: repeat\(auto-fill, minmax\(220px, 1fr\)\)/);
+    expect(css).not.toContain("columns: 3;");
+    expect(css).not.toContain("columns: 4;");
+  });
+});
