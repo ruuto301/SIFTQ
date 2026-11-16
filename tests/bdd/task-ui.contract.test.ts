@@ -767,3 +767,18 @@ describe("Task detail working toggle", () => {
     expect(response.status).toBe(400);
   });
 });
+
+// covers: BDD-TM-051
+describe("description image sizing (BDD-TM-051)", () => {
+  it("caps description images and ships the lightbox", async () => {
+    const css = await (await request("/styles.css")).text();
+    const script = await (await request("/ds.js")).text();
+
+    expect(css).toMatch(/\.description-preview img\s*\{[^}]*max-height: 320px/);
+    expect(css).toMatch(/\.description-preview img\s*\{[^}]*object-fit: contain/);
+    expect(css).toMatch(/\.description-image\s*\{[^}]*max-height: 320px/);
+    expect(css).toContain(".description-lightbox");
+    expect(script).toContain("descriptionLightbox");
+    expect(script).toContain("openDescriptionImage");
+  });
+});
