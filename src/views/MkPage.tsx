@@ -533,14 +533,16 @@ function MkDetailDialog() {
             📌
           </button>
         </div>
-        <textarea
-          class="mk-detail__text"
-          rows={8}
-          maxlength={16384}
-          aria-label="メモの本文"
-          data-mk-detail-body
-        />
-        <div class="mk-detail__images" data-mk-detail-images />
+        <div class="mk-detail__body" data-mk-detail-scroll>
+          <textarea
+            class="mk-detail__text"
+            rows={2}
+            maxlength={16384}
+            aria-label="メモの本文"
+            data-mk-detail-body
+          />
+          <div class="mk-detail__images" data-mk-detail-images />
+        </div>
         <div class="mk-detail__bar">
           <button class="mk-detail__icon" type="button" data-mk-detail-archive aria-label="アーカイブ">
             🗄

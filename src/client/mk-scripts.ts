@@ -16,6 +16,9 @@ function mkConfirm(message, run) {
 function mkReload() { window.location.reload(); }
 function mkRun(path, init) { mkApi(path, init).then(mkReload).catch(function () {}); }
 function mkComposerColor(composer) { return composer.getAttribute("data-mk-color") || "default"; }
+function mkGrowComposer(composer) {
+  mkAutoGrow(composer.querySelector("[data-mk-composer-body]"), MK_COMPOSER_MAX_ROWS);
+}
 function setMkComposerOpen(composer, open) {
   composer.classList.toggle("mk-composer--open", open);
   composer.setAttribute("data-mk-composer-open", open ? "true" : "false");
@@ -338,7 +341,9 @@ function initializeMkComposer(page) {
   if (!composer || composer.getAttribute("data-mk-ready") === "true") return;
   composer.setAttribute("data-mk-ready", "true");
   var trigger = composer.querySelector("[data-mk-composer-trigger]");
-  if (trigger) trigger.addEventListener("click", function () { setMkComposerOpen(composer, true); });
+  if (trigger) trigger.addEventListener("click", function () { setMkComposerOpen(composer, true); mkGrowComposer(composer); });
+  var composerBody = composer.querySelector("[data-mk-composer-body]");
+  if (composerBody) composerBody.addEventListener("input", function () { mkGrowComposer(composer); });
   var cancel = composer.querySelector("[data-mk-composer-cancel]");
   if (cancel) cancel.addEventListener("click", function () { resetMkComposer(composer); setMkComposerOpen(composer, false); });
   var save = composer.querySelector("[data-mk-composer-save]");
@@ -552,6 +557,25 @@ function initializeMkPreview(page) {
     mkRun("/api/mk/notes/" + encodeURIComponent(id) + "/preview", { method: "POST" });
   });
 }
+var MK_COMPOSER_MAX_ROWS = 12;
+function mkAutoGrow(field, maxRows) {
+  if (!field) return;
+  var style = window.getComputedStyle(field);
+  var line = parseFloat(style.lineHeight);
+  if (!line || Number.isNaN(line)) line = parseFloat(style.fontSize) * 1.5 || 20;
+  var cap = maxRows > 0 ? Math.round(line * maxRows) : 0;
+  field.style.height = "auto";
+  var next = field.scrollHeight;
+  if (cap > 0 && next > cap) next = cap;
+  field.style.height = next + "px";
+  field.style.overflowY = cap > 0 && field.scrollHeight > cap ? "auto" : "hidden";
+}
+function mkGrowDetail(root) {
+  var body = mkDetailField(root, "body");
+  mkAutoGrow(body, 0);
+  var scroll = mkDetailField(root, "scroll");
+  if (scroll) scroll.scrollTop = scroll.scrollTop;
+}
 function mkDetail() { return document.querySelector("[data-mk-detail]"); }
 function mkDetailField(root, name) { return root.querySelector("[data-mk-detail-" + name + "]"); }
 function mkDetailCard(root) {
@@ -637,8 +661,10 @@ function mkDetailOpen(card) {
   var pin = mkDetailField(root, "pin");
   if (pin) pin.setAttribute("aria-pressed", card.getAttribute("data-mk-pinned") === "true" ? "true" : "false");
   mkDetailRenderImages(root, card);
+  mkGrowDetail(root);
   mkDetailError(root, "");
   root.hidden = false;
+  mkGrowDetail(root);
   if (title) title.focus();
 }
 function mkDetailClose() {
@@ -662,6 +688,7 @@ function initializeMkDetail(page) {
     if (!field) return;
     field.addEventListener("input", function () {
       clearTimeout(timer);
+      if (name === "body") mkGrowDetail(root);
       timer = setTimeout(function () { mkDetailSave(root); }, 400);
     });
     field.addEventListener("keydown", function (event) {
