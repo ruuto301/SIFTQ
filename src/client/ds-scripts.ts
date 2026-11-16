@@ -1255,6 +1255,12 @@ export const DS_SCRIPT = `(function () {
       if (dirty()) return;
       baselineDescription = text;
       descriptionInput.value = text;
+      var editor = document.getElementById("ds-description-editor");
+      if (editor) {
+        editor.textContent = text;
+        if (typeof renderDescriptionImages === "function") renderDescriptionImages(editor);
+        if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
+      }
       refresh();
     });
     refresh();

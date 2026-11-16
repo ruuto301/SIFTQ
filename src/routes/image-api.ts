@@ -36,6 +36,15 @@ export function registerImageApiRoutes(
     return c.json({ id: inserted.value.id, url: `/api/images/${inserted.value.id}` }, 201);
   });
 
+  app.delete("/api/images/:id", async (c) => {
+    const found = await repository(c).find(c.req.param("id"), OWNER_ID);
+    if (!found.ok) return c.json({ code: found.error.code }, 500);
+    if (found.value === undefined) return c.json({ code: "NOT_FOUND" }, 404);
+    const deleted = await repository(c).delete(found.value.id, OWNER_ID);
+    if (!deleted.ok) return c.json({ code: deleted.error.code }, 500);
+    return c.body(null, 204);
+  });
+
   app.get("/api/images/:id", async (c) => {
     const found = await repository(c).find(c.req.param("id"), OWNER_ID);
     if (!found.ok) return c.json({ code: found.error.code }, 500);

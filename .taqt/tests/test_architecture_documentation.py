@@ -38,6 +38,7 @@ INTERFACE_FILES = {
     ROOT / "src/routes/mcp.ts",
     ROOT / "src/mcp/types.ts",
     ROOT / "src/app-env.ts",
+    ROOT / "src/image-cleanup.ts",
 }
 
 

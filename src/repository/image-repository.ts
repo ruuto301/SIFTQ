@@ -9,6 +9,7 @@ export type ImageRepositoryError = { code: "NOT_FOUND" | "CONFLICT" };
 export interface ImageRepository {
   insert(image: StoredImage): Promise<Result<StoredImage, ImageRepositoryError>>;
   find(id: string, owner_id: string): Promise<Result<StoredImage | undefined, ImageRepositoryError>>;
+  delete(id: string, owner_id: string): Promise<Result<boolean, ImageRepositoryError>>;
 }
 
 export function createMemoryImageRepository(): ImageRepository {
@@ -22,6 +23,12 @@ export function createMemoryImageRepository(): ImageRepository {
     async find(id, owner_id) {
       const image = images.get(id);
       return ok(image?.owner_id === owner_id ? image : undefined);
+    },
+    async delete(id, owner_id) {
+      const image = images.get(id);
+      if (image === undefined || image.owner_id !== owner_id) return ok(false);
+      images.delete(id);
+      return ok(true);
     },
   };
 }
@@ -65,6 +72,10 @@ export function createD1ImageRepository(db: D1Database): ImageRepository {
         .bind(id, owner_id)
         .first<Record<string, unknown>>();
       return ok(row === null ? undefined : toStoredImage(row));
+    },
+    async delete(id, owner_id) {
+      const result = await db.prepare("DELETE FROM images WHERE id = ? AND owner_id = ?").bind(id, owner_id).run();
+      return ok((result.meta?.changes ?? 0) > 0);
     },
   };
 }
