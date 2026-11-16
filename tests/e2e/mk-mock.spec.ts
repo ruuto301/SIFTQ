@@ -81,3 +81,20 @@ test("has no label controls (BDD-TM-047)", async ({ page }) => {
   }
   await expect(page.getByText("新しいラベル")).toHaveCount(0);
 });
+
+test("caps the content width and wraps the cards (BDD-TM-049)", async ({ page }) => {
+  await signIn(page);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/mk");
+
+  const pageBox = await page.locator(".page--mk").boundingBox();
+  if (pageBox === null) throw new Error("the page is missing");
+  expect(pageBox.width).toBeLessThanOrEqual(1400);
+
+  const columnsAt = async (width: number) => {
+    await page.setViewportSize({ width, height: 1080 });
+    return page.locator(".mk-grid").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  };
+  expect(await columnsAt(1920)).toBe(4);
+  expect(await columnsAt(1024)).toBe(3);
+});

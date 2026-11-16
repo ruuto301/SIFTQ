@@ -2,6 +2,8 @@ export const MK_CSS = `
 .page--mk {
   background: transparent;
   color: #303030;
+  margin: 0 auto;
+  max-width: 1400px;
   min-height: calc(100vh - 63px);
   padding: 24px 16px 48px;
 }
@@ -348,27 +350,12 @@ export const MK_CSS = `
   background: #efe7fb;
 }
 
+/* 入る分だけ並べ、余れば次の行へ折り返す（最大幅 1400px の中で 4 列前後になる）。 */
 .mk-grid {
-  column-gap: 16px;
-  columns: 1;
-}
-
-@media (width >= 48rem) {
-  .mk-grid {
-    columns: 2;
-  }
-}
-
-@media (width >= 72rem) {
-  .mk-grid {
-    columns: 3;
-  }
-}
-
-@media (width >= 100rem) {
-  .mk-grid {
-    columns: 4;
-  }
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
 .mk-card {
@@ -376,8 +363,6 @@ export const MK_CSS = `
   border: 2px solid #1f1f1f;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
-  break-inside: avoid;
-  margin: 0 0 16px;
   padding: 12px 14px;
   position: relative;
 }
