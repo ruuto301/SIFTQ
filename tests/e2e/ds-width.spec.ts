@@ -28,20 +28,18 @@ async function resizerBox(resizer: Locator): Promise<{ x: number; y: number; wid
   return box;
 }
 
-test("caps the DS page at 1280px and centers it", async ({ page }) => {
+test("keeps the DS page full width without a max-width cap", async ({ page }) => {
   await page.goto("/ds");
   const frame = page.locator(".ds-page");
 
-  await expect(frame).toHaveCSS("max-width", "1280px");
-  const box = await frame.boundingBox();
-  expect(box).not.toBeNull();
-  expect(box?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(1280);
-
-  const margins = await frame.evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return { left: rect.left, right: document.documentElement.clientWidth - rect.right };
+  await expect(frame).toHaveCSS("max-width", "none");
+  const spansParent = await frame.evaluate((element) => {
+    const parent = element.parentElement;
+    if (parent === null) return false;
+    const frameWidth = element.getBoundingClientRect().width;
+    return Math.abs(frameWidth - parent.getBoundingClientRect().width) <= 2;
   });
-  expect(Math.abs(margins.left - margins.right)).toBeLessThanOrEqual(1);
+  expect(spansParent).toBe(true);
 });
 
 test("drags the resizer, shows the width tag and persists the width after reload", async ({ page }) => {
