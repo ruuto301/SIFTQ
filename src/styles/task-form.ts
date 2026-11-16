@@ -199,8 +199,9 @@ textarea {
   margin: 12px 0 6px;
 }
 
-/* 本文幅を上限にした原寸（拡大しない）。縦長は 320px で全体を見せる。 */
-.description-preview img {
+/* 既定は本文中の小さめの図（横 300px / 縦 180px・比率維持）。「大きく表示」で本文幅まで広げる。 */
+.description-preview img,
+.description-image {
   background: #f6f8fa;
   border: 1px solid #d8dde3;
   border-radius: 8px;
@@ -208,10 +209,33 @@ textarea {
   display: block;
   height: auto;
   margin: 6px 0;
-  max-height: 320px;
-  max-width: 100%;
+  max-height: 180px;
+  max-width: min(100%, 300px);
   object-fit: contain;
   width: auto;
+}
+
+.description-figure {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.description-figure__toggle {
+  background: #ffffff;
+  border: 1px solid #d8dde3;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 10px;
+}
+
+.description-figure.is-expanded img {
+  max-height: 480px;
+  max-width: 100%;
 }
 
 .description-preview img:hover {

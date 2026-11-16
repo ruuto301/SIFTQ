@@ -10,15 +10,15 @@ export const BASE_CSS = `
   box-sizing: border-box;
 }
 
-/* 編集中の画像も本文幅を上限にし、縦長は 320px で全体を見せる。 */
+/* 編集中の画像も既定は小さめ（横 300px / 縦 180px・比率維持）。 */
 .description-image {
   border: 1px solid #d8dde3;
   border-radius: 8px;
   display: block;
   height: auto;
   margin: 6px 0;
-  max-height: 320px;
-  max-width: 100%;
+  max-height: 180px;
+  max-width: min(100%, 300px);
   object-fit: contain;
   width: auto;
 }

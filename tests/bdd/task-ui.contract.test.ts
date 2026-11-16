@@ -769,16 +769,30 @@ describe("Task detail working toggle", () => {
 });
 
 // covers: BDD-TM-051
+// covers: BDD-TM-052
+describe("description image paste dedupe (BDD-TM-052)", () => {
+  it("uploads one image per paste and keeps the default size", async () => {
+    const form = await (await request("/description-editor.js")).text();
+    const css = await (await request("/styles.css")).text();
+
+    expect(form).toContain("descriptionUniqueImageFiles");
+    expect(css).toMatch(/\.description-image\s*\{[^}]*max-height: 180px/);
+    expect(css).toMatch(/\.description-image\s*\{[^}]*max-width: min\(100%, 300px\)/);
+  });
+});
+
 describe("description image sizing (BDD-TM-051)", () => {
   it("caps description images and ships the lightbox", async () => {
     const css = await (await request("/styles.css")).text();
     const script = await (await request("/ds.js")).text();
 
-    expect(css).toMatch(/\.description-preview img\s*\{[^}]*max-height: 320px/);
-    expect(css).toMatch(/\.description-preview img\s*\{[^}]*object-fit: contain/);
-    expect(css).toMatch(/\.description-image\s*\{[^}]*max-height: 320px/);
+    expect(css).toMatch(/\.description-preview img,[\s\S]*?max-height: 180px/);
+    expect(css).toMatch(/\.description-preview img,[\s\S]*?max-width: min\(100%, 300px\)/);
+    expect(css).toMatch(/\.description-preview img,[\s\S]*?object-fit: contain/);
     expect(css).toContain(".description-lightbox");
+    expect(css).toContain(".description-figure.is-expanded img");
     expect(script).toContain("descriptionLightbox");
     expect(script).toContain("openDescriptionImage");
+    expect(script).toContain("description-figure__toggle");
   });
 });
