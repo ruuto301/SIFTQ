@@ -933,4 +933,259 @@ export const IDEA_CSS = `
   display: none;
 }
 
+/* 既存 Idea（カード・詳細）への添付と、R2 添付のチップ表示 */
+.idea-card--dragover {
+  border-color: #7fd1a3;
+  box-shadow: inset 0 0 0 2px #7fd1a3;
+}
+
+.idea-card__attachment-drop {
+  align-items: center;
+  background: #00000073;
+  border: 2px dashed #7fd1a3;
+  border-radius: 8px;
+  color: #d7f5e4;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  z-index: 2;
+}
+
+.idea-card__attachment-drop[hidden] {
+  display: none;
+}
+
+.idea-card__attachments {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.idea-card__attachment-count {
+  color: #eeeae0b3;
+  font-size: 11px;
+}
+
+.idea-card__attachment-count[hidden] {
+  display: none;
+}
+
+.idea-card__attachment-items,
+.idea-detail__attachment-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.idea-card__attachment-status,
+.idea-detail__attachment-status {
+  color: #eeeae0b3;
+  font-size: 11px;
+  margin: 0;
+}
+
+.idea-card__attachment-status[hidden],
+.idea-detail__attachment-status[hidden] {
+  display: none;
+}
+
+.idea-card__attachment-status[data-idea-attachment-status-bad="true"],
+.idea-detail__attachment-status[data-idea-attachment-status-bad="true"] {
+  color: #ffb4a9;
+}
+
+.idea-attachment {
+  align-items: center;
+  background: #ffffff14;
+  border: 1px solid #ffffff2e;
+  border-radius: 8px;
+  color: #eeeae0;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 6px;
+}
+
+.idea-attachment__thumb {
+  border-radius: 4px;
+  height: 28px;
+  object-fit: cover;
+  width: 28px;
+}
+
+.idea-attachment__icon {
+  font-size: 13px;
+}
+
+.idea-attachment__name {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idea-attachment__size {
+  color: #eeeae099;
+}
+
+.idea-attachment__remove {
+  background: transparent;
+  border: 0;
+  color: #eeeae0b3;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.idea-attachment__retry,
+.idea-attachment__download {
+  background: transparent;
+  border: 0;
+  color: #a3caff;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+  text-decoration: underline;
+}
+
+.idea-attachment__progress {
+  background: #ffffff1f;
+  border-radius: 999px;
+  height: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.idea-attachment__progress[hidden] {
+  display: none;
+}
+
+.idea-attachment__progress i {
+  background: #7fd1a3;
+  display: block;
+  height: 100%;
+  transition: width 0.2s;
+  width: 0;
+}
+
+.idea-detail__attachments {
+  display: grid;
+  gap: 8px;
+  padding: 8px 16px 0;
+}
+
+.idea-detail__attachment {
+  display: grid;
+  gap: 6px;
+}
+
+.idea-attachment__tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.idea-attachment__tab {
+  background: transparent;
+  border: 1px solid #ffffff2e;
+  border-radius: 999px;
+  color: #eeeae0b3;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 10px;
+}
+
+.idea-attachment__tab.is-active {
+  background: #eeeae0;
+  border-color: #eeeae0;
+  color: #18191b;
+}
+
+.idea-attachment__view {
+  background: #ffffff0f;
+  border: 1px solid #ffffff2e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.idea-attachment__frame {
+  background: #ffffff;
+  border: 0;
+  display: block;
+  height: 200px;
+  width: 100%;
+}
+
+.idea-attachment__preview-image {
+  display: block;
+  max-height: 240px;
+  max-width: 100%;
+}
+
+.idea-attachment__source {
+  color: #eeeae0d9;
+  font: 11px/1.5 ui-monospace, Menlo, monospace;
+  margin: 0;
+  max-height: 200px;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.idea-attachment__download {
+  display: inline-block;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.idea-detail__drop {
+  align-items: center;
+  background: #000000a6;
+  border: 2px dashed #7fd1a3;
+  border-radius: 8px;
+  color: #d7f5e4;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  inset: 0;
+  justify-content: center;
+  margin: 0;
+  position: absolute;
+  z-index: 3;
+}
+
+.idea-detail__drop[hidden] {
+  display: none;
+}
+
+.idea-composer__image-icon {
+  font-size: 22px;
+}
+
+.idea-composer__image-name {
+  display: block;
+  font-size: 11px;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idea-composer__image-size {
+  color: #555555;
+  display: block;
+  font-size: 10px;
+}
+
+.idea-composer__image-error {
+  color: #8a1f10;
+  display: block;
+  font-size: 10px;
+  max-width: 96px;
+}
 `;

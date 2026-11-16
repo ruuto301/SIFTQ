@@ -19,6 +19,8 @@ import type {
   IdeaPreviewFields,
   IdeaSort,
 } from "../idea";
+import type { IdeaAttachment } from "../idea-attachment";
+import { isIdeaAttachment } from "../idea-attachment";
 import { err, ok } from "../task";
 import { isRecord } from "../task";
 import type { Result } from "../task";
@@ -30,7 +32,11 @@ const IDEA_COLUMNS =
 const IDEA_SELECT = `SELECT ${IDEA_COLUMNS} FROM ideas`;
 const IDEA_IMAGE_COLUMNS = "id, note_id, owner_id, image_id, position, created_at";
 const IDEA_IMAGE_SELECT = `SELECT ${IDEA_IMAGE_COLUMNS} FROM idea_images`;
-const IDEA_IMAGE_LIMIT = 50;
+const IDEA_ATTACHMENT_COLUMNS =
+  "id, owner_id, note_id, position, kind, name, content_type, bytes, r2_key, sha256, preview, created_at, deleted_at";
+const IDEA_ATTACHMENT_SELECT = `SELECT ${IDEA_ATTACHMENT_COLUMNS} FROM idea_attachments`;
+/** 一覧系クエリの共通上限。 */
+const IDEA_ROW_LIMIT = 50;
 const IDEA_BULK_LIMIT = 50;
 
 const NULLABLE_NOTE_COLUMNS = [
@@ -102,6 +108,10 @@ export function toIdeaImage(value: unknown): IdeaImage | undefined {
   return isIdeaImage(value) ? value : undefined;
 }
 
+export function toIdeaAttachment(value: unknown): IdeaAttachment | undefined {
+  return isIdeaAttachment(value) ? value : undefined;
+}
+
 
 
 function readCount(row: Record<string, unknown> | null, key: string): number {
@@ -146,7 +156,24 @@ export function createD1IdeaRepository(db: D1Database): IdeaRepository {
     listImages: (note_id, owner_id) => listImages(db, note_id, owner_id),
     insertImage: (link) => insertImage(db, link),
     removeImage: (id, owner_id) => runMutationNotFound(db, "DELETE FROM idea_images WHERE id = ? AND owner_id = ?", [id, owner_id]),
-    countImages: (note_id, owner_id) => countImages(db, note_id, owner_id),
+    countImages: (note_id, owner_id) => countOwnedRows(db, "idea_images", "", note_id, owner_id),
+    listAttachments: (note_id, owner_id) => listAttachments(db, note_id, owner_id),
+    insertAttachment: (attachment) => insertAttachment(db, attachment),
+    removeAttachment: (id, owner_id) =>
+      runMutationNotFound(db, "UPDATE idea_attachments SET deleted_at = ? WHERE id = ? AND owner_id = ? AND deleted_at IS NULL", [
+        new Date().toISOString(),
+        id,
+        owner_id,
+      ]),
+    countAttachments: (note_id, owner_id) =>
+      countOwnedRows(db, "idea_attachments", " AND deleted_at IS NULL", note_id, owner_id),
+    findAttachment: (id, owner_id) => findAttachment(db, id, owner_id),
+    updateAttachmentPreview: (id, owner_id, preview) =>
+      runMutationNotFound(
+        db,
+        "UPDATE idea_attachments SET preview = ? WHERE id = ? AND owner_id = ? AND deleted_at IS NULL",
+        [preview, id, owner_id],
+      ),
   };
 }
 
@@ -391,8 +418,39 @@ async function removeNotes(
   if (!current.ok) return current;
   if (requireTrashed && current.value.some((note) => !isDeleted(note))) return err({ code: "INVALID_STATE" });
   await db.batch(ids.map((id) => db.prepare("DELETE FROM idea_images WHERE note_id = ? AND owner_id = ?").bind(id, owner_id)));
+  await db.batch(
+    ids.map((id) => db.prepare("DELETE FROM idea_attachments WHERE note_id = ? AND owner_id = ?").bind(id, owner_id)),
+  );
   const removed = await db.batch(ids.map((id) => db.prepare("DELETE FROM ideas WHERE id = ? AND owner_id = ?").bind(id, owner_id)));
   return removed.some((result) => changes(result) === 0) ? err({ code: "NOT_FOUND" }) : ok(null);
+}
+
+/** 呼び出し元の SQL に LIMIT 句は無く、ここで上限を付ける。 */
+async function listOwnedRows(
+  db: D1Database,
+  sql: string,
+  note_id: string,
+  owner_id: string,
+): Promise<Record<string, unknown>[]> {
+  const result = await db
+    .prepare(`${sql} LIMIT ${IDEA_ROW_LIMIT}`)
+    .bind(note_id, owner_id)
+    .all<Record<string, unknown>>();
+  return result.results;
+}
+
+async function countOwnedRows(
+  db: D1Database,
+  table: string,
+  filter: string,
+  note_id: string,
+  owner_id: string,
+): Promise<Result<number, IdeaRepositoryError>> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS total FROM ${table} WHERE note_id = ? AND owner_id = ?${filter}`)
+    .bind(note_id, owner_id)
+    .first<{ total: number }>();
+  return ok(row === null ? 0 : row.total);
 }
 
 async function listImages(
@@ -400,11 +458,13 @@ async function listImages(
   note_id: string,
   owner_id: string,
 ): Promise<Result<IdeaImage[], IdeaRepositoryError>> {
-  const result = await db
-    .prepare(`${IDEA_IMAGE_SELECT} WHERE note_id = ? AND owner_id = ? ORDER BY position ASC, id ASC LIMIT ${IDEA_IMAGE_LIMIT}`)
-    .bind(note_id, owner_id)
-    .all<Record<string, unknown>>();
-  return ok(result.results.map(toIdeaImage).filter((link): link is IdeaImage => link !== undefined));
+  const rows = await listOwnedRows(
+    db,
+    `${IDEA_IMAGE_SELECT} WHERE note_id = ? AND owner_id = ? ORDER BY position ASC, id ASC`,
+    note_id,
+    owner_id,
+  );
+  return ok(rows.map(toIdeaImage).filter((link): link is IdeaImage => link !== undefined));
 }
 
 async function insertImage(db: D1Database, link: IdeaImage): Promise<Result<IdeaImage, IdeaRepositoryError>> {
@@ -415,16 +475,57 @@ async function insertImage(db: D1Database, link: IdeaImage): Promise<Result<Idea
   return ok(link);
 }
 
-async function countImages(
+
+async function listAttachments(
   db: D1Database,
   note_id: string,
   owner_id: string,
-): Promise<Result<number, IdeaRepositoryError>> {
+): Promise<Result<IdeaAttachment[], IdeaRepositoryError>> {
+  const rows = await listOwnedRows(
+    db,
+    `${IDEA_ATTACHMENT_SELECT} WHERE note_id = ? AND owner_id = ? AND deleted_at IS NULL ORDER BY position ASC, id ASC`,
+    note_id,
+    owner_id,
+  );
+  return ok(rows.map(toIdeaAttachment).filter((attachment): attachment is IdeaAttachment => attachment !== undefined));
+}
+
+async function insertAttachment(
+  db: D1Database,
+  attachment: IdeaAttachment,
+): Promise<Result<IdeaAttachment, IdeaRepositoryError>> {
+  await db
+    .prepare(`INSERT INTO idea_attachments (${IDEA_ATTACHMENT_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      attachment.id,
+      attachment.owner_id,
+      attachment.note_id,
+      attachment.position,
+      attachment.kind,
+      attachment.name,
+      attachment.content_type,
+      attachment.bytes,
+      attachment.r2_key,
+      attachment.sha256,
+      attachment.preview,
+      attachment.created_at,
+      attachment.deleted_at,
+    )
+    .run();
+  return ok(attachment);
+}
+
+
+async function findAttachment(
+  db: D1Database,
+  id: string,
+  owner_id: string,
+): Promise<Result<IdeaAttachment | undefined, IdeaRepositoryError>> {
   const row = await db
-    .prepare("SELECT COUNT(*) AS total FROM idea_images WHERE note_id = ? AND owner_id = ?")
-    .bind(note_id, owner_id)
-    .first<{ total: number }>();
-  return ok(row === null ? 0 : row.total);
+    .prepare(`${IDEA_ATTACHMENT_SELECT} WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`)
+    .bind(id, owner_id)
+    .first<Record<string, unknown>>();
+  return ok(row === null ? undefined : toIdeaAttachment(row));
 }
 
 

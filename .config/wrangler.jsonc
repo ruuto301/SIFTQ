@@ -13,6 +13,7 @@
   ],
   "triggers": { "crons": ["0 18 * * *"] },
   "r2_buckets": [
-    { "binding": "BACKUPS", "bucket_name": "siftq-backups" }
+    { "binding": "BACKUPS", "bucket_name": "siftq-backups" },
+    { "binding": "ATTACHMENTS", "bucket_name": "siftq-idea-attachments" }
   ]
 }

@@ -230,7 +230,8 @@ describe("Ideas client script", () => {
     expect(body).toContain("/api/ideas/notes");
     expect(body).toContain("/api/ideas/notes/bulk");
     expect(body).toContain("/api/ideas/images/");
-    expect(body).toContain("/api/images");
+    expect(body).toContain("/api/ideas/attachments/");
+    expect(body).toContain('"/attachments"');
   });
 });
 

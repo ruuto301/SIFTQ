@@ -42,6 +42,8 @@ export async function respondRemoved<T extends SharedEnv, E extends { code: stri
 
 export function errorStatus(code: string): ContentfulStatusCode {
   if (code === "NOT_FOUND") return 404;
+  if (code === "ATTACHMENT_TOO_LARGE") return 413;
+  if (code === "ATTACHMENTS_UNAVAILABLE") return 503;
   if (code === "CONFLICT" || code === "INVALID_STATE") return 409;
   return 400;
 }

@@ -180,6 +180,121 @@
         }
       ]
     },
+    "ideas_notes_id_attachments": {
+      "kind": "api",
+      "method": "POST",
+      "path": "/api/ideas/notes/{id}/attachments",
+      "operation": "notes-id-attachments",
+      "success": 200,
+      "entity": "ideas",
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ATTACHMENT"
+        },
+        {
+          "status": 400,
+          "code": "UNSUPPORTED_ATTACHMENT"
+        },
+        {
+          "status": 400,
+          "code": "ATTACHMENT_LIMIT_EXCEEDED"
+        },
+        {
+          "status": 400,
+          "code": "ATTACHMENT_TOTAL_EXCEEDED"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 413,
+          "code": "ATTACHMENT_TOO_LARGE"
+        },
+        {
+          "status": 503,
+          "code": "ATTACHMENTS_UNAVAILABLE"
+        },
+        {
+          "status": 500,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "ideas_notes_id_attachments_get": {
+      "kind": "api",
+      "method": "GET",
+      "path": "/api/ideas/notes/{id}/attachments",
+      "operation": "notes-id-attachments",
+      "success": 200,
+      "entity": "ideas",
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
+    "ideas_attachments_id": {
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/api/ideas/attachments/{id}",
+      "operation": "attachments-id",
+      "success": 200,
+      "entity": "ideas",
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INPUT"
+        },
+        {
+          "status": 400,
+          "code": "INVALID_PREVIEW"
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "ideas_attachments_id_delete": {
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/api/ideas/attachments/{id}",
+      "operation": "attachments-id-delete",
+      "success": 204,
+      "entity": "ideas",
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        }
+      ]
+    },
+    "attachments_get": {
+      "kind": "api",
+      "method": "GET",
+      "path": "/api/attachments/{id}",
+      "operation": "get",
+      "success": 200,
+      "errors": [
+        {
+          "status": 404,
+          "code": "NOT_FOUND"
+        },
+        {
+          "status": 503,
+          "code": "ATTACHMENTS_UNAVAILABLE"
+        },
+        {
+          "status": 500
+        }
+      ]
+    },
     "ideas_notes_id_images": {
       "kind": "api",
       "method": "POST",
@@ -811,13 +926,6 @@
       "trigger": "POST",
       "view": "screen:P14",
       "gateway": "idea-scripts.ts",
-      "api": "images_create"
-    },
-    {
-      "screen": "P14",
-      "trigger": "POST",
-      "view": "screen:P14",
-      "gateway": "idea-scripts.ts",
       "api": "ideas_notes_post"
     },
     {
@@ -826,6 +934,20 @@
       "view": "screen:P14",
       "gateway": "idea-scripts.ts",
       "api": "ideas_images_id_delete"
+    },
+    {
+      "screen": "P14",
+      "trigger": "POST",
+      "view": "screen:P14",
+      "gateway": "idea-scripts.ts",
+      "api": "ideas_attachments_id_delete"
+    },
+    {
+      "screen": "P14",
+      "trigger": "POST",
+      "view": "screen:P14",
+      "gateway": "idea-scripts.ts",
+      "api": "ideas_attachments_id"
     },
     {
       "screen": "P14",

@@ -9,13 +9,13 @@ import type {
   IdeaColor,
   IdeaDateKind,
   IdeaFilter,
-  IdeaImage,
   IdeaNote,
   IdeaNoteQuery,
   IdeaSort,
 } from "../idea";
 import type { AppEnv } from "../app-env";
-import type { IdeaRepository } from "../repository/idea-repository";
+import type { IdeaRepository, IdeaRepositoryError } from "../repository/idea-repository";
+import type { Result } from "../task";
 
 const OWNER_ID = "local";
 
@@ -66,14 +66,14 @@ function listQuery(state: IdeaState): IdeaNoteQuery {
   };
 }
 
-/** Loads the attached images for the rendered notes, keyed by note id. */
-async function imagesByNote(
-  repository: IdeaRepository,
+/** Loads a per-note list (images or attachments) for the rendered notes, keyed by note id. */
+async function groupByNote<T>(
   notes: readonly IdeaNote[],
-): Promise<Record<string, readonly IdeaImage[]>> {
+  load: (note: IdeaNote) => Promise<Result<readonly T[], IdeaRepositoryError>>,
+): Promise<Record<string, readonly T[]>> {
   const entries = await Promise.all(
-    notes.map(async (note): Promise<readonly [string, readonly IdeaImage[]]> => {
-      const result = await repository.listImages(note.id, OWNER_ID);
+    notes.map(async (note): Promise<readonly [string, readonly T[]]> => {
+      const result = await load(note);
       return [note.id, result.ok ? result.value : []];
     }),
   );
@@ -97,7 +97,10 @@ export function registerIdeaScreenRoutes(app: Hono<AppEnv>, repository: Reposito
     ]);
     if (!listed.ok || !counts.ok) return c.text("Internal Server Error", 500);
     const notes = sortIdeaNotesByQuery(listed.value, sort);
-    const images = await imagesByNote(repositoryForRequest, notes);
+    const [images, attachments] = await Promise.all([
+      groupByNote(notes, (note) => repositoryForRequest.listImages(note.id, OWNER_ID)),
+      groupByNote(notes, (note) => repositoryForRequest.listAttachments(note.id, OWNER_ID)),
+    ]);
     return renderIdeaPage(
       c,
       <IdeasPage
@@ -105,6 +108,7 @@ export function registerIdeaScreenRoutes(app: Hono<AppEnv>, repository: Reposito
         counts={counts.value}
         state={state}
         images={images}
+        attachments={attachments}
       />,
     );
   });
