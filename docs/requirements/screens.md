@@ -17,7 +17,7 @@
 | P07 | Delete confirmation dialog | Task list 上の選択タスクを完全削除する確認ダイアログ |
 | P08 | Idea list | Ideaをカード一覧で管理する画面 |
 | P09 | Idea detail | Idea詳細画面 title、description、pinned を確認・編集する |
-| P10 | DS | project ごとに区切ったタスク一覧と選択中タスクの title / description 編集、DSH の chat、設定、browser を 1 画面で扱う |
+| P10 | DS | project ごとに区切ったタスク一覧と選択中タスクの title / description 編集を 1 画面で扱う |
 | P11 | Connections | 連携した MCP クライアント（OAuth）の一覧と失効 |
 | P12 | Consent | MCP クライアントへ権限を委任する同意画面 |
 | P13 | Settings | project の一覧・追加・改名・削除・並べ替えを行う画面 |
@@ -123,13 +123,13 @@
   - `削除` は選択タスクを完全削除し、Task list から除外する。
 
 - `DS` (`/ds`)
-  - 3 ペイン構成とし、左に Task list、中央に DSH、右に Browser を表示する。
+  - 2 ペイン構成とし、左に Task list、右に選択中 task の detail を表示する。
   - 左ペインは `do`、`done`、`skip` の status 切り替えボタンを表示する。
   - status は `/ds?status=<status>` で保持し、未指定または不正な status は `do` とする。
   - 選択した status と一致する task だけを表示する。
   - status タブの直下（グループ一覧のスクロール領域の外）に、タスク入力欄と `追加` ボタンを表示する。
   - 入力欄の下に追加先 project の `select` を表示する。選択肢は project の一覧に `未分類` を加えたもので、`未分類` は最後に置く。
-  - 追加先の既定値は選択中 task の project とし、task 未選択のときは `未分類` とする。タブまたは task を切り替えると既定値へ戻る。
+  - 追加先の既定値は選択中 task の project とし、task 未選択のときは `未分類` とする。task を切り替えると既定値へ戻る。
   - `Enter`、`Ctrl + Enter`（Mac は `⌘ + Enter`）または `追加` で task を作成する。status は選択中のタブ、project は追加先 `select` の値とし、`未分類` は project 未設定として送る。
   - 作成した task は該当 project グループの先頭へ追加し、その行を強調表示して件数を更新する。グループが折りたたまれている場合は折りたたんだままにする。ページ全体は再読み込みしない。
   - 入力欄が空のときは `追加` を無効にする。変換確定の `Enter` / `Ctrl + Enter` では送信しない。`Escape` は入力を消す。
@@ -151,23 +151,16 @@
   - 並び替えや project 変更に失敗した場合は元の表示へ戻し、左ペインに失敗を表示する。
   - 削除は確認後に task を完全削除する。
   - 削除の確認は、既存の中央モーダル（`.matrix-modal`）を使ったダイアログで表示する。ダイアログはビューポート中央に置き、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。
-  - 中央ペインは `task`、`Chat`、`設定` の順でタブを表示し、初期表示は `task` とする。
-  - 中央ペインはタブ行の直下に選択中 task の title を重複表示しない。title は `task` タブの入力欄にだけ表示する。
-  - `Chat` タブは task と DSH セッションを 1 対 1 で対応付け、指示の送信、応答の表示、承認の可否、model と access mode の切り替えを提供する。
-  - `Chat` タブは `Ctrl` + `Enter` または送信ボタンで指示を送る。
-  - ターン実行中は送信ボタンが停止ボタンに変わり、押すと実行中のターンを中断する。
-  - `task` タブは選択中 task の title と description を表示し、`保存` で確定する。未選択時は選択を促す案内を表示する。
-  - `task` タブの description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。タブは `←` / `→` キーでも切り替えられる。
-  - `task` タブは初期表示から task の title と description を表示する。DSH transport が使える場合は `desc.get` の応答を description に反映する。
-  - `task` タブの description は、タスク詳細と同じ編集 / プレビューのリッチエディタを使う。`Ctrl`+`V` と画像ファイルのドラッグ&ドロップで画像を追加でき（PNG / JPEG / WebP）、本文には `/api/images/<id>` トークンとして保存される。1 MiB を超える画像はクライアントで縮小し（最大辺 1600px・品質 0.8）、縮小後も超える場合とアニメーション画像はエラーにする。画像だけの description も許可する。
+  - 右ペインは選択中 task の detail を常に表示する。task 未選択のときは選択を促す案内を表示する。
+  - 右ペインは選択中 task の title と description を表示し、`保存` で確定する。
+  - 右ペインの description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。タブは `←` / `→` キーでも切り替えられる。
+  - 右ペインは初期表示から task の title と description を表示する。
+  - 右ペインの description は、タスク詳細と同じ編集 / プレビューのリッチエディタを使う。`Ctrl`+`V` と画像ファイルのドラッグ&ドロップで画像を追加でき（PNG / JPEG / WebP）、本文には `/api/images/<id>` トークンとして保存される。1 MiB を超える画像はクライアントで縮小し（最大辺 1600px・品質 0.8）、縮小後も超える場合とアニメーション画像はエラーにする。画像だけの description も許可する。
   - 本文から画像を削除して保存すると、他のタスク・Idea から参照されていない画像レコードも削除する。
-  - `task` タブは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
-  - `task` タブの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。
-  - `task` タブは 409（競合）のとき入力を保持したままエラーを表示する。DSH が description を更新しても、未保存の入力がある間は表示を書き換えない。
-  - `設定` タブは選択中 profile の設定を表示し、保存する。
-  - 右ペインは URL バー、戻る、進む、再読み込み、タブ、最大化を表示する。
-  - ペイン境界の drag で幅を変更でき、右ペインは最大化できる。
-  - ペイン幅と最大化状態は再読み込み後も維持する。
+  - 右ペインは未保存の変更がある間、その旨を表示する。`Ctrl`/`⌘` + `S` または `Ctrl` + `Enter` で保存し、`Escape` で編集前の値へ戻す。
+  - 右ペインの保存は `PATCH /api/tasks/<id>` に title / description / version を送る。成功したら version を更新し、左ペインのカードの title も更新する。
+  - 右ペインは 409（競合）のとき入力を保持したままエラーを表示する。
+  - ペイン境界の drag で左ペインの幅を変更でき、幅は再読み込み後も維持する。
 
 ### P11 Connections
 
@@ -227,7 +220,7 @@
 
 - `bun run preview:mock` で起動する。
 - `http://127.0.0.1:8787` を開き、パスワード `preview` でログインする。
-- `DS` は DSH transport（`dsh siftq`）と browser 実行環境を必要とする。
+- `DS` は Task list と同じ task API だけで動作する。
 - Task list と DS は固定初期データを表示する。Idea list は固定初期データにブラウザのlocalStorageで作成・編集・削除・ピン留め・並べ替えの変更を重ねる。localStorageを削除するとIdeaだけ初期状態に戻る。
 
 ## 表示テーマ（モノクロ・快適テーマ）

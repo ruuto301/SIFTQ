@@ -129,16 +129,20 @@ describe("DS project groups", () => {
     expect(STYLES_CSS).toContain('.ds__group[data-collapsed="true"] .ds__group-caret');
   });
 
-  it("defines the DS panes, resizers, settings and memo", () => {
+  it("defines the DS panes, resizer and task detail", () => {
     expect(STYLES_CSS).toContain(".ds__resizer");
-    expect(STYLES_CSS).toContain(".ds--browser-max");
-    expect(STYLES_CSS).toContain(".ds-settings__card");
-    expect(STYLES_CSS).toContain(".ds__tab2");
+    expect(STYLES_CSS).toContain(".ds__pane {");
+    expect(STYLES_CSS).toContain(".ds__pane--detail");
     expect(STYLES_CSS).toContain(".ds-task");
     expect(STYLES_CSS).toContain(".ds__task-item");
     expect(STYLES_CSS).toContain(".ds__task-head");
     expect(STYLES_CSS).toContain(".dsh-card");
-    expect(STYLES_CSS).toContain('.dsh-chat__send[data-state="stop"]');
+  });
+
+  it("drops the styles of the removed DS tab bar, chat, settings and browser panes", () => {
+    for (const stale of [".ds--browser-max", ".ds-settings__card", ".ds__tab2", ".ds__tab.active", ".ds__pane--browser", ".ds__pane--chat", ".dsh-chat__send"]) {
+      expect(STYLES_CSS, stale).not.toContain(stale);
+    }
   });
 });
 

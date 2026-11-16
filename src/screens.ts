@@ -43,7 +43,7 @@ export const SCREENS: readonly Screen[] = [
     pageId: "html_ds_page",
     entity: "tasks",
     presentationId: "P10",
-    clientFiles: ["dsh-chat-scripts.ts", "ds-scripts.ts", "ds-settings-scripts.ts", "description-tabs-scripts.ts"],
+    clientFiles: ["ds-scripts.ts", "description-tabs-scripts.ts"],
     nav: { label: "DS", order: 3, activeKey: "ds" },
   },
   {

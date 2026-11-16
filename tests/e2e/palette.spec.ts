@@ -110,7 +110,7 @@ test("renders the same palette on the DS screen (BDD-TM-038)", async ({ page }) 
   expect(pane?.background).toBe("rgb(216, 216, 216)");
   expect(pane?.borderWidth).toBe("2px");
 
-  const activeTab = await computed(page, ".ds__tab.active");
+  const activeTab = await computed(page, ".ds__status-tabs .button.is-active");
   expect(activeTab?.background).toBe("rgb(38, 38, 38)");
   expect(activeTab?.color).toBe("rgb(220, 220, 220)");
 });

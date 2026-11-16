@@ -13,7 +13,6 @@ import { DSH_CHAT_SCRIPT } from "./dsh-chat-scripts";
 import { CONFIRM_DIALOG_SCRIPT } from "./confirm-dialog";
 import { SETTINGS_SCRIPT } from "./settings-scripts";
 import { DS_SCRIPT } from "./ds-scripts";
-import { DS_SETTINGS_SCRIPT } from "./ds-settings-scripts";
 
 export type ClientAsset = {
   path: string;
@@ -57,12 +56,6 @@ export const CLIENT_ASSETS: readonly ClientAsset[] = [
   {
     path: "/dsh-chat.js",
     body: DSH_CHAT_SCRIPT,
-    contentType: "application/javascript",
-    kind: "script",
-  },
-  {
-    path: "/ds-settings.js",
-    body: DS_SETTINGS_SCRIPT,
     contentType: "application/javascript",
     kind: "script",
   },
