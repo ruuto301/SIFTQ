@@ -2,27 +2,28 @@ import { describe, expect, it } from "vite-plus/test";
 import { DS_SCRIPT } from "../src/client/ds-scripts";
 import { scriptDiagnostics } from "./helpers/client-script";
 
-describe("DS browser script", () => {
+describe("DS script", () => {
   it("is valid JavaScript", () => {
     expect(scriptDiagnostics(DS_SCRIPT)).toEqual([]);
   });
 
-  it("drives the browser transport methods", () => {
-    for (const method of [
-      "browser.start",
-      "browser.navigate",
-      "browser.history",
-      "browser.input",
-      "browser.resize",
-      "browser.tab.new",
-      "browser.tab.close",
-      "browser.tab.select",
+  it("resizes the left pane and stores the width in localStorage", () => {
+    for (const hook of [
+      ".ds__resizer",
+      "ds-layout:v1",
+      'style.setProperty("--ds-left"',
+      "setPointerCapture",
+      "dragging",
     ]) {
-      expect(DS_SCRIPT).toContain(method);
+      expect(DS_SCRIPT).toContain(hook);
     }
-    expect(DS_SCRIPT).toContain("ds-browser-canvas");
   });
 
+  it("does not drive the removed browser, chat or settings panes", () => {
+    for (const removed of ["browser.start", "browser.navigate", "ds-browser", "dsh-chat", "ds-settings", "__dsBridge"]) {
+      expect(DS_SCRIPT).not.toContain(removed);
+    }
+  });
 
   it("collapses project groups and stores the state in localStorage", () => {
     expect(DS_SCRIPT).toContain("[data-ds-group-toggle]");
@@ -146,7 +147,7 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("このタスクを削除しますか？");
   });
 
-  it("saves the task pane title and description through the task API (BDD-TM-036)", () => {
+  it("saves the task detail title and description through the task API (BDD-TM-036)", () => {
     for (const hook of [
       'getElementById("ds-task-title")',
       'getElementById("ds-task-description")',
@@ -161,8 +162,6 @@ describe("DS task list DnD", () => {
   });
 
   it("keeps unsaved edits, reports conflicts and updates the left card (BDD-TM-036)", () => {
-    // The chat script reads this flag before applying agent updates.
-    expect(DS_SCRIPT).toContain('pane.setAttribute("data-dirty", "true")');
     expect(DS_SCRIPT).toContain("他の更新と衝突しました");
     expect(DS_SCRIPT).toContain("未保存の変更");
     expect(DS_SCRIPT).toContain("保存しました");
@@ -170,12 +169,8 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain('event.key === "Escape"');
     expect(DS_SCRIPT).toContain('event.key === "Enter" && (event.ctrlKey || event.metaKey)');
     expect(DS_SCRIPT).toContain('row.querySelector(".ds__task-title")');
-    expect(DS_SCRIPT).toContain('addEventListener("ds-task-description"');
-  });
-
-  it("rejects non-http URLs and ignores frames from inactive tabs", () => {
-    expect(DS_SCRIPT).toContain("http(s) の URL のみ開けます");
-    expect(DS_SCRIPT).toContain("tabId");
+    // The removed chat pane no longer forwards description updates.
+    expect(DS_SCRIPT).not.toContain('addEventListener("ds-task-description"');
   });
 });
 

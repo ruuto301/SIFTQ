@@ -408,11 +408,9 @@ function registerDsRoute(
     const groups = groupTasksByProject(sortTasksByOrder(tasks), projects);
     const requested = c.req.query("task");
     const selected = tasks.find((task) => task.id === requested) ?? tasks[0];
-    const wsUrl = c.env.DSH_TRANSPORT_URL ?? "ws://127.0.0.1:8799";
-    const workspace = c.env.DSH_WORKSPACE ?? "/mnt/c/projects";
     return renderPage(
       c,
-      <DsPage groups={groups} projects={projects} selected={selected} status={status} wsUrl={wsUrl} workspace={workspace} />,
+      <DsPage groups={groups} projects={projects} selected={selected} status={status} />,
     );
   });
 }

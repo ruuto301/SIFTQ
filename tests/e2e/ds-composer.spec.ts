@@ -48,7 +48,7 @@ test("adds a task from the DS composer to the selected project (BDD-TM-028)", as
   expect(await groupCount(page, project)).toBe(before + 1);
   await expect(page.locator("#ds-new-title")).toHaveValue("");
 
-  // The composer keeps the chat of the previously selected task in place.
+  // The composer keeps the selected task active.
   await expect(page.locator(".ds__task.active")).not.toHaveCount(0);
 });
 

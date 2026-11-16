@@ -11,8 +11,6 @@ const PROJECTS: readonly Project[] = [
   { id: "dsh", name: "dsh", sort_order: 2 },
 ];
 
-const base = { status: "do", wsUrl: "ws://127.0.0.1:8799", workspace: "/mnt/c/projects" } as const;
-
 function page(tasks: Task[], selected: Task | undefined, status: "do" | "done" | "skip" = "do") {
   return (
     <DsPage
@@ -20,8 +18,6 @@ function page(tasks: Task[], selected: Task | undefined, status: "do" | "done" |
       projects={PROJECTS}
       selected={selected}
       status={status}
-      wsUrl={base.wsUrl}
-      workspace={base.workspace}
     />
   );
 }
@@ -64,15 +60,6 @@ describe("DsPage", () => {
     expect(unassigned).toBeGreaterThan(yoriwake);
   });
 
-  it("renders the chat pane with the selected task and transport url", () => {
-    const html = renderToString(page([taskFixture({ id: "t1", project: "dsh" })], taskFixture({ id: "t1", project: "dsh" })));
-
-    expect(html).toContain('id="dsh-chat"');
-    expect(html).toContain('data-task-id="t1"');
-    expect(html).toContain('data-ws-url="ws://127.0.0.1:8799"');
-    expect(html).toContain('placeholder="指示を入力"');
-  });
-
   it("marks task rows for the context menu and shows working only", () => {
     const html = renderToString(
       page([taskFixture({ id: "t9", version: 3, working: true, project: "dsh" })], taskFixture({ id: "t9", working: true, project: "dsh" })),
@@ -93,6 +80,36 @@ describe("DsPage", () => {
 
     expect(html).toContain("data-ds-projects=");
     expect(html).toContain("&quot;Yoriwake&quot;");
+  });
+});
+
+describe("DsPage two-pane layout", () => {
+  it("renders the task detail pane next to the task list without the removed panes", () => {
+    const html = renderToString(page([taskFixture({ id: "t1", project: "dsh" })], taskFixture({ id: "t1", project: "dsh" })));
+
+    // Two panes: the task list and the selected task detail, joined by one resizer.
+    expect(html).toContain('class="ds__pane ds__pane--tasks"');
+    expect(html).toContain('class="ds__pane ds__pane--detail"');
+    expect(html).toContain("ds__resizer");
+    expect(html.match(/ds__resizer/g)).toHaveLength(1);
+    expect(html).not.toContain("ds__pane--chat");
+    expect(html).not.toContain("ds__pane--browser");
+  });
+
+  it("renders no tab bar, chat, browser or settings elements", () => {
+    const html = renderToString(page([taskFixture({ id: "t1", project: "dsh" })], taskFixture({ id: "t1", project: "dsh" })));
+
+    for (const removed of [
+      "data-ds-tab",
+      "dsh-chat",
+      "ds-browser",
+      "ds-settings",
+      "ds__chat-tools",
+      "dsh-chat-model",
+      "dsh-chat-access",
+    ]) {
+      expect(html).not.toContain(removed);
+    }
   });
 });
 
@@ -128,38 +145,12 @@ describe("DsPage task composer", () => {
   });
 });
 
-describe("DsPage chat and browser panes", () => {
-  it("renders the send button as an arrow", () => {
-    const html = renderToString(page([taskFixture()], taskFixture()));
-
-    expect(html).toContain('id="dsh-chat-send"');
-    expect(html).toContain('data-state="send"');
-    expect(html).toContain('aria-label="送信"');
-    expect(html).toContain("↑");
-  });
-
-  it("renders the task, chat and settings tabs in order plus the browser pane", () => {
-    const html = renderToString(page([taskFixture()], taskFixture()));
-
-    for (const id of ["ds-task", "ds-settings", "ds-browser-canvas", "ds-browser-tabs", "ds-browser-back", "ds-browser-reload"]) {
-      expect(html).toContain(`id="${id}"`);
-    }
-    expect(html).toContain("ds__resizer");
-   expect(html).toContain('data-ds-tab="task" role="tab">');
-    expect(html).toContain('data-ds-tab="chat" role="tab">');
-    expect(html.indexOf('data-ds-tab="task"')).toBeLessThan(html.indexOf('data-ds-tab="chat"'));
-    expect(html.indexOf('data-ds-tab="chat"')).toBeLessThan(html.indexOf('data-ds-tab="settings"'));
-    expect(html.indexOf('class="ds__tab active" data-ds-tab="task"')).toBeGreaterThan(-1);
-    expect(html).not.toContain('data-ds-tab="desc"');
-  });
-});
-
 describe("DsPage task list", () => {
   it("asks for a task selection when none is provided", () => {
     const html = renderToString(page([], undefined));
 
     expect(html).toContain("左のタスクを選択してください。");
-    // The task pane stays mounted so the tab can explain the empty state.
+    // The task pane stays mounted so the empty state can be shown.
     expect(html).toContain('id="ds-task"');
     expect(html).not.toContain('id="ds-task-title"');
   });
@@ -169,7 +160,6 @@ describe("DsPage task list", () => {
     const selected = taskFixture({ id: "t1", title: "DS で編集する", description, version: 4 });
     const html = renderToString(page([selected], selected));
 
-    expect(html).toContain('data-task-description="手順は https://example.com/docs を参照"');
     expect(html).toContain('id="ds-task"');
     expect(html).toContain('data-task-id="t1"');
     expect(html).toContain('data-task-version="4"');
@@ -181,11 +171,11 @@ describe("DsPage task list", () => {
     expect(html).toContain('data-ds-pane="task"');
   });
 
-  it("shows the selected task title only in the task tab (BDD-TM-027)", () => {
+  it("shows the selected task title only once (BDD-TM-027)", () => {
     const selected = taskFixture({ id: "t1", title: "チャットのタイトルを表示する", project: "Yoriwake" });
     const html = renderToString(page([selected], selected));
 
-    // The title lives in the task tab input; there is no duplicate strip above the panes.
+    // The title lives in the detail input; there is no duplicate strip above the panes.
     expect(html).not.toContain("ds__chat-title");
     expect(html).toContain('id="ds-task-title"');
     expect(html).toContain('value="チャットのタイトルを表示する"');

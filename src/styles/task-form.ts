@@ -199,8 +199,76 @@ textarea {
   margin: 12px 0 6px;
 }
 
+/* 本文幅を上限にした原寸（拡大しない）。縦長は 320px で全体を見せる。 */
 .description-preview img {
+  background: #f6f8fa;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  cursor: zoom-in;
+  display: block;
+  height: auto;
+  margin: 6px 0;
+  max-height: 320px;
   max-width: 100%;
+  object-fit: contain;
+  width: auto;
+}
+
+.description-preview img:hover {
+  filter: brightness(0.96);
+}
+
+.description-preview img:focus-visible {
+  outline: 2px solid #1f1f1f;
+  outline-offset: 2px;
+}
+
+.description-lightbox {
+  align-items: center;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 200;
+}
+
+.description-lightbox[hidden] {
+  display: none;
+}
+
+.description-lightbox__backdrop {
+  background: rgb(20 20 22 / 78%);
+  border: 0;
+  cursor: zoom-out;
+  inset: 0;
+  position: absolute;
+}
+
+.description-lightbox__frame {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  max-height: 92vh;
+  max-width: 92vw;
+  position: relative;
+}
+
+.description-lightbox__image {
+  background: #ffffff;
+  border-radius: 8px;
+  max-height: 84vh;
+  max-width: 92vw;
+  object-fit: contain;
+}
+
+.description-lightbox__bar {
+  align-items: center;
+  color: #ffffff;
+  display: flex;
+  font-size: 12px;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .description-preview li {

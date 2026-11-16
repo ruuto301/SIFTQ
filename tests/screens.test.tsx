@@ -27,9 +27,7 @@ describe("screen registry", () => {
       "task-list-scripts.ts": ["P02"],
       "task-form-scripts.ts": ["P03", "P04"],
       "description-tabs-scripts.ts": ["P03", "P04", "P10"],
-      "dsh-chat-scripts.ts": ["P10"],
       "ds-scripts.ts": ["P10"],
-      "ds-settings-scripts.ts": ["P10"],
       "idea-scripts.ts": ["P14"],
     });
   });

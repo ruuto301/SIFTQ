@@ -12,12 +12,10 @@ async function createTaskWithDescription(page: Page, title: string, description:
   await expect(page.getByRole("heading", { name: "Tasks" })).toBeVisible();
 }
 
-/** Opens the DS screen with the given task selected. The task tab is the default. */
+/** Opens the DS screen with the given task selected in the detail pane. */
 async function openTaskInDs(page: Page, title: string) {
   await page.goto("/ds");
   await page.locator(".ds__task").filter({ hasText: title }).click();
-  const tab = page.getByRole("tab", { name: "task" });
-  await expect(tab).toHaveClass(/active/);
   await expect(page.locator("#ds-task-title")).toHaveValue(title);
   // The DS pane is server-rendered; wait for the deferred scripts that wire the
   // title, description and tab handlers before interacting.
@@ -37,13 +35,18 @@ const MARKDOWN_DESCRIPTION = [
   "<script>alert(1)</script>",
 ].join("\n");
 
-test("shows the task, Chat and 設定 tabs in that order (BDD-TM-032)", async ({ page }) => {
+test("shows only the task list and task detail panes", async ({ page }) => {
   await page.goto("/ds");
 
-  const tabs = page.locator("[data-ds-tab]");
-  await expect(tabs).toHaveCount(3);
-  await expect(tabs).toHaveText(["task", "Chat", "設定"]);
-  await expect(page.getByRole("tab", { name: "task" })).toHaveClass(/active/);
+  await expect(page.locator(".ds__pane--tasks")).toBeVisible();
+  await expect(page.locator(".ds__pane--detail")).toBeVisible();
+  await expect(page.locator("[data-ds-tab]")).toHaveCount(0);
+  await expect(page.locator("#dsh-chat")).toHaveCount(0);
+  await expect(page.locator("#ds-browser-canvas")).toHaveCount(0);
+  await expect(page.locator("#ds-settings")).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "task" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Chat" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "設定" })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "description" })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: "説明" })).toHaveCount(0);
 });

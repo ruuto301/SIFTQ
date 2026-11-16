@@ -158,3 +158,26 @@ test("pasting an image into the DS description saves and renders it (BDD-TM-049)
     await deleteTask(page, taskId);
   }
 });
+
+test("caps the description image and opens it in a lightbox (BDD-TM-051)", async ({ page }) => {
+  await signIn(page);
+  const taskId = await createTask(page, `E2E ds image size ${Date.now()}`);
+
+  try {
+    await page.goto(`/ds?task=${taskId}`);
+    await pasteImage(page, "#ds-description-editor", PIXEL_PNG);
+
+    const editorImage = page.locator("#ds-description-editor img.description-image");
+    await expect(editorImage).toHaveCount(1);
+    expect(await editorImage.evaluate((el) => getComputedStyle(el).maxHeight)).toBe("320px");
+
+    expect(await editorImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe("contain");
+
+    await editorImage.click();
+    await expect(page.locator("[data-description-lightbox]")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("[data-description-lightbox]")).toBeHidden();
+  } finally {
+    await deleteTask(page, taskId);
+  }
+});
