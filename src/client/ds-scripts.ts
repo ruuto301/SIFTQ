@@ -1,26 +1,72 @@
 import { DESCRIPTION_TABS_SCRIPT } from "./description-tabs-scripts";
+import {
+  DS_LAYOUT_DEFAULT_LEFT,
+  DS_LAYOUT_STORAGE_KEY,
+  clampDsLayoutLeft,
+  dsLayoutLimits,
+  dsLayoutWidthForContainer,
+  parseDsLayout,
+  serializeDsLayout,
+} from "./ds-layout";
+
+/**
+ * Browser source for the pure layout math. `Function.prototype.toString` keeps a
+ * single implementation shared with the unit tests; the functions are DOM-free.
+ */
+const DS_LAYOUT_RUNTIME = [
+  String(dsLayoutLimits),
+  String(clampDsLayoutLeft),
+  String(dsLayoutWidthForContainer),
+  String(parseDsLayout),
+  String(serializeDsLayout),
+].join("\n");
 
 /** DS task screen: pane resizer, project groups, composer, context menu and task editing. */
 export const DS_SCRIPT = `(function () {
   var root = document.getElementById("ds-root");
   if (!root) return;
 
-  // Left pane width, persisted per browser.
-  var LAYOUT_KEY = "ds-layout:v1";
-  var layout = { left: 260 };
-  try {
-    var savedLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null");
-    if (savedLayout && typeof savedLayout === "object") {
-      layout.left = Number(savedLayout.left) || 260;
-    }
-  } catch (e) { /* ignore */ }
+  // Left pane width: the free range follows the container width, and the px value
+  // plus its ratio is persisted so a smaller window re-clamps instead of collapsing.
+  var LAYOUT_KEY = "${DS_LAYOUT_STORAGE_KEY}";
+  var DEFAULT_LEFT = ${DS_LAYOUT_DEFAULT_LEFT};
+  ${DS_LAYOUT_RUNTIME}
+  var layout = parseDsLayout(localStorage.getItem(LAYOUT_KEY)) || { left: DEFAULT_LEFT, ratio: 0 };
+  function containerWidth() {
+    var rect = root.getBoundingClientRect();
+    return rect.width || root.clientWidth || 0;
+  }
   function saveLayout() {
-    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(LAYOUT_KEY, serializeDsLayout(layout.left, layout.ratio)); } catch (e) { /* ignore */ }
   }
-  function applyLayout() {
+  function resizerHandles() {
+    return Array.prototype.slice.call(root.querySelectorAll(".ds__resizer"));
+  }
+  function paintResizer() {
+    var limits = dsLayoutLimits(containerWidth());
     root.style.setProperty("--ds-left", layout.left + "px");
+    resizerHandles().forEach(function (handle) {
+      handle.setAttribute("aria-valuenow", String(layout.left));
+      handle.setAttribute("aria-valuemin", String(limits.min));
+      handle.setAttribute("aria-valuemax", String(limits.max));
+      var tag = handle.querySelector("[data-ds-width-tag]");
+      if (tag) tag.textContent = layout.left + "px";
+    });
   }
-  Array.prototype.forEach.call(document.querySelectorAll(".ds__resizer"), function (handle) {
+  function setPaneWidth(value, persist) {
+    var width = containerWidth();
+    layout.left = clampDsLayoutLeft(value, width);
+    layout.ratio = width > 0 ? layout.left / width : layout.ratio;
+    paintResizer();
+    if (persist) saveLayout();
+  }
+  // A window resize re-derives the width from the stored ratio, then clamps.
+  function reflowLayout() {
+    var width = containerWidth();
+    layout.left = dsLayoutWidthForContainer({ left: layout.left, ratio: layout.ratio }, width);
+    paintResizer();
+  }
+  resizerHandles().forEach(function (handle) {
     handle.addEventListener("pointerdown", function (event) {
       event.preventDefault();
       var startX = event.clientX;
@@ -28,9 +74,7 @@ export const DS_SCRIPT = `(function () {
       handle.setPointerCapture(event.pointerId);
       handle.classList.add("dragging");
       function move(moveEvent) {
-        var delta = moveEvent.clientX - startX;
-        layout.left = Math.round(Math.min(520, Math.max(180, start + delta)));
-        applyLayout();
+        setPaneWidth(start + (moveEvent.clientX - startX), false);
       }
       function up() {
         handle.classList.remove("dragging");
@@ -43,8 +87,37 @@ export const DS_SCRIPT = `(function () {
       handle.addEventListener("pointerup", up);
       handle.addEventListener("pointercancel", up);
     });
+    handle.addEventListener("dblclick", function () {
+      setPaneWidth(DEFAULT_LEFT, true);
+    });
+    handle.addEventListener("keydown", function (event) {
+      var delta = event.shiftKey ? 24 : 8;
+      if (event.key === "ArrowLeft") { setPaneWidth(layout.left - delta, true); event.preventDefault(); return; }
+      if (event.key === "ArrowRight") { setPaneWidth(layout.left + delta, true); event.preventDefault(); return; }
+      if (event.key === "Home") { setPaneWidth(dsLayoutLimits(containerWidth()).min, true); event.preventDefault(); return; }
+      if (event.key === "End") { setPaneWidth(dsLayoutLimits(containerWidth()).max, true); event.preventDefault(); return; }
+    });
   });
-  applyLayout();
+  reflowLayout();
+  window.addEventListener("resize", reflowLayout);
+
+  // Narrow screens fall back to one pane: the list, or the detail of an opened task.
+  var backButton = document.querySelector("[data-ds-back]");
+  if (backButton) {
+    backButton.addEventListener("click", function () {
+      root.setAttribute("data-ds-view", "list");
+      if (window.history && window.history.replaceState) {
+        var params = new URLSearchParams(window.location.search);
+        params.delete("task");
+        var query = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (query === "" ? "" : "?" + query));
+      }
+    });
+  }
+  if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 900px)").matches) {
+    var requestedTask = new URLSearchParams(window.location.search).get("task");
+    root.setAttribute("data-ds-view", requestedTask === null ? "list" : "detail");
+  }
 
   // DS left pane: project groups with collapsible headers persisted in localStorage.
   var dsRoot = document.getElementById("ds-root");

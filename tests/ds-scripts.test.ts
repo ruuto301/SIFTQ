@@ -59,6 +59,41 @@ describe("DS script", () => {
 
 });
 
+describe("DS pane resizer", () => {
+  it("computes the free range from the container and persists px plus ratio", () => {
+    for (const hook of [
+      "dsLayoutLimits",
+      "clampDsLayoutLeft",
+      "dsLayoutWidthForContainer",
+      "parseDsLayout",
+      "serializeDsLayout",
+      "data-ds-width-tag",
+      "aria-valuenow",
+      '"resize"',
+      "matchMedia",
+      "data-ds-back",
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+    // The old fixed 180-520px clamp is gone.
+    expect(DS_SCRIPT).not.toContain("Math.min(520");
+  });
+
+  it("supports double-click reset and keyboard width adjustment", () => {
+    for (const hook of [
+      "dblclick",
+      "ArrowLeft",
+      "ArrowRight",
+      "event.shiftKey ? 24 : 8",
+      'event.key === "Home"',
+      'event.key === "End"',
+      "event.preventDefault()",
+    ]) {
+      expect(DS_SCRIPT).toContain(hook);
+    }
+  });
+});
+
 describe("DS task action menu", () => {
   it("opens the English task action menu with status, project, copy and working (BDD-TM-030)", () => {
     expect(DS_SCRIPT).toContain("contextmenu");

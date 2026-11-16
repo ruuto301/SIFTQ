@@ -146,6 +146,45 @@ describe("DS project groups", () => {
   });
 });
 
+describe("DS page width and resizer", () => {
+  it("caps the DS page at 1280px and centers it with horizontal padding", () => {
+    const pageFrame = cssBlock(/(?:^|\n)\.ds-page\s*\{[^}]*\}/);
+    expect(pageFrame).toContain("max-width: 1280px;");
+    expect(pageFrame).toContain("margin: 0 auto;");
+    expect(pageFrame).toContain("padding: 16px 20px;");
+  });
+
+  it("uses a 12px resizer column with a grip, tooltip and drag colour", () => {
+    const ds = cssBlock(/(?:^|\n)\.ds\s*\{[^}]*\}/);
+    expect(ds).toContain("var(--ds-left, 320px) 12px minmax(0, 1fr)");
+
+    const resizer = cssBlock(/(?:^|\n)\.ds__resizer\s*\{[^}]*\}/);
+    expect(resizer).toContain("cursor: col-resize;");
+    expect(resizer).toContain("touch-action: none;");
+    expect(STYLES_CSS).toContain(".ds__grip {");
+    expect(STYLES_CSS).toContain(".ds__width-tag {");
+    expect(STYLES_CSS).toContain(".ds__resizer:hover::before");
+    expect(STYLES_CSS).toContain(".ds__resizer.dragging .ds__grip");
+  });
+
+  it("truncates task rows instead of stretching the layout", () => {
+    const card = cssBlock(/(?:^|\n)\.ds__task\s*\{[^}]*\}/);
+    expect(card).toContain("min-width: 0;");
+
+    const title = cssBlock(/(?:^|\n)\.ds__task-title\s*\{[^}]*\}/);
+    expect(title).toContain("text-overflow: ellipsis;");
+  });
+
+  it("falls back to a single pane below 900px and hides the resizer", () => {
+    const media = STYLES_CSS.match(/@media \(max-width: 900px\)\s*\{[\s\S]*?\n\}/);
+    expect(media?.[0]).toContain(".ds__resizer { display: none; }");
+    expect(media?.[0]).toContain('.ds[data-ds-view="list"] .ds__pane--detail { display: none; }');
+    expect(media?.[0]).toContain('.ds[data-ds-view="detail"] .ds__pane--tasks { display: none; }');
+    expect(media?.[0]).toContain(".ds__back { display: inline-flex; }");
+    expect(STYLES_CSS).not.toContain("@media (max-width: 1100px)");
+  });
+});
+
 describe("unified palette", () => {
   it("puts the header on the page tone with a hairline outline", () => {
     const topbar = STYLES_CSS.match(/(?:^|\n)\.topbar\s*\{[^}]*\}/);
