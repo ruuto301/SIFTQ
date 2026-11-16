@@ -41,7 +41,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-015 | ユーザーは、DS の task を右クリックして状態や作業中を切り替え、タイトルをコピーしたい。 | screens.md |
 | REQ-TM-016 | ユーザーは、DS で追加した task をすぐ見つけたい。 | screens.md |
 | REQ-TM-017 | ユーザーは、外部の MCP クライアントに SIFTQ の操作を委任したい。 | screens.md |
-| REQ-TM-017 | ユーザーは、DS の中央ペインでタスクの description を確認したい。 | screens.md |
+| REQ-TM-017 | ユーザーは、DS の右ペインでタスクの description を確認したい。 | screens.md |
 | REQ-TM-018 | ユーザーは、DS でタスクを削除する前に画面中央で確認したい。 | screens.md |
 | REQ-TM-019 | ユーザーは、タスクを用途（リポジトリ・生活）ごとのプロジェクトに分けて整理したい。 | screens.md |
 | REQ-TM-020 | ユーザーは、アプリを離れずにプロジェクトを追加・改名・削除・並べ替えしたい。 | screens.md |
@@ -81,18 +81,18 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-018 | REQ-TM-008 | Idea の description に http/https URL を貼り付けると編集領域内でリンクとして表示する。Markdown、HTML、その他のリッチテキスト記法は解釈しない。 | BDD-TM-024 |
 | SPEC-TM-019 | REQ-TM-010 | DS の左ペインは task を project 間でドラッグ&ドロップして project を変更でき、project 見出しをドラッグ&ドロップして `sort_order` を並び替えられる。`未分類` は並び替えの対象外とし、失敗時は元の表示へ戻す。 | BDD-TM-025 |
 | SPEC-TM-020 | REQ-TM-011 | DS の project グループ内の task は `order` の昇順（同値は id 順）で並び、ドラッグ&ドロップした位置の順序を `order` として保存する。失敗時は元の表示へ戻す。 | BDD-TM-026 |
-| SPEC-TM-021 | REQ-TM-012 | DS の中央ペインは、選択中 task の title を `task` タブの title 入力欄に表示する。タブ行の直下には重複して表示しない。未選択時は選択を促す案内を表示する。 | BDD-TM-027 |
+| SPEC-TM-021 | REQ-TM-012 | DS の右ペインは、選択中 task の title を title 入力欄に表示する。title は 1 か所だけ表示する。未選択時は選択を促す案内を表示する。 | BDD-TM-027 |
 | SPEC-TM-022 | REQ-TM-013 | DS 左ペインの status タブ直下で task を作成できる。status は選択中タブ、project は追加先 select（既定は選択中 task、`未分類` も選べる）とし、作成した task は該当 project グループへ追加して件数を更新する。失敗時は入力内容を保持してエラーを表示する。 | BDD-TM-028 |
 | SPEC-TM-023 | REQ-TM-014 | DS 左ペインの project グループは 2px の黒枠で囲み、見出しバーを枠の上辺にする。枠は中身の高さに追従し、task の追加・削除・折りたたみで伸縮する。task が増えても他のグループは潰れず、一覧側がスクロールする。 | BDD-TM-029 |
 | SPEC-TM-024 | REQ-TM-015 | DS の task 行の右クリックメニューは、先頭に task 名と `status ・ project` を表示する。`status` は `do` / `done` / `skip` のピル（現在値は黒地 + 白文字）、`project` は現在の project 名と `▸`、続いて `copy title` と `copy id`、区切りの下に `working`（`on` / `off`）と `delete` を表示する。`copy id` は選択行の task id をクリップボードへ入れ、成功 / 失敗を通知する。文言は英語に統一し、task detail を開く / リンクをコピーは持たない。 | BDD-TM-030 |
 | SPEC-TM-025 | REQ-TM-016 | DS の composer で作成した task は所属 project グループの先頭に挿入し、既存 task の `order` は `+1` する。グループが折りたたまれている場合は折りたたんだまま件数だけを更新する。`/tasks` の新規作成は従来どおり末尾に追加する。 | BDD-TM-031 |
 | SPEC-TM-026 | REQ-TM-017 | `POST /mcp` は OAuth のアクセストークンで認可し、`initialize` / `notifications/initialized` / `ping` / `tools/list` / `tools/call` を提供する。`read` スコープは読み取りツールのみ、`write` スコープは tasks / projects / ideas の全操作を実行できる。書き込みは `version` 必須で、不一致はエラー結果を返す。未認証は 401 と `WWW-Authenticate: Bearer resource_metadata=...` を返す。 | BDD-TM-032 |
 | SPEC-TM-027 | REQ-TM-017 | 外部クライアントへの委任は OAuth 2.1（認可コード + PKCE + 動的クライアント登録）で行う。ユーザーは同意画面で `read` / `write` を許可し、`/connections` からいつでも失効できる。トークンはハッシュのみ保存し、更新トークンは回転する。 | BDD-TM-033 |
-| SPEC-TM-026 | REQ-TM-017 | DS 中央ペインの `description` タブは、選択中 task の description を初期表示から描画する。DSH transport が使える場合は `desc.get` の応答を優先し、使えない場合は task の description を表示する。description が空のときはプレースホルダを表示する。 | BDD-TM-032 |
+| SPEC-TM-026 | REQ-TM-017 | DS 右ペインの `description` タブは、選択中 task の description を初期表示から描画する。description が空のときはプレースホルダを表示する。 | BDD-TM-032 |
 | SPEC-TM-027 | REQ-TM-018 | DS のタスク削除は、既存の中央モーダル（`.matrix-modal`）を使った確認ダイアログを経由する。ダイアログはビューポート中央に表示し、`キャンセル`・`Escape`・背景クリックでは削除せず、`削除` で削除する。ブラウザ標準の `window.confirm` は使わない。 | BDD-TM-033 |
 | SPEC-TM-028 | REQ-TM-019 | project の一覧は `Yoriwake` / `affiliate` / `customer_portal` / `生活` とし、未設定は `未分類` として扱う。`生活` は id `life`・表示名 `生活` を持つ。タスク一覧の project ラベルは id ではなく表示名を表示する。 | BDD-TM-034 |
 | SPEC-TM-029 | REQ-TM-020 | `/settings` にプロジェクト一覧を表示し、追加・改名・並べ替え・削除を行える。削除するとそのプロジェクトのタスクは未分類（`project = NULL`）へ移り、タスクは削除しない。確認ダイアログには移動するタスク件数を表示する。 | BDD-TM-035 |
-| SPEC-TM-030 | REQ-TM-021 | DS の中央ペインは `task` / `Chat` / `設定` の順にタブを表示し、`task` タブで選択中 task の title と description を編集して `PATCH /api/tasks/<id>` で保存する。保存に成功したら version と左ペインのカード title を更新し、409 のときは入力を保持してエラーを表示する。 | BDD-TM-036 |
+| SPEC-TM-030 | REQ-TM-021 | DS の右ペインは選択中 task の detail を常に表示し、title と description を編集して `PATCH /api/tasks/<id>` で保存する。保存に成功したら version と左ペインのカード title を更新し、409 のときは入力を保持してエラーを表示する。 | BDD-TM-036 |
 | SPEC-TM-031 | REQ-TM-022 | MK 画面の色絞り込みは 7 色のみとし、選択中の色をもう一度押すと解除する。サイドバーに `＋ 新規メモ` を置き、検索は `メモを検索（タイトル / 本文）` と解除の × を、選択は `☑ 選択` を、入力欄は `新しいメモのタイトル` と `本文。Ctrl+V で画像を貼り付けできます。` を表示する。 | BDD-TM-037 |
 | SPEC-TM-032 | REQ-TM-023 | 全画面は無彩色（彩度 0）のモノクロームとし、ページ `#cccccc`、面板 `#d8d8d8`、操作要素 `#e4e4e4`、本文 `#303030`、補助 `#555555` を使う。一覧・パネル・ポップオーバー・操作要素は 2px `#1f1f1f` の黒縁、黒地の要素は `#262626` + 2px `#dcdcdc` の軟白縁、タスク一覧は外周 1 枠で行間は 1px `#bdbdbd` のヘアライン、ドロップダウンは本体 2px・項目 1px の黒縁とする。本文は Atkinson Hyperlegible と Noto Sans JP を優先するフォントスタック、行間 1.7 とし、文字コントラスト 4.5:1 以上・境界 3:1 以上を満たす（外部フォントは読み込まない）。 | BDD-TM-038 |
 | SPEC-TM-033 | REQ-TM-024 | task の作成は、既存 task の `order` を 1 つずつ繰り下げてから新しい task を `order = 1` で挿入する。`/tasks` の新規作成フォームと `POST /api/tasks` の `position: "first"` で同じ並びになる。 | BDD-TM-039 |
@@ -131,18 +131,18 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-024 | SPEC-TM-018 | Idea の description に貼り付けた http/https URL はリンクになり、保存時は `<a>` などのHTMLタグを含まないプレーンテキストになる。 | 正常 |
 | BDD-TM-025 | SPEC-TM-019 | DS で task を別の project グループへドラッグ&ドロップすると project が変わり、project 見出しをドラッグ&ドロップすると並び順が変わる。 | 正常 |
 | BDD-TM-026 | SPEC-TM-020 | project グループ内で task をドラッグ&ドロップすると表示順が変わり、再読み込み後も維持される。 | 正常 |
-| BDD-TM-027 | SPEC-TM-021 | DS で task を選択すると、`task` タブの title 入力欄にその title が 1 か所だけ表示される。 | 正常 |
+| BDD-TM-027 | SPEC-TM-021 | DS で task を選択すると、右ペインの title 入力欄にその title が 1 か所だけ表示される。 | 正常 |
 | BDD-TM-028 | SPEC-TM-022 | DS 左ペインで task を追加すると、選択中 status と追加先 project で作成され、その project グループに表示される。 | 正常 |
 | BDD-TM-029 | SPEC-TM-023 | DS 左ペインの project ごとに黒枠が付き、task を追加すると枠が伸びて他の project は縮まない。折りたたむと枠は見出し 1 行に縮む。 | 正常 |
 | BDD-TM-030 | SPEC-TM-024 | DS 左ペインの task を右クリックすると英語の action menu が開き、status ピルで状態を変更でき、`copy title` でタイトルが、`copy id` で task id がクリップボードに入る。 | 正常 |
 | BDD-TM-031 | SPEC-TM-025 | DS で task を追加すると、その project グループの先頭に表示され、リロード後も先頭のままになる。折りたたみ中のグループでは折りたたみが維持され件数だけ増える。 | 正常 |
 | BDD-TM-032 | SPEC-TM-026 | MCP クライアントが tools/call で task の一覧・作成・更新・削除と project / idea の操作を実行でき、version 不一致は CONFLICT のエラー結果になる。 | 正常 |
 | BDD-TM-033 | SPEC-TM-027 | MCP クライアントが動的登録 → 同意 → トークン取得で /mcp を呼べる。連携アプリ画面で失効すると以後の呼び出しが 401 になる。 | 正常 |
-| BDD-TM-032 | SPEC-TM-026 | DS の `description` タブを開くと、task の description が transport の接続有無にかかわらず表示される。 | 正常 |
+| BDD-TM-032 | SPEC-TM-026 | DS の `description` タブを開くと、task の description が表示される。 | 正常 |
 | BDD-TM-033 | SPEC-TM-027 | DS でタスクを右クリックして delete を選ぶと確認ダイアログが画面中央に表示され、キャンセルでは消えず、削除でタスクが消える。 | 正常 |
 | BDD-TM-034 | SPEC-TM-028 | タスク一覧の project ラベルが表示名（例: `#生活`）で表示され、DS のグループにも `生活` が並ぶ。 | 正常 |
 | BDD-TM-035 | SPEC-TM-029 | `/settings` でプロジェクトを追加・改名・削除でき、削除したプロジェクトのタスクは未分類に残る。 | 正常 |
-| BDD-TM-036 | SPEC-TM-030 | DS の `task` タブで title と description を編集して保存すると、その内容がタスクに反映され、左ペインのカードも更新される。 | 正常 |
+| BDD-TM-036 | SPEC-TM-030 | DS の右ペインで title と description を編集して保存すると、その内容がタスクに反映され、左ペインのカードも更新される。 | 正常 |
 | BDD-TM-037 | SPEC-TM-031 | MK 画面の入力欄が「メモを取る...」から開き、検索・選択・入力欄の文言が合意どおりである。 | 正常 |
 | BDD-TM-038 | SPEC-TM-032 | Tasks・New task・DS・ログインのいずれでもモノクロームの色・2px 黒縁・1 枠のタスク一覧・黒縁のドロップダウンが適用され、フォントスタックに Atkinson Hyperlegible と Noto Sans JP が含まれる。 | 正常 |
 | BDD-TM-039 | SPEC-TM-033 | `/tasks` から新規作成した task が、DS の同じ project グループの先頭に表示される。 | 正常 |
