@@ -1,10 +1,17 @@
 export const DS_CSS = `
+/* DS page frame: the two-pane screen is capped at 1280px and centered. */
+.ds-page {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 16px 20px;
+}
+
 /* DS shell: task list and selected task detail as cards on a gray page background. */
 .ds {
   display: grid;
-  grid-template-columns: var(--ds-left, 300px) 8px minmax(0, 1fr);
+  grid-template-columns: var(--ds-left, 320px) 12px minmax(0, 1fr);
   gap: 10px;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 152px);
   padding: 10px;
   background: #cccccc;
   color: #303030;
@@ -14,12 +21,32 @@ export const DS_CSS = `
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
   background: #d8d8d8;
   border: 2px solid #1f1f1f;
   border-radius: 12px;
   box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
+
+/* Narrow fallback: the back control returns from the detail to the task list. */
+.ds__back {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 12px 0;
+  padding: 5px 12px;
+  border: 2px solid #1f1f1f;
+  border-radius: 999px;
+  background: #e4e4e4;
+  color: #303030;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ds__back:hover { background: #d8d8d8; }
 
 .ds__pane-head {
   display: flex;
@@ -33,15 +60,64 @@ export const DS_CSS = `
 }
 
 .ds__resizer {
+  position: relative;
   align-self: stretch;
-  border-radius: 4px;
+  min-width: 0;
+  border-radius: 6px;
   background: transparent;
   cursor: col-resize;
   touch-action: none;
 }
 
-.ds__resizer:hover,
-.ds__resizer.dragging { background: #cfcfcf; }
+.ds__resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 5px;
+  border-radius: 2px;
+  background: #bdbdbd;
+}
+
+.ds__resizer:hover::before,
+.ds__resizer.dragging::before,
+.ds__resizer:focus-visible::before { background: #1f1f1f; }
+
+.ds__grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background-image: radial-gradient(#555555 1px, transparent 1.2px);
+  background-size: 4px 5px;
+  opacity: 0.7;
+}
+
+.ds__resizer:hover .ds__grip,
+.ds__resizer.dragging .ds__grip,
+.ds__resizer:focus-visible .ds__grip { opacity: 1; }
+
+.ds__width-tag {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #1f1f1f;
+  color: #e4e4e4;
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.ds__resizer:hover .ds__width-tag,
+.ds__resizer.dragging .ds__width-tag,
+.ds__resizer:focus-visible .ds__width-tag { opacity: 1; }
 
 /* Left pane: status pills and task cards. */
 .ds__status-tabs {
@@ -224,7 +300,7 @@ export const DS_CSS = `
   list-style: none;
 }
 
-.ds__task-item { border: 0; }
+.ds__task-item { border: 0; min-width: 0; }
 .ds__task-item.dragging { opacity: 0.5; }
 .ds__task-item--drop-before { box-shadow: 0 -2px 0 0 #1f1f1f; }
 .ds__task-item--drop-after { box-shadow: 0 2px 0 0 #1f1f1f; }
@@ -308,6 +384,7 @@ export const DS_CSS = `
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
   min-height: 72px;
   padding: 12px;
   border: 2px solid #1f1f1f;
@@ -320,11 +397,12 @@ export const DS_CSS = `
 .ds__task:hover { border-color: #1f1f1f; background: #e4e4e4; }
 .ds__task.active { border-color: #1f1f1f; background: #e4e4e4; box-shadow: 0 0 0 2px rgb(0 0 0 / 12%); }
 .ds__task.is-new { border-color: #1f1f1f; background: #dcdcdc; box-shadow: 0 0 0 3px rgb(0 0 0 / 18%); }
-.ds__task-head { display: flex; align-items: flex-start; gap: 8px; }
+.ds__task-head { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .ds__task-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
@@ -395,7 +473,15 @@ export const DS_CSS = `
 .ds .button { color: #303030; border-radius: 8px; }
 .ds .button.small { min-height: 28px; padding: 4px 12px; font-size: 12px; }
 
-@media (max-width: 1100px) {
-  .ds { grid-template-columns: var(--ds-left, 240px) 8px minmax(0, 1fr); }
+@media (max-width: 900px) {
+  .ds {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .ds__resizer { display: none; }
+  .ds[data-ds-view="list"] .ds__pane--detail { display: none; }
+  .ds[data-ds-view="detail"] .ds__pane--tasks { display: none; }
+  .ds__back { display: inline-flex; }
 }
 `;
