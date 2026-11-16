@@ -218,7 +218,7 @@ test("dropping a file with a hidden type into the idea composer renders it on th
   await deleteIdea(page, (await card.getAttribute("data-idea-id")) ?? "");
 });
 
-test("pasting an image into the DS description saves and renders it (BDD-TM-048)", async ({ page }) => {
+test("pasting an image into the DS description saves and renders it (BDD-TM-049)", async ({ page }) => {
   await signIn(page);
   const taskId = await createTask(page, `E2E ds image ${Date.now()}`);
 

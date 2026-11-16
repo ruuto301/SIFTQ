@@ -195,8 +195,9 @@ export const MK_CSS = `
 
 .mk-composer__body {
   line-height: 1.55;
-  min-height: 72px;
-  resize: vertical;
+  min-height: 44px;
+  overflow: hidden;
+  resize: none;
 }
 
 .mk-composer__colors,
@@ -801,17 +802,36 @@ export const MK_CSS = `
   color: #ffffff;
 }
 
+/* 本文側だけがスクロールする（本文欄は中身に合わせて伸びる）。 */
+.mk-detail__body {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: #ffffff59 transparent;
+  scrollbar-width: thin;
+}
+
+.mk-detail__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.mk-detail__body::-webkit-scrollbar-thumb {
+  background: #ffffff59;
+  border-radius: 8px;
+}
+
 .mk-detail__text {
   background: transparent;
   border: 0;
   color: #eeeae0e6;
-  flex: 1;
+  display: block;
   font: inherit;
   font-size: 13px;
   line-height: 1.7;
   margin: 4px 16px 0;
-  min-height: 160px;
+  min-height: 0;
+  overflow: hidden;
   resize: none;
+  width: calc(100% - 32px);
 }
 
 .mk-detail__images {
