@@ -174,3 +174,17 @@ describe("renderMarkdown sanitizing", () => {
     );
   });
 });
+
+describe("renderMarkdown nested lists (BDD-TM-053)", () => {
+  it("nests items that start with two spaces", () => {
+    expect(renderMarkdown("- 親\n  - 子\n- 次")).toBe(
+      "<ul>\n<li>親</li>\n<ul>\n<li>子</li>\n</ul>\n<li>次</li>\n</ul>",
+    );
+  });
+
+  it("returns to the parent level when the indent shrinks", () => {
+    expect(renderMarkdown("- a\n  - b\n  - c\n- d")).toBe(
+      "<ul>\n<li>a</li>\n<ul>\n<li>b</li>\n<li>c</li>\n</ul>\n<li>d</li>\n</ul>",
+    );
+  });
+});

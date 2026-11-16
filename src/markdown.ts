@@ -19,14 +19,15 @@ const INLINE_MAX_DEPTH = 4;
 
 const HEADING_PATTERN = /^ {0,3}(#{1,6}) (.*)$/;
 const BLOCKQUOTE_PATTERN = /^ {0,3}> ?/;
-const UNORDERED_ITEM_PATTERN = /^ {0,3}[-*+] (.*)$/;
-const ORDERED_ITEM_PATTERN = /^ {0,3}(\d{1,9})[.)] (.*)$/;
+const UNORDERED_ITEM_PATTERN = /^( *)([-*+]) (.*)$/;
+const MAX_LIST_DEPTH = 4;
+const ORDERED_ITEM_PATTERN = /^( *)(\d{1,9})[.)] (.*)$/;
 const TASK_ITEM_PATTERN = /^\[([ xX])\] (.*)$/;
 
 type BlockResult = { html: string; next: number };
 type InlineToken = { html: string; next: number };
 type LinkParts = { label: string; url: string; next: number };
-type ListItem = { text: string; ordered: boolean; ordinal: number };
+type ListItem = { text: string; ordered: boolean; ordinal: number; depth: number };
 type Fence = { fence: string; language: string };
 
 export function escapeHtml(text: string): string {
@@ -298,12 +299,24 @@ function renderBlockquote(lines: readonly string[], index: number): BlockResult 
   return { html: `<blockquote>\n${renderBlocks(inner)}\n</blockquote>`, next: cursor };
 }
 
+/** 先頭の空白 2 つを 1 段として深さにする（上限 4 段）。 */
+function listDepth(spaces: number): number {
+  return Math.min(MAX_LIST_DEPTH, Math.floor(spaces / 2));
+}
+
 function listItemAt(line: string): ListItem | null {
   const unordered = UNORDERED_ITEM_PATTERN.exec(line);
-  if (unordered !== null) return { text: unordered[1] ?? "", ordered: false, ordinal: 1 };
+  if (unordered !== null) {
+    return { text: unordered[3] ?? "", ordered: false, ordinal: 1, depth: listDepth((unordered[1] ?? "").length) };
+  }
   const ordered = ORDERED_ITEM_PATTERN.exec(line);
   if (ordered === null) return null;
-  return { text: ordered[2] ?? "", ordered: true, ordinal: Number(ordered[1]) };
+  return {
+    text: ordered[3] ?? "",
+    ordered: true,
+    ordinal: Number(ordered[2]),
+    depth: listDepth((ordered[1] ?? "").length),
+  };
 }
 
 function renderListItem(text: string): string {
@@ -313,20 +326,39 @@ function renderListItem(text: string): string {
   return `<li class="task-list-item"><input type="checkbox" disabled${checked}> ${renderInline(task[2] ?? "")}</li>`;
 }
 
+/** 深さに応じて <ul> / <ol> を開閉し、入れ子のリストを描く。 */
 function renderList(lines: readonly string[], index: number): BlockResult {
   const first = listItemAt(lineAt(lines, index));
-  const ordered = first !== null && first.ordered;
-  const items: string[] = [];
+  if (first === null) return { html: "", next: index };
+  const baseDepth = first.depth;
+  const stack: boolean[] = [];
+  const out: string[] = [];
+  const openList = (ordered: boolean, ordinal: number) => {
+    const start = ordered && ordinal !== 1 ? ` start="${ordinal}"` : "";
+    out.push(ordered ? `<ol${start}>` : "<ul>");
+    stack.push(ordered);
+  };
+  const closeList = () => {
+    const ordered = stack.pop();
+    out.push(ordered ? "</ol>" : "</ul>");
+  };
   let cursor = index;
   while (cursor < lines.length) {
     const item = listItemAt(lineAt(lines, cursor));
-    if (item === null || item.ordered !== ordered) break;
-    items.push(renderListItem(item.text));
+    if (item === null) break;
+    const depth = Math.max(0, item.depth - baseDepth) + 1;
+    while (stack.length > depth) closeList();
+    if (stack.length === 0) openList(item.ordered, item.ordinal);
+    while (stack.length < depth) openList(item.ordered, 1);
+    if (stack.length > 0 && stack[stack.length - 1] !== item.ordered) {
+      closeList();
+      openList(item.ordered, item.ordinal);
+    }
+    out.push(renderListItem(item.text));
     cursor += 1;
   }
-  const tag = ordered ? "ol" : "ul";
-  const start = ordered && first !== null && first.ordinal !== 1 ? ` start="${first.ordinal}"` : "";
-  return { html: `<${tag}${start}>\n${items.join("\n")}\n</${tag}>`, next: cursor };
+  while (stack.length > 0) closeList();
+  return { html: out.join("\n"), next: cursor };
 }
 
 function splitTableRow(line: string): string[] {
