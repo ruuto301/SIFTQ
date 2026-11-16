@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
-  MK_PREVIEW_MAX_BYTES,
-  extractMkLinkPreview,
-  extractMkPreviewUrl,
-  fetchMkLinkPreview,
+  IDEA_PREVIEW_MAX_BYTES,
+  extractIdeaLinkPreview,
+  extractIdeaPreviewUrl,
+  fetchIdeaLinkPreview,
   isBlockedPreviewHostname,
-  parseMkPreviewUrl,
-} from "../src/mk-link-preview";
+  parseIdeaPreviewUrl,
+} from "../src/idea-link-preview";
 
 function htmlPage(body: string): Response {
   return new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
@@ -33,10 +33,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("MK preview URL validation", () => {
+describe("Ideas preview URL validation", () => {
   it("accepts public http and https hosts", () => {
-    expect(parseMkPreviewUrl(`${SECURE_SCHEME}://example.com/post/1`)?.hostname).toBe("example.com");
-    expect(parseMkPreviewUrl(`  ${CLEAR_SCHEME}://example.com  `)?.protocol).toBe(`${CLEAR_SCHEME}:`);
+    expect(parseIdeaPreviewUrl(`${SECURE_SCHEME}://example.com/post/1`)?.hostname).toBe("example.com");
+    expect(parseIdeaPreviewUrl(`  ${CLEAR_SCHEME}://example.com  `)?.protocol).toBe(`${CLEAR_SCHEME}:`);
   });
 
   it("rejects loopback, private, link-local, and local hostnames", () => {
@@ -55,28 +55,28 @@ describe("MK preview URL validation", () => {
       "[fe80::1]",
       "[fd00::1]",
     ]) {
-      expect(parseMkPreviewUrl(withHost(host))).toBeNull();
+      expect(parseIdeaPreviewUrl(withHost(host))).toBeNull();
     }
     expect(isBlockedPreviewHostname("Example.COM")).toBe(false);
   });
 
   it("rejects unsupported protocols and malformed input", () => {
-    expect(parseMkPreviewUrl("javascript:alert(1)")).toBeNull();
-    expect(parseMkPreviewUrl("file:///etc/passwd")).toBeNull();
-    expect(parseMkPreviewUrl("ftp://example.com/file")).toBeNull();
-    expect(parseMkPreviewUrl("example.com/no-scheme")).toBeNull();
-    expect(parseMkPreviewUrl("")).toBeNull();
+    expect(parseIdeaPreviewUrl("javascript:alert(1)")).toBeNull();
+    expect(parseIdeaPreviewUrl("file:///etc/passwd")).toBeNull();
+    expect(parseIdeaPreviewUrl("ftp://example.com/file")).toBeNull();
+    expect(parseIdeaPreviewUrl("example.com/no-scheme")).toBeNull();
+    expect(parseIdeaPreviewUrl("")).toBeNull();
   });
 
   it("picks the first safe URL out of free text", () => {
-    expect(extractMkPreviewUrl("see https://example.com/a?b=1 for details")).toBe("https://example.com/a?b=1");
-    expect(extractMkPreviewUrl("(https://example.com/a)。")).toBe("https://example.com/a");
-    expect(extractMkPreviewUrl(`only ${withHost("localhost")} here`)).toBeNull();
-    expect(extractMkPreviewUrl("no links at all")).toBeNull();
+    expect(extractIdeaPreviewUrl("see https://example.com/a?b=1 for details")).toBe("https://example.com/a?b=1");
+    expect(extractIdeaPreviewUrl("(https://example.com/a)。")).toBe("https://example.com/a");
+    expect(extractIdeaPreviewUrl(`only ${withHost("localhost")} here`)).toBeNull();
+    expect(extractIdeaPreviewUrl("no links at all")).toBeNull();
   });
 });
 
-describe("MK preview metadata", () => {
+describe("Ideas preview metadata", () => {
   it("prefers Open Graph values and resolves a relative image", () => {
     const page = `<html><head><title>Fallback</title>
       <meta property="og:title" content="OG &amp; Title">
@@ -84,7 +84,7 @@ describe("MK preview metadata", () => {
       <meta property="og:image" content="/img.png">
       </head></html>`;
 
-    expect(extractMkLinkPreview(page, "https://example.com/post/1")).toEqual({
+    expect(extractIdeaLinkPreview(page, "https://example.com/post/1")).toEqual({
       title: "OG & Title",
       description: "desc",
       image: "https://example.com/img.png",
@@ -95,7 +95,7 @@ describe("MK preview metadata", () => {
   it("falls back to the title tag and the plain description", () => {
     const page = `<head><title>  Plain title  </title><meta name="description" content="plain desc"></head>`;
 
-    expect(extractMkLinkPreview(page, "https://example.com/")).toEqual({
+    expect(extractIdeaLinkPreview(page, "https://example.com/")).toEqual({
       title: "Plain title",
       description: "plain desc",
       image: null,
@@ -106,16 +106,16 @@ describe("MK preview metadata", () => {
   it("drops an image that is not http", () => {
     const page = `<meta property="og:image" content="data:image/png;base64,AAAA">`;
 
-    expect(extractMkLinkPreview(page, "https://example.com/").image).toBeNull();
+    expect(extractIdeaLinkPreview(page, "https://example.com/").image).toBeNull();
   });
 });
 
-describe("fetchMkLinkPreview", () => {
+describe("fetchIdeaLinkPreview", () => {
   it("refuses a blocked host without touching the network", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    expect(await fetchMkLinkPreview(withHost("127.0.0.1", "/"))).toEqual({ ok: false, error: "INVALID_URL" });
+    expect(await fetchIdeaLinkPreview(withHost("127.0.0.1", "/"))).toEqual({ ok: false, error: "INVALID_URL" });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -126,29 +126,29 @@ describe("fetchMkLinkPreview", () => {
       return new Response(null, { status: 302, headers: { location: withHost("127.0.0.1", "/secret") } });
     });
 
-    expect(await fetchMkLinkPreview("https://example.com/start")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
+    expect(await fetchIdeaLinkPreview("https://example.com/start")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
     expect(calls).toEqual(["https://example.com/start"]);
   });
 
   it("rejects a non-html response and an oversized body", async () => {
     vi.stubGlobal("fetch", async () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));
-    expect(await fetchMkLinkPreview("https://example.com/api")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
+    expect(await fetchIdeaLinkPreview("https://example.com/api")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
 
     vi.stubGlobal(
       "fetch",
       async () =>
         new Response("x", {
           status: 200,
-          headers: { "content-type": "text/html", "content-length": String(MK_PREVIEW_MAX_BYTES + 1) },
+          headers: { "content-type": "text/html", "content-length": String(IDEA_PREVIEW_MAX_BYTES + 1) },
         }),
     );
-    expect(await fetchMkLinkPreview("https://example.com/huge")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
+    expect(await fetchIdeaLinkPreview("https://example.com/huge")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
   });
 
   it("returns the extracted metadata on success", async () => {
     vi.stubGlobal("fetch", async () => htmlPage(`<meta property="og:title" content="Hello">`));
 
-    const result = await fetchMkLinkPreview("https://example.com/");
+    const result = await fetchIdeaLinkPreview("https://example.com/");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value).toEqual({ title: "Hello", description: "", image: null, domain: "example.com" });
@@ -159,6 +159,6 @@ describe("fetchMkLinkPreview", () => {
       throw new Error("network down");
     });
 
-    expect(await fetchMkLinkPreview("https://example.com/")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
+    expect(await fetchIdeaLinkPreview("https://example.com/")).toEqual({ ok: false, error: "PREVIEW_FAILED" });
   });
 });

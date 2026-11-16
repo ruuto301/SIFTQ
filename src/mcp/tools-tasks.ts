@@ -9,7 +9,6 @@ import {
 } from "../task";
 import type { Task, TaskStatus } from "../task";
 import { sortTasksByOrder, taskTextFilter, taskWorkingFilter } from "../task-list";
-import { createIdea as buildIdea } from "../idea-tasks";
 import { findById, findVersioned, isToolResult, readVersionedInput, removeContent, updateContent } from "./helpers";
 import { errorContent, jsonContent, repositoryError, type McpTool, type ToolContext, type ToolResult } from "./types";
 import { TASK_STATUS_SCHEMA, readOptionalBoolean, readOptionalNumber, readOrderUpdates, readString, readVersionInputs, schema } from "./schema";
@@ -299,28 +298,6 @@ const bulkDelete: McpTool = {
   handler: async (ctx, args) => bulkEdit(ctx, args, "delete"),
 };
 
-const moveTaskToIdea: McpTool = {
-  name: "move_task_to_idea",
-  description: "Move a task back to the idea list. version is required.",
-  scope: "write",
-  inputSchema: schema(ID_VERSION_PROPERTIES, ["id", "version"]),
-  handler: async (ctx, args) => {
-    const found = await findVersioned(args, "failed to load the task", (input) => ctx.tasks.find(input.id, OWNER_ID));
-    if (isToolResult(found)) return found;
-    const ideas = await ctx.ideas.list(OWNER_ID);
-    if (!ideas.ok) return errorContent(ideas.error.code, "failed to load ideas");
-    const idea = buildIdea(ideas.value, { title: found.value.title, description: found.value.description, pinned: false });
-    const inserted = await ctx.ideas.insert(idea);
-    if (!inserted.ok) return errorContent(inserted.error.code, "failed to insert the idea");
-    const removed = await ctx.tasks.remove(found.input.id, OWNER_ID, found.input.version);
-    if (!removed.ok) {
-      await ctx.ideas.remove(inserted.value.id, OWNER_ID);
-      return repositoryError(removed.error.code);
-    }
-    return jsonContent(inserted.value);
-  },
-};
-
 export const TASK_TOOLS: McpTool[] = [
   listTasks,
   getTask,
@@ -332,5 +309,4 @@ export const TASK_TOOLS: McpTool[] = [
   bulkStatus,
   bulkProject,
   bulkDelete,
-  moveTaskToIdea,
 ];

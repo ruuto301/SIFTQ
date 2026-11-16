@@ -1,7 +1,6 @@
 import type { Env } from "../app-env";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
-import type { IdeaRepository } from "../repository/idea-repository";
 
 export type McpScope = "read" | "write";
 
@@ -10,7 +9,6 @@ export type ToolContext = {
   env: Env;
   tasks: TaskRepository;
   projects: ProjectRepository;
-  ideas: IdeaRepository;
 };
 
 export type ToolText = { type: "text"; text: string };

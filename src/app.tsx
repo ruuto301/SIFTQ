@@ -9,26 +9,22 @@ import { createD1ProjectRepository } from "./repository/d1-project-repository";
 import type { ProjectRepository } from "./repository/project-repository";
 import { createD1IdeaRepository } from "./repository/d1-idea-repository";
 import type { IdeaRepository } from "./repository/idea-repository";
-import { createD1MkRepository } from "./repository/d1-mk-repository";
-import type { MkRepository } from "./repository/mk-repository";
 import { createD1ImageRepository, createMemoryImageRepository } from "./repository/image-repository";
 import type { ImageRepository } from "./repository/image-repository";
 import { createMemoryTaskRepository } from "./preview/MemoryTaskRepository";
 import { createMemoryProjectRepository } from "./preview/MemoryProjectRepository";
 import { createMemoryIdeaRepository } from "./preview/MemoryIdeaRepository";
-import { createMemoryMkRepository } from "./preview/MemoryMkRepository";
 import { PREVIEW_TASKS } from "./preview/tasks";
 import { PREVIEW_PROJECTS } from "./preview/projects";
 import { PREVIEW_IDEAS } from "./preview/ideas";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerTaskApiRoutes } from "./routes/task-api";
 import { registerIdeaApiRoutes } from "./routes/idea-api";
-import { registerMkApiRoutes } from "./routes/mk-api";
-import { registerMkImageApiRoutes } from "./routes/mk-image-api";
+import { registerIdeaImageApiRoutes } from "./routes/idea-image-api";
 import { registerImageApiRoutes } from "./routes/image-api";
 import { registerMarkdownApiRoutes } from "./routes/markdown-api";
 import { registerTaskScreenRoutes } from "./routes/task-screens";
-import { registerMkScreenRoutes } from "./routes/mk-screens";
+import { registerIdeaScreenRoutes } from "./routes/idea-screens";
 import { mcpUnauthorized, registerMcpRoutes } from "./routes/mcp";
 import { registerOAuthRoutes, verifyMcpToken } from "./oauth";
 import type { AppEnv } from "./app-env";
@@ -37,7 +33,6 @@ const app = new Hono<AppEnv>();
 const previewRepository = createMemoryTaskRepository(PREVIEW_TASKS);
 const previewProjectRepository = createMemoryProjectRepository(PREVIEW_PROJECTS);
 const previewIdeaRepository = createMemoryIdeaRepository(PREVIEW_IDEAS);
-const previewMkRepository = createMemoryMkRepository();
 const previewImageRepository = createMemoryImageRepository();
 
 const PUBLIC_PATHS = new Set([
@@ -124,13 +119,6 @@ function projectRepository(c: Context<AppEnv>): ProjectRepository {
   throw new Error("project repository is not configured");
 }
 
-function mkRepository(c: Context<AppEnv>): MkRepository {
-  if (c.env.PREVIEW_MODE === "true") return previewMkRepository;
-  if (c.env.MK_REPOSITORY) return c.env.MK_REPOSITORY;
-  if (c.env.DB) return createD1MkRepository(c.env.DB);
-  throw new Error("mk repository is not configured");
-}
-
 function imageRepository(c: Context<AppEnv>): ImageRepository {
   if (c.env.PREVIEW_MODE === "true") return previewImageRepository;
   if (c.env.IMAGE_REPOSITORY) return c.env.IMAGE_REPOSITORY;
@@ -139,15 +127,14 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
 }
 
 registerTaskApiRoutes(app, repository, ideaRepository, projectRepository, imageRepository);
-registerIdeaApiRoutes(app, ideaRepository, repository);
-registerMkApiRoutes(app, mkRepository);
-registerMkImageApiRoutes(app, mkRepository, imageRepository);
+registerIdeaApiRoutes(app, ideaRepository);
+registerIdeaImageApiRoutes(app, ideaRepository, imageRepository);
 registerImageApiRoutes(app, imageRepository);
 registerMarkdownApiRoutes(app);
-registerTaskScreenRoutes(app, repository, ideaRepository, projectRepository);
-registerMkScreenRoutes(app, mkRepository);
+registerTaskScreenRoutes(app, repository, projectRepository);
+registerIdeaScreenRoutes(app, ideaRepository);
 registerOAuthRoutes(app);
-registerMcpRoutes(app, repository, projectRepository, ideaRepository);
+registerMcpRoutes(app, repository, projectRepository);
 
 for (const asset of CLIENT_ASSETS) {
   app.get(asset.path, (c) => c.body(asset.body, 200, { "content-type": asset.contentType }));

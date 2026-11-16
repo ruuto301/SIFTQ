@@ -74,7 +74,7 @@ describe("cleanupRemovedImages", () => {
     const tasks = createMemoryTaskRepository();
     await seedImage(images, "image-a");
     const other = createMemoryIdeaRepository([
-      { id: "idea-1", owner_id: "local", title: "idea", description: `keep ${TOKEN_A}`, order: 1, pinned: false },
+      { id: "idea-1", owner_id: "local", title: "idea", body: `keep ${TOKEN_A}`, color: "default", pinned: false, created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z", archived_at: null, deleted_at: null, preview_title: null, preview_description: null, preview_image: null, preview_domain: null, preview_fetched_at: null },
     ]);
 
     const deleted = await cleanupRemovedImages(`${TOKEN_A}`, "", { tasks, ideas: other, images });

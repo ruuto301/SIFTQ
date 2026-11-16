@@ -40,25 +40,6 @@ async function deleteTask(page: Page, id: string): Promise<void> {
   }, id);
 }
 
-async function createIdea(page: Page, title: string): Promise<string> {
-  return page.evaluate(async (ideaTitle) => {
-    const response = await fetch("/api/ideas", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: ideaTitle, description: "" }),
-    });
-    if (!response.ok) throw new Error(`create idea failed: ${response.status}`);
-    const idea = await response.json();
-    return idea.id;
-  }, title);
-}
-
-async function deleteIdea(page: Page, id: string): Promise<void> {
-  await page.evaluate(async (ideaId) => {
-    await fetch(`/api/ideas/${ideaId}`, { method: "DELETE" });
-  }, id);
-}
-
 function dispatchPaste(element: Element, encoded: string): void {
   const binary = atob(encoded);
   const bytes = new Uint8Array(binary.length);
@@ -130,50 +111,6 @@ test("pasting an image into the task description editor saves and renders it", a
   }
 });
 
-test("pasting an image into the idea composer creates a card with the image", async ({ page }) => {
-  await signIn(page);
-  const title = `E2E composer ${Date.now()}`;
-
-  await page.goto("/ideas");
-  await page.locator("[data-idea-composer-trigger]").click();
-  await page.locator(".ideas-composer__title").fill(title);
-  await pasteImage(page, ".ideas-composer__description", PIXEL_PNG);
-
-  const description = page.locator(".ideas-composer__description");
-  await expect(description).toHaveValue(/^\/api\/images\/[0-9A-Za-z_-]+$/);
-  await page.locator("[data-idea-composer-close]").click();
-
-  const card = page.locator(".idea-card").filter({ hasText: title });
-  await expect(card).toBeVisible();
-  await expect(card.locator("img.description-image")).toHaveCount(1);
-
-  await deleteIdea(page, (await card.getAttribute("data-idea-id")) ?? "");
-});
-
-test("pasting an image into the idea modal saves and reloads it", async ({ page }) => {
-  await signIn(page);
-  const title = `E2E modal ${Date.now()}`;
-  const ideaId = await createIdea(page, title);
-
-  try {
-    await page.goto("/ideas");
-    await page.locator(".idea-card").filter({ hasText: title }).locator("h2").click();
-    await expect(page.locator("[data-idea-modal]")).toBeVisible();
-
-    await pasteImage(page, "[data-idea-modal] [data-description-editor]", PIXEL_PNG);
-    const image = page.locator("[data-idea-modal] [data-description-editor] img.description-image");
-    await expect(image).toHaveCount(1);
-
-    await page.locator("[data-idea-modal] [data-idea-close]").click();
-    await page.reload();
-
-    await page.locator(".idea-card").filter({ hasText: title }).locator("h2").click();
-    await expect(page.locator("[data-idea-modal] [data-description-editor] img.description-image")).toHaveCount(1);
-  } finally {
-    await deleteIdea(page, ideaId);
-  }
-});
-
 test("dropping a file with a hidden type into the task editor uploads and renders it", async ({ page }) => {
   await signIn(page);
   const taskId = await createTask(page, `E2E drop ${Date.now()}`);
@@ -196,26 +133,6 @@ test("dropping a file with a hidden type into the task editor uploads and render
   } finally {
     await deleteTask(page, taskId);
   }
-});
-
-test("dropping a file with a hidden type into the idea composer renders it on the card", async ({ page }) => {
-  await signIn(page);
-  const title = `E2E drop composer ${Date.now()}`;
-
-  await page.goto("/ideas");
-  await page.locator("[data-idea-composer-trigger]").click();
-  await page.locator(".ideas-composer__title").fill(title);
-  const accepted = await dropImage(page, ".ideas-composer__description", { encoded: PIXEL_PNG, name: "photo.png", type: "" });
-  expect(accepted).toBe(true);
-
-  const description = page.locator(".ideas-composer__description");
-  await expect(description).toHaveValue(/^\/api\/images\/[0-9A-Za-z_-]+$/);
-  await page.locator("[data-idea-composer-close]").click();
-
-  const card = page.locator(".idea-card").filter({ hasText: title });
-  await expect(card.locator("img.description-image")).toHaveCount(1);
-
-  await deleteIdea(page, (await card.getAttribute("data-idea-id")) ?? "");
 });
 
 test("pasting an image into the DS description saves and renders it (BDD-TM-049)", async ({ page }) => {

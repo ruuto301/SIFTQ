@@ -223,117 +223,6 @@
       }
     ]
   },
-  "ideas_list": {
-    "errors": [
-      {
-        "status": 500
-      }
-    ]
-  },
-  "ideas_create": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_TITLE"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_DESCRIPTION"
-      }
-    ]
-  },
-  "ideas_patch": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_ORDER"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_TITLE"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_DESCRIPTION"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
-  "ideas_delete": {
-    "errors": [
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
-  "ideas_reorder": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_ORDER"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
-  "ideas_id_move_to_task": {
-    "errors": [
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
-  "tasks_id_move_to_idea": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_ORDER"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "CONFLICT"
-      }
-    ]
-  },
   "images_create": {
     "errors": [
       {
@@ -373,144 +262,6 @@
       {
         "status": 400,
         "code": "INVALID_DESCRIPTION"
-      }
-    ]
-  },
-  "mk_notes": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_FILTER"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_COLOR"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_DATE"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_SORT"
-      },
-      {
-        "status": 500
-      }
-    ]
-  },
-  "mk_notes_post": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_TITLE"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_BODY"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_COLOR"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_PINNED"
-      },
-      {
-        "status": 500
-      }
-    ]
-  },
-  "mk_notes_bulk": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_BULK_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_COLOR"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_PINNED"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 409,
-        "code": "INVALID_STATE"
-      }
-    ]
-  },
-  "mk_notes_id_preview": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_URL"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      },
-      {
-        "status": 502,
-        "code": "PREVIEW_FAILED"
-      }
-    ]
-  },
-  "mk_notes_id": {
-    "errors": [
-      {
-        "status": 400,
-        "code": "INVALID_INPUT"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_TITLE"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_BODY"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_COLOR"
-      },
-      {
-        "status": 400,
-        "code": "INVALID_PINNED"
-      },
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      }
-    ]
-  },
-  "mk_notes_id_delete": {
-    "errors": [
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
-      }
-    ]
-  },
-  "mk_images_id_delete": {
-    "errors": [
-      {
-        "status": 404,
-        "code": "NOT_FOUND"
       }
     ]
   },
@@ -573,7 +324,148 @@
       }
     ]
   },
-  "mk_notes_id_images": {
+  "images_delete": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 500
+      }
+    ]
+  },
+  "ideas_notes": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_FILTER"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_COLOR"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_DATE"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_SORT"
+      },
+      {
+        "status": 500
+      }
+    ]
+  },
+  "ideas_notes_post": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_TITLE"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_BODY"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_COLOR"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_PINNED"
+      },
+      {
+        "status": 500
+      }
+    ]
+  },
+  "ideas_notes_bulk": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_BULK_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_COLOR"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_PINNED"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 409,
+        "code": "INVALID_STATE"
+      }
+    ]
+  },
+  "ideas_notes_id_preview": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_URL"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 502,
+        "code": "PREVIEW_FAILED"
+      }
+    ]
+  },
+  "ideas_notes_id": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_TITLE"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_BODY"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_COLOR"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_PINNED"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "ideas_notes_id_delete": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "ideas_notes_id_images": {
     "errors": [
       {
         "status": 400,
@@ -596,14 +488,11 @@
       }
     ]
   },
-  "images_delete": {
+  "ideas_images_id_delete": {
     "errors": [
       {
         "status": 404,
         "code": "NOT_FOUND"
-      },
-      {
-        "status": 500
       }
     ]
   }

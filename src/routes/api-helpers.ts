@@ -1,14 +1,15 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { AppEnv } from "../app-env";
 import type { Result } from "../task";
 
-export function problem(c: Context<AppEnv>, status: ContentfulStatusCode, code: string) {
+type SharedEnv = { Bindings: Record<string, unknown> };
+
+export function problem<T extends SharedEnv>(c: Context<T>, status: ContentfulStatusCode, code: string) {
   return c.json({ code }, status);
 }
 
-export async function readJsonRecord(
-  c: Context<AppEnv>,
+export async function readJsonRecord<T extends SharedEnv>(
+  c: Context<T>,
   isValid: (value: unknown) => value is Record<string, unknown>,
 ): Promise<Record<string, unknown> | null> {
   try {
@@ -30,8 +31,8 @@ export async function findOwned<T, E>(
   return loaded.value === undefined ? { ok: false, error: notFound } : { ok: true, value: loaded.value };
 }
 
-export async function respondRemoved<E extends { code: string }>(
-  c: Context<AppEnv>,
+export async function respondRemoved<T extends SharedEnv, E extends { code: string }>(
+  c: Context<T>,
   removed: Promise<Result<null, E>>,
 ) {
   const result = await removed;
@@ -43,4 +44,18 @@ export function errorStatus(code: string): ContentfulStatusCode {
   if (code === "NOT_FOUND") return 404;
   if (code === "CONFLICT" || code === "INVALID_STATE") return 409;
   return 400;
+}
+
+/** Renders a list result, mapping repository failures to 500. */
+export function respondList<T extends SharedEnv, V, E extends { code: string }>(c: Context<T>, result: Result<readonly V[], E>) {
+  return result.ok ? c.json(result.value) : problem(c, 500, result.error.code);
+}
+
+/** Renders an update result, mapping repository failures through the caller's status rule. */
+export function respondUpdated<T extends SharedEnv, V, E extends { code: string }>(
+  c: Context<T>,
+  result: Result<V, E>,
+  statusOf: (code: string) => ContentfulStatusCode,
+) {
+  return result.ok ? c.json(result.value) : problem(c, statusOf(result.error.code), result.error.code);
 }

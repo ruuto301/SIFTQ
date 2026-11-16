@@ -1,4 +1,5 @@
-import type { D1Database, D1Result } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
+import { changes } from "./d1-changes";
 import { err, isRecord, ok } from "../task";
 import type { Result } from "../task";
 import { isOAuthScope } from "./oauth-repository";
@@ -16,10 +17,6 @@ import type {
 const CLIENT_COLUMNS = "client_id, client_name, redirect_uris, created_at";
 const CODE_COLUMNS = "code_hash, client_id, redirect_uri, scopes, code_challenge, expires_at, created_at";
 const TOKEN_COLUMNS = "token_hash, kind, client_id, scopes, expires_at, created_at, revoked_at";
-
-function changes(result: D1Result): number {
-  return result.meta?.changes ?? 0;
-}
 
 function parseScopes(value: unknown): OAuthScope[] | undefined {
   if (typeof value !== "string") return undefined;

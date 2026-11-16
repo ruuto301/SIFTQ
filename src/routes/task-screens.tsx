@@ -6,8 +6,6 @@ import {
 import { OptionMenu } from "../components/OptionMenu";
 import { TaskMeta } from "../components/TaskMeta";
 import type { NewTaskState } from "../components/NewTaskMeta";
-import { IdeasPage } from "../views/IdeasPage";
-import { IdeaDetailPage } from "../views/IdeaDetailPage";
 import { DshChatPage } from "../views/DshChatPage";
 import { DsPage } from "../views/DsPage";
 import { SettingsPage } from "../views/SettingsPage";
@@ -43,11 +41,9 @@ import type { ParsedBody } from "../task-input";
 import type { AppEnv } from "../app-env";
 import type { TaskRepository } from "../repository/task-repository";
 import type { ProjectRepository } from "../repository/project-repository";
-import type { IdeaRepository } from "../repository/idea-repository";
 
 type Repository = (c: Context<AppEnv>) => TaskRepository;
 type ProjectRepositoryFactory = (c: Context<AppEnv>) => ProjectRepository;
-type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 
 function activePage(path: string): ActiveKey {
   const match = NAV_SCREENS.find((screen) => path === screen.path || path.startsWith(`${screen.path}/`));
@@ -195,22 +191,10 @@ function taskListFilters(request: TaskListRequest): TaskFilter[] {
   ];
 }
 
-function registerTaskListRoutes(app: Hono<AppEnv>, ideaRepository: IdeaRepositoryFactory) {
+function registerTaskListRoutes(app: Hono<AppEnv>) {
   app.get("/", (c) => c.redirect("/ideas"));
 
   app.get("/matrix", (c) => c.redirect("/tasks", 301));
-
-  app.get("/ideas", async (c) => {
-    const result = await ideaRepository(c).list("local");
-    if (!result.ok) return c.text("Internal Server Error", 500);
-    return renderPage(c, <IdeasPage ideas={result.value} />);
-  });
-
-  app.get("/ideas/:id", async (c) => {
-    const result = await ideaRepository(c).find(c.req.param("id"), "local");
-    if (!result.ok) return c.text("Internal Server Error", 500);
-    return result.value === undefined ? c.notFound() : renderPage(c, <IdeaDetailPage idea={result.value} />);
-  });
 }
 
 function registerTaskListViewRoute(
@@ -436,10 +420,9 @@ function registerDsRoute(
 export function registerTaskScreenRoutes(
   app: Hono<AppEnv>,
   repository: Repository,
-  ideaRepository: IdeaRepositoryFactory,
   projectRepository: ProjectRepositoryFactory,
 ) {
-  registerTaskListRoutes(app, ideaRepository);
+  registerTaskListRoutes(app);
   registerTaskListViewRoute(app, repository, projectRepository);
   registerDsRoute(app, repository, projectRepository);
   registerTaskDetailRoutes(app, repository, projectRepository);

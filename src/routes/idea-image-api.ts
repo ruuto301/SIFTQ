@@ -1,34 +1,34 @@
 import type { Context, Hono } from "hono";
-import { MK_MAX_IMAGES, createMkImage, isMkRecord } from "../mk";
-import type { MkImage } from "../mk";
+import { IDEA_MAX_IMAGES, createIdeaImage, isIdeaRecord } from "../idea";
+import type { IdeaImage } from "../idea";
 import { errorStatus, findOwned, problem, readJsonRecord, respondRemoved } from "./api-helpers";
 import type { AppEnv } from "../app-env";
 import type { ImageRepository } from "../repository/image-repository";
-import type { MkRepository } from "../repository/mk-repository";
+import type { IdeaRepository } from "../repository/idea-repository";
 
 const OWNER_ID = "local";
 
-type MkRepositoryFactory = (c: Context<AppEnv>) => MkRepository;
+type IdeaRepositoryFactory = (c: Context<AppEnv>) => IdeaRepository;
 type ImageRepositoryFactory = (c: Context<AppEnv>) => ImageRepository;
 
 /** Positions are 1-based, so the next slot follows the highest attached image even after removals. */
-function nextImagePosition(images: readonly MkImage[]): number {
+function nextImagePosition(images: readonly IdeaImage[]): number {
   return images.reduce((highest, image) => Math.max(highest, image.position), 0) + 1;
 }
 
 async function linkNoteImage(
   c: Context<AppEnv>,
-  mkRepository: MkRepositoryFactory,
+  ideaRepository: IdeaRepositoryFactory,
   imageRepository: ImageRepositoryFactory,
 ) {
   const noteId = c.req.param("id");
   if (noteId === undefined) return problem(c, 404, "NOT_FOUND");
-  const body = await readJsonRecord(c, isMkRecord);
+  const body = await readJsonRecord(c, isIdeaRecord);
   if (body === null) return problem(c, 400, "INVALID_INPUT");
   const imageId = body["imageId"];
   if (typeof imageId !== "string" || imageId === "") return problem(c, 400, "INVALID_IMAGE");
 
-  const repository = mkRepository(c);
+  const repository = ideaRepository(c);
   const note = await findOwned(repository.find(noteId, OWNER_ID), { code: "NOT_FOUND" });
   if (!note.ok) return problem(c, errorStatus(note.error.code), note.error.code);
 
@@ -38,11 +38,11 @@ async function linkNoteImage(
 
   const count = await repository.countImages(noteId, OWNER_ID);
   if (!count.ok) return problem(c, 500, count.error.code);
-  if (count.value >= MK_MAX_IMAGES) return problem(c, 400, "IMAGE_LIMIT_EXCEEDED");
+  if (count.value >= IDEA_MAX_IMAGES) return problem(c, 400, "IMAGE_LIMIT_EXCEEDED");
 
   const attached = await repository.listImages(noteId, OWNER_ID);
   if (!attached.ok) return problem(c, 500, attached.error.code);
-  const created = createMkImage({
+  const created = createIdeaImage({
     id: crypto.randomUUID(),
     note_id: noteId,
     owner_id: OWNER_ID,
@@ -57,18 +57,18 @@ async function linkNoteImage(
   return c.json({ id: inserted.value.id, url: `/api/images/${inserted.value.image_id}` }, 201);
 }
 
-async function unlinkNoteImage(c: Context<AppEnv>, mkRepository: MkRepositoryFactory) {
+async function unlinkNoteImage(c: Context<AppEnv>, ideaRepository: IdeaRepositoryFactory) {
   const id = c.req.param("id");
   if (id === undefined) return problem(c, 404, "NOT_FOUND");
   // Unlinking drops only the note link; the uploaded blob stays in the image repository.
-  return respondRemoved(c, mkRepository(c).removeImage(id, OWNER_ID));
+  return respondRemoved(c, ideaRepository(c).removeImage(id, OWNER_ID));
 }
 
-export function registerMkImageApiRoutes(
+export function registerIdeaImageApiRoutes(
   app: Hono<AppEnv>,
-  mkRepository: MkRepositoryFactory,
+  ideaRepository: IdeaRepositoryFactory,
   imageRepository: ImageRepositoryFactory,
 ) {
-  app.post("/api/mk/notes/:id/images", (c) => linkNoteImage(c, mkRepository, imageRepository));
-  app.delete("/api/mk/images/:id", (c) => unlinkNoteImage(c, mkRepository));
+  app.post("/api/ideas/notes/:id/images", (c) => linkNoteImage(c, ideaRepository, imageRepository));
+  app.delete("/api/ideas/images/:id", (c) => unlinkNoteImage(c, ideaRepository));
 }

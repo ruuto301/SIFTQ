@@ -63,15 +63,15 @@ describe("domain extractor client calls", () => {
   });
 
   it("maps client calls to screens with api ids", () => {
-    const routes = parseRoutes(`app.post("/api/ideas", h);\napp.post("/api/ideas/reorder", h);`);
+    const routes = parseRoutes(`app.post("/api/ideas/notes", h);\napp.post("/api/ideas/notes/bulk", h);`);
     const calls = [
-      { file: "idea-scripts.ts", method: "POST", path: "/api/ideas" },
-      { file: "idea-scripts.ts", method: "POST", path: "/api/ideas/reorder" },
+      { file: "idea-scripts.ts", method: "POST", path: "/api/ideas/notes" },
+      { file: "idea-scripts.ts", method: "POST", path: "/api/ideas/notes/bulk" },
     ];
     const auto = buildAuto(routes, calls, {});
     expect(auto.screenCalls).toEqual([
-      { screen: "P08", trigger: "POST", view: "screen:P08", gateway: "idea-scripts.ts", api: "ideas_create" },
-      { screen: "P08", trigger: "POST", view: "screen:P08", gateway: "idea-scripts.ts", api: "ideas_reorder" },
+      { screen: "P14", trigger: "POST", view: "screen:P14", gateway: "idea-scripts.ts", api: "ideas_notes" },
+      { screen: "P14", trigger: "POST", view: "screen:P14", gateway: "idea-scripts.ts", api: "ideas_notes_bulk" },
     ]);
   });
 });

@@ -1,18 +1,31 @@
-import type { Idea, IdeaError } from "../idea";
+import type { IdeaColor, IdeaNoteCounts, IdeaError, IdeaImage, IdeaNote, IdeaNoteQuery } from "../idea";
 import type { Result } from "../task";
 
 export type IdeaRepositoryError = IdeaError;
 
-export type IdeaOrderUpdate = {
-  id: string;
-  order: number;
-};
-
 export interface IdeaRepository {
-  list(owner_id: string): Promise<Result<Idea[], IdeaRepositoryError>>;
-  find(id: string, owner_id: string): Promise<Result<Idea | undefined, IdeaRepositoryError>>;
-  insert(idea: Idea): Promise<Result<Idea, IdeaRepositoryError>>;
-  update(idea: Idea): Promise<Result<Idea, IdeaRepositoryError>>;
+  list(owner_id: string, query?: IdeaNoteQuery): Promise<Result<IdeaNote[], IdeaRepositoryError>>;
+  counts(owner_id: string): Promise<Result<IdeaNoteCounts, IdeaRepositoryError>>;
+  find(id: string, owner_id: string): Promise<Result<IdeaNote | undefined, IdeaRepositoryError>>;
+  insert(note: IdeaNote): Promise<Result<IdeaNote, IdeaRepositoryError>>;
+  update(note: IdeaNote): Promise<Result<IdeaNote, IdeaRepositoryError>>;
   remove(id: string, owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
-  move(owner_id: string, updates: readonly IdeaOrderUpdate[]): Promise<Result<Idea[], IdeaRepositoryError>>;
+  bulkUpdateColor(
+    ids: readonly string[],
+    owner_id: string,
+    color: IdeaColor,
+  ): Promise<Result<IdeaNote[], IdeaRepositoryError>>;
+  bulkPin(ids: readonly string[], owner_id: string, pinned: boolean): Promise<Result<IdeaNote[], IdeaRepositoryError>>;
+  bulkRemove(ids: readonly string[], owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
+  bulkArchive(
+    ids: readonly string[],
+    owner_id: string,
+    archived: boolean,
+  ): Promise<Result<IdeaNote[], IdeaRepositoryError>>;
+  bulkTrash(ids: readonly string[], owner_id: string, deleted: boolean): Promise<Result<IdeaNote[], IdeaRepositoryError>>;
+  purge(ids: readonly string[], owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
+  listImages(note_id: string, owner_id: string): Promise<Result<IdeaImage[], IdeaRepositoryError>>;
+  insertImage(link: IdeaImage): Promise<Result<IdeaImage, IdeaRepositoryError>>;
+  removeImage(id: string, owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
+  countImages(note_id: string, owner_id: string): Promise<Result<number, IdeaRepositoryError>>;
 }
