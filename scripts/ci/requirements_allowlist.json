@@ -193,5 +193,10 @@
     "path": "src/routes/idea-image-api.ts",
     "reason": "MK画像の添付APIはMK契約テストがHTTP境界の挙動を検証するため。",
     "removal": "ファイル単位のテストを追加したとき。"
+  },
+  {
+    "path": "src/routes/idea-attachment-api.ts",
+    "reason": "添付APIは tests/bdd/idea-attachment.contract.test.ts がアップロード・配信ヘッダ・削除を検証するため。",
+    "removal": "ファイル単位のテストを追加したとき。"
   }
 ]

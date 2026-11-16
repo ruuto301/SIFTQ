@@ -6,7 +6,7 @@ const PIXEL_PNG = Buffer.from(
   "base64",
 );
 
-test("attaches an image to an Ideas note and removes it", async ({ page }) => {
+test("attaches an image through the composer and serves it from the attachments API", async ({ page }) => {
   await signIn(page);
   await page.goto("/ideas");
   await expect(page.getByRole("heading", { name: "Ideas", exact: true })).toBeVisible();
@@ -14,22 +14,27 @@ test("attaches an image to an Ideas note and removes it", async ({ page }) => {
   const title = `Ideas image e2e ${Date.now()}`;
   await page.locator("[data-idea-composer-trigger]").click();
   await page.locator("[data-idea-composer]").getByLabel("メモのタイトル").fill(title);
-  await page.locator("[data-idea-composer-file]").setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PIXEL_PNG });
+  await page.locator("[data-idea-composer-file]").setInputFiles({
+    name: "pixel.png",
+    mimeType: "image/png",
+    buffer: PIXEL_PNG,
+  });
 
   const pending = page.locator("[data-idea-composer-image]");
   await expect(pending).toHaveCount(1);
-  await expect(pending.locator("img")).toHaveAttribute("src", /^\/api\/images\//);
+  await expect(pending.locator("img.idea-composer__image-thumb")).toHaveAttribute("src", /^blob:/);
   await page.locator("[data-idea-composer-save]").click();
 
   const card = page.locator(".idea-card").filter({ hasText: title });
   await expect(card).toHaveCount(1);
-  const thumbnail = card.locator("img.idea-card__image");
-  await expect(thumbnail).toHaveCount(1);
-  await expect(thumbnail).toHaveAttribute("src", /^\/api\/images\//);
+  await expect(page.locator("[data-idea-page]")).toHaveAttribute("data-idea-initialized", "true");
+  const chip = card.locator("[data-idea-attachment-id]");
+  await expect(chip).toHaveCount(1);
+  await expect(chip.locator("img.idea-attachment__thumb")).toHaveAttribute("src", /^\/api\/attachments\//);
 
   await page.goto("/ideas");
-  await page.locator(".idea-card").filter({ hasText: title }).locator("[data-idea-image-remove]").click();
-  await expect(page.locator(".matrix-modal")).toContainText("この画像を削除しますか？");
-  await page.locator(".matrix-modal-button--danger").click();
-  await expect(page.locator(".idea-card").filter({ hasText: title }).locator("img.idea-card__image")).toHaveCount(0);
+  await page.locator(".idea-card").filter({ hasText: title }).locator("[data-idea-attachment-remove]").click();
+  await expect(page.locator(".idea-card").filter({ hasText: title }).locator("[data-idea-attachment-id]")).toHaveCount(
+    0,
+  );
 });

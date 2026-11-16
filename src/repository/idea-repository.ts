@@ -1,4 +1,5 @@
 import type { IdeaColor, IdeaNoteCounts, IdeaError, IdeaImage, IdeaNote, IdeaNoteQuery } from "../idea";
+import type { IdeaAttachment, IdeaAttachmentPreview } from "../idea-attachment";
 import type { Result } from "../task";
 
 export type IdeaRepositoryError = IdeaError;
@@ -28,4 +29,14 @@ export interface IdeaRepository {
   insertImage(link: IdeaImage): Promise<Result<IdeaImage, IdeaRepositoryError>>;
   removeImage(id: string, owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
   countImages(note_id: string, owner_id: string): Promise<Result<number, IdeaRepositoryError>>;
+  listAttachments(note_id: string, owner_id: string): Promise<Result<IdeaAttachment[], IdeaRepositoryError>>;
+  insertAttachment(attachment: IdeaAttachment): Promise<Result<IdeaAttachment, IdeaRepositoryError>>;
+  removeAttachment(id: string, owner_id: string): Promise<Result<null, IdeaRepositoryError>>;
+  countAttachments(note_id: string, owner_id: string): Promise<Result<number, IdeaRepositoryError>>;
+  findAttachment(id: string, owner_id: string): Promise<Result<IdeaAttachment | undefined, IdeaRepositoryError>>;
+  updateAttachmentPreview(
+    id: string,
+    owner_id: string,
+    preview: IdeaAttachmentPreview,
+  ): Promise<Result<null, IdeaRepositoryError>>;
 }

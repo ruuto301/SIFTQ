@@ -43,20 +43,64 @@ function resetIdeaComposer(composer) {
   if (title) title.value = "";
   if (body) body.value = "";
   selectIdeaComposerColor(composer, "default");
-  composer.__mkImages = [];
+  ideaComposerImages(composer).forEach(function (item) { if (item.url) URL.revokeObjectURL(item.url); });
+  composer.__mkAttachments = [];
+  composer.__mkNoteId = "";
   ideaRenderComposerImages(composer);
+  var retry = composer.querySelector("[data-idea-composer-retry]");
+  if (retry) retry.hidden = true;
   ideaShowComposerError(composer, "");
 }
 function ideaComposerImages(composer) {
-  if (!composer.__mkImages) composer.__mkImages = [];
-  return composer.__mkImages;
+  if (!composer.__mkAttachments) composer.__mkAttachments = [];
+  return composer.__mkAttachments;
 }
-function ideaImageUrl(imageId) { return "/api/images/" + encodeURIComponent(imageId); }
 function ideaShowComposerError(composer, message) {
   var error = composer.querySelector("[data-idea-composer-error]");
   if (!error) { if (message) window.alert(message); return; }
   error.textContent = message || "";
   error.hidden = (message || "") === "";
+}
+function ideaComposerImageNode(item) {
+  var node = document.createElement("li");
+  node.className = "idea-composer__image";
+  node.setAttribute("data-idea-composer-image", item.key);
+  node.setAttribute("data-idea-attachment-name", item.name);
+  if (item.url) {
+    var thumb = document.createElement("img");
+    thumb.className = "idea-composer__image-thumb";
+    thumb.src = item.url;
+    thumb.alt = "";
+    node.appendChild(thumb);
+  } else {
+    var icon = document.createElement("span");
+    icon.className = "idea-composer__image-icon";
+    icon.textContent = "📄";
+    icon.setAttribute("aria-hidden", "true");
+    node.appendChild(icon);
+  }
+  var name = document.createElement("span");
+  name.className = "idea-composer__image-name";
+  name.textContent = item.name;
+  node.appendChild(name);
+  var size = document.createElement("span");
+  size.className = "idea-composer__image-size";
+  size.textContent = ideaFormatBytes(item.file.size);
+  node.appendChild(size);
+  if (item.error) {
+    var failed = document.createElement("span");
+    failed.className = "idea-composer__image-error";
+    failed.textContent = item.error;
+    node.appendChild(failed);
+  }
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "idea-composer__image-remove";
+  remove.setAttribute("data-idea-composer-image-remove", item.key);
+  remove.setAttribute("aria-label", "添付を外す");
+  remove.textContent = "×";
+  node.appendChild(remove);
+  return node;
 }
 function ideaRenderComposerImages(composer) {
   var wrap = composer.querySelector("[data-idea-composer-images]");
@@ -64,38 +108,37 @@ function ideaRenderComposerImages(composer) {
   if (!wrap || !list) return;
   var images = ideaComposerImages(composer);
   list.textContent = "";
-  images.forEach(function (image) {
-    var item = document.createElement("li");
-    item.className = "idea-composer__image";
-    item.setAttribute("data-idea-composer-image", image.id);
-    var thumb = document.createElement("img");
-    thumb.className = "idea-composer__image-thumb";
-    thumb.src = image.url;
-    thumb.alt = "";
-    thumb.loading = "lazy";
-    var remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "idea-composer__image-remove";
-    remove.setAttribute("data-idea-composer-image-remove", image.id);
-    remove.setAttribute("aria-label", "画像を削除");
-    remove.textContent = "×";
-    item.appendChild(thumb);
-    item.appendChild(remove);
-    list.appendChild(item);
-  });
+  images.forEach(function (item) { list.appendChild(ideaComposerImageNode(item)); });
   wrap.hidden = images.length === 0;
 }
+var IDEA_ATTACHMENT_TYPES = ["image/png", "image/webp", "image/jpeg", "image/gif", "application/pdf", "text/plain", "text/markdown", "text/csv", "application/json", "application/zip", "text/html", "image/svg+xml"];
+var IDEA_ATTACHMENT_EXTENSIONS = { ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".pdf": "application/pdf", ".txt": "text/plain", ".md": "text/markdown", ".csv": "text/csv", ".json": "application/json", ".zip": "application/zip", ".html": "text/html", ".htm": "text/html", ".svg": "image/svg+xml" };
+var IDEA_ATTACHMENT_IMAGE_MAX = 5242880;
+var IDEA_ATTACHMENT_FILE_MAX = 26214400;
+var IDEA_ATTACHMENT_MAX_COUNT = 10;
 function ideaImageType(file) {
   var type = file && file.type ? String(file.type).toLowerCase() : "";
-  if (type === "image/png" || type === "image/webp" || type === "image/jpeg") return type;
+  if (IDEA_ATTACHMENT_TYPES.indexOf(type) !== -1) return type;
   var name = file && file.name ? String(file.name).toLowerCase() : "";
-  var extension = name.slice(name.lastIndexOf("."));
-  if (extension === ".png") return "image/png";
-  if (extension === ".webp") return "image/webp";
-  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
-  return "";
+  var dot = name.lastIndexOf(".");
+  return dot < 0 ? "" : (IDEA_ATTACHMENT_EXTENSIONS[name.slice(dot)] || "");
 }
-function ideaIsImageFile(file) { return ideaImageType(file) !== ""; }
+/** canvas で縮小できるラスタ画像だけを圧縮対象にする。GIF と SVG はそのまま送る。 */
+function ideaIsImageFile(file) {
+  var type = ideaImageType(file);
+  return type === "image/png" || type === "image/webp" || type === "image/jpeg";
+}
+function ideaAttachmentKindOf(file) { return ideaImageType(file).indexOf("image/") === 0 ? "image" : "file"; }
+function ideaAttachmentLimit(file) { return ideaAttachmentKindOf(file) === "image" ? IDEA_ATTACHMENT_IMAGE_MAX : IDEA_ATTACHMENT_FILE_MAX; }
+function ideaFormatBytes(bytes) {
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+  if (bytes >= 1024) return Math.round(bytes / 1024) + " KB";
+  return bytes + " B";
+}
+function ideaTooLargeMessage(file) {
+  var kind = ideaAttachmentKindOf(file);
+  return (kind === "image" ? "画像は 5MB" : "ファイルは 25MB") + "までです（" + ideaFormatBytes(file.size) + "）。";
+}
 function ideaDroppedFiles(source) {
   if (!source) return [];
   var files = [];
@@ -114,7 +157,6 @@ function ideaHasFileDrag(source) {
   if (source.types && Array.prototype.indexOf.call(source.types, "Files") !== -1) return true;
   return ideaDroppedFiles(source).length > 0;
 }
-function ideaImageFiles(source) { return ideaDroppedFiles(source).filter(ideaIsImageFile); }
 function ideaEncodeImage(canvas, qualities) {
   var quality = qualities[0];
   return new Promise(function (resolve, reject) {
@@ -149,74 +191,453 @@ function ideaPrepareImage(file) {
 }
 function ideaUploadErrorMessage(body) {
   var code = body && body.code ? body.code : "";
-  if (code === "IMAGE_TOO_LARGE") return "画像が大きすぎます。";
-  if (code === "UNSUPPORTED_IMAGE") return "対応していない画像形式です。";
-  return "画像をアップロードできませんでした。";
+  if (code === "ATTACHMENT_TOO_LARGE") return "ファイルが大きすぎます。";
+  if (code === "UNSUPPORTED_ATTACHMENT") return "この形式は添付できません。";
+  if (code === "ATTACHMENT_LIMIT_EXCEEDED") return "添付は10件までです。";
+  if (code === "ATTACHMENT_TOTAL_EXCEEDED") return "添付の合計は50MBまでです。";
+  if (code === "ATTACHMENTS_UNAVAILABLE") return "添付ストレージが未設定です。";
+  if (code === "NOT_FOUND") return "メモが見つかりません。";
+  return "添付できませんでした。";
 }
-function ideaUploadComposerImage(composer, file) {
-  if (ideaComposerImages(composer).length >= 10) { ideaShowComposerError(composer, "画像は10枚までです。"); return; }
-  ideaShowComposerError(composer, "");
-  ideaPrepareImage(file).then(function (blob) {
-    var form = new FormData();
-    form.append("file", blob, "idea-image.webp");
-    return fetch("/api/images", { method: "POST", body: form });
-  }).then(function (response) {
-    if (response.ok) return response.json();
-    return response.json().catch(function () { return {}; }).then(function (body) {
-      throw new Error(ideaUploadErrorMessage(body));
-    });
-  }).then(function (image) {
-    ideaComposerImages(composer).push({ id: image.id, url: image.url || ideaImageUrl(image.id) });
-    ideaRenderComposerImages(composer);
-  }).catch(function (error) {
-    ideaShowComposerError(composer, error && error.message ? error.message : "画像をアップロードできませんでした。");
+/** 画像は WebP へ縮小し、それ以外はそのまま送る。 */
+function ideaPrepareAttachment(file) {
+  return new Promise(function (resolve, reject) {
+    var type = ideaImageType(file);
+    if (type === "") { reject(new Error("この形式は添付できません（" + (file.type || "不明") + "）。")); return; }
+    if (file.size > ideaAttachmentLimit(file)) { reject(new Error(ideaTooLargeMessage(file))); return; }
+    if (!ideaIsImageFile(file)) { resolve({ blob: file, name: file.name || "attachment", type: type }); return; }
+    ideaPrepareImage(file).then(function (blob) {
+      if (blob.size > IDEA_ATTACHMENT_IMAGE_MAX) { reject(new Error("画像を縮小できませんでした。")); return; }
+      var dot = (file.name || "").lastIndexOf(".");
+      var base = dot > 0 ? file.name.slice(0, dot) : (file.name || "image");
+      resolve({ blob: blob, name: base + ".webp", type: "image/webp" });
+    }, reject);
   });
 }
-function ideaLinkComposerImages(composer, noteId) {
-  var images = ideaComposerImages(composer);
-  return images.reduce(function (chain, image) {
-    return chain.then(function () {
-      return fetch("/api/ideas/notes/" + encodeURIComponent(noteId) + "/images", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageId: image.id }),
-      }).then(function (response) {
-        if (!response.ok) throw new Error("image link failed: " + response.status);
-      });
-    });
-  }, Promise.resolve());
+/** XHR はアップロード進捗を出せるので、fetch ではなくこちらを使う。 */
+function ideaUploadAttachment(noteId, item, onProgress) {
+  return new Promise(function (resolve, reject) {
+    var form = new FormData();
+    form.append("file", item.blob, item.name);
+    var request = new XMLHttpRequest();
+    request.open("POST", "/api/ideas/notes/" + encodeURIComponent(noteId) + "/attachments");
+    request.upload.onprogress = function (event) {
+      if (onProgress && event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
+    };
+    request.onload = function () {
+      var body = null;
+      try { body = JSON.parse(request.responseText); } catch (error) { body = null; }
+      if (request.status >= 200 && request.status < 300 && body) { resolve(body); return; }
+      reject(new Error(ideaUploadErrorMessage(body)));
+    };
+    request.onerror = function () { reject(new Error("通信に失敗しました。")); };
+    request.send(form);
+  });
 }
 function ideaRequestPreview(noteId) {
   return ideaApi("/api/ideas/notes/" + encodeURIComponent(noteId) + "/preview", { method: "POST" });
+}
+function ideaUploadComposerAttachments(composer) {
+  var noteId = composer.__mkNoteId;
+  if (!noteId) return Promise.reject(new Error("保存に失敗しました。"));
+  return ideaComposerImages(composer).reduce(function (chain, item) {
+    return chain.then(function () {
+      if (item.done) return null;
+      return ideaPrepareAttachment(item.file).then(function (prepared) {
+        return ideaUploadAttachment(noteId, prepared, function (ratio) { item.progress = ratio; });
+      }).then(function (attachment) {
+        item.done = true;
+        item.error = "";
+        item.attachment = attachment;
+        if (item.url) { URL.revokeObjectURL(item.url); item.url = ""; }
+        ideaRenderComposerImages(composer);
+        return null;
+      }).catch(function (error) {
+        item.error = error && error.message ? error.message : "添付できませんでした。";
+        ideaRenderComposerImages(composer);
+        throw error;
+      });
+    });
+  }, Promise.resolve());
 }
 function saveIdeaComposer(composer) {
   var title = composer.querySelector("[data-idea-composer-title]");
   var body = composer.querySelector("[data-idea-composer-body]");
   var value = title ? title.value.trim() : "";
   if (!value) return;
+  var retry = composer.querySelector("[data-idea-composer-retry]");
+  if (retry) retry.hidden = true;
+  ideaShowComposerError(composer, "");
   ideaApi("/api/ideas/notes", {
     method: "POST",
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: ideaComposerColor(composer) }),
   }).then(function (note) {
-    return ideaLinkComposerImages(composer, note.id).then(function () {
+    composer.__mkNoteId = note.id;
+    return ideaUploadComposerAttachments(composer).then(function () {
       // 本文に URL があればプレビューを先に取得する。失敗しても作成は成功として扱う。
       return ideaRequestPreview(note.id).catch(function () { return null; });
     });
   }).then(function () {
     // 作成したメモが必ず見えるよう、絞り込み・検索・色の条件を外した一覧へ戻る。
     window.location.assign("/ideas");
-  }).catch(function () {
-    ideaShowComposerError(composer, "保存に失敗しました。");
+  }).catch(function (error) {
+    ideaShowComposerError(composer, error && error.message ? error.message : "保存に失敗しました。");
+    if (retry && composer.__mkNoteId) retry.hidden = false;
   });
 }
-function ideaRemoveComposerImage(composer, imageId) {
-  composer.__mkImages = ideaComposerImages(composer).filter(function (image) { return image.id !== imageId; });
+/** コンポーザでは保存前にためておき、メモ作成後にまとめて R2 へ送る。 */
+function ideaQueueComposerFiles(composer, files) {
+  var items = ideaComposerImages(composer);
+  var error = "";
+  Array.prototype.slice.call(files || []).forEach(function (file) {
+    var type = ideaImageType(file);
+    if (type === "") { error = "この形式は添付できません（" + (file.type || "不明") + "）。"; return; }
+    if (file.size > ideaAttachmentLimit(file)) { error = ideaTooLargeMessage(file); return; }
+    if (items.length >= IDEA_ATTACHMENT_MAX_COUNT) { error = "添付は10件までです。"; return; }
+    var preview = (file.type || "").indexOf("image/") === 0 && typeof URL !== "undefined" && URL.createObjectURL ? URL.createObjectURL(file) : "";
+    items.push({ key: String(Date.now()) + "-" + String(items.length), file: file, name: file.name || "attachment", url: preview, done: false, error: "", progress: 0 });
+  });
+  ideaRenderComposerImages(composer);
+  ideaShowComposerError(composer, error);
+}
+function ideaRemoveComposerImage(composer, key) {
+  composer.__mkAttachments = ideaComposerImages(composer).filter(function (item) {
+    if (item.key === key && item.url) URL.revokeObjectURL(item.url);
+    return item.key !== key;
+  });
   ideaRenderComposerImages(composer);
 }
 function ideaRemoveCardImage(linkId) {
   if (!linkId) return;
   ideaConfirm("この画像を削除しますか？", function () {
     ideaRun("/api/ideas/images/" + encodeURIComponent(linkId), { method: "DELETE" });
+  });
+}
+function ideaAttachmentItems(scope) {
+  if (!scope) return null;
+  return scope.querySelector("[data-idea-attachment-items], [data-idea-detail-attachment-items]");
+}
+function ideaAttachmentStatus(scope, message, bad) {
+  var status = scope ? scope.querySelector("[data-idea-attachment-status]") : null;
+  if (!status) return null;
+  status.textContent = message || "";
+  status.hidden = (message || "") === "";
+  status.setAttribute("data-idea-attachment-status-bad", bad ? "true" : "false");
+  return status;
+}
+function ideaAttachmentShowProgress(scope, ratio) {
+  var bar = scope ? scope.querySelector("[data-idea-attachment-progress]") : null;
+  if (!bar) return;
+  var fill = bar.querySelector("i");
+  var value = Math.max(0, Math.min(1, ratio));
+  bar.hidden = value <= 0 || value >= 1;
+  if (fill) fill.style.width = Math.round(value * 100) + "%";
+}
+function ideaAttachmentCountRefresh(scope) {
+  var items = ideaAttachmentItems(scope);
+  var count = scope ? scope.querySelector("[data-idea-attachment-count]") : null;
+  if (!items || !count) return;
+  var total = items.querySelectorAll("[data-idea-attachment-id]").length;
+  count.textContent = "📎 " + total;
+  count.hidden = total === 0;
+}
+function ideaAttachmentCard(scope) {
+  if (!scope) return null;
+  if (scope.hasAttribute("data-idea-detail")) return ideaDetailCard(scope);
+  return scope.closest("[data-idea-id]");
+}
+function ideaAttachmentStored(card) {
+  if (!card) return [];
+  try { return JSON.parse(card.getAttribute("data-idea-attachments") || "[]"); } catch (error) { return []; }
+}
+function ideaAttachmentStore(card, list) {
+  if (card) card.setAttribute("data-idea-attachments", JSON.stringify(list));
+}
+function ideaAttachmentChip(attachment) {
+  var chip = document.createElement("span");
+  chip.className = "idea-attachment idea-attachment--" + attachment.kind;
+  chip.setAttribute("data-idea-attachment-id", attachment.id);
+  chip.setAttribute("data-idea-attachment-kind", attachment.kind);
+  chip.setAttribute("data-idea-attachment-preview", attachment.preview || "inline");
+  chip.setAttribute("data-idea-attachment-type", attachment.content_type);
+  if (attachment.kind === "image") {
+    var thumb = document.createElement("img");
+    thumb.className = "idea-attachment__thumb";
+    thumb.src = attachment.url;
+    thumb.alt = "";
+    thumb.loading = "lazy";
+    chip.appendChild(thumb);
+  } else {
+    var icon = document.createElement("span");
+    icon.className = "idea-attachment__icon";
+    icon.textContent = "📄";
+    icon.setAttribute("aria-hidden", "true");
+    chip.appendChild(icon);
+  }
+  var name = document.createElement("span");
+  name.className = "idea-attachment__name";
+  name.textContent = attachment.name;
+  chip.appendChild(name);
+  var size = document.createElement("span");
+  size.className = "idea-attachment__size";
+  size.textContent = ideaFormatBytes(attachment.bytes);
+  chip.appendChild(size);
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "idea-attachment__remove";
+  remove.setAttribute("data-idea-attachment-remove", attachment.id);
+  remove.setAttribute("aria-label", attachment.name + " を削除");
+  remove.textContent = "×";
+  chip.appendChild(remove);
+  return chip;
+}
+/** カードへはそのまま、詳細へは元カードの JSON と一覧にも反映する。 */
+function ideaAttachmentAppend(scope, attachment) {
+  var items = ideaAttachmentItems(scope);
+  if (!items) return;
+  var detail = scope.hasAttribute("data-idea-detail");
+  items.appendChild(detail ? ideaDetailAttachmentNode(attachment) : ideaAttachmentChip(attachment));
+  ideaAttachmentCountRefresh(scope);
+  var card = ideaAttachmentCard(scope);
+  if (!card) return;
+  ideaAttachmentStore(card, ideaAttachmentStored(card).concat([attachment]));
+  if (card === scope) return;
+  var cardItems = ideaAttachmentItems(card);
+  if (cardItems) cardItems.appendChild(ideaAttachmentChip(attachment));
+  ideaAttachmentCountRefresh(card);
+}
+function ideaAttachmentRemove(scope, id) {
+  if (!id) return;
+  ideaApi("/api/ideas/attachments/" + encodeURIComponent(id), { method: "DELETE" }).then(function () {
+    var card = ideaAttachmentCard(scope);
+    [scope, card].forEach(function (target) {
+      if (!target || !ideaAttachmentItems(target)) return;
+      var chip = target.querySelector('[data-idea-attachment-id="' + id + '"]');
+      if (chip) chip.remove();
+      if (target.hasAttribute("data-idea-attachments")) {
+        ideaAttachmentStore(target, ideaAttachmentStored(target).filter(function (item) { return item.id !== id; }));
+      }
+      ideaAttachmentCountRefresh(target);
+    });
+  }).catch(function () {
+    ideaAttachmentStatus(scope, "削除できませんでした。", true);
+  });
+}
+function ideaAttachmentRetry(scope, noteId, file, error) {
+  var status = ideaAttachmentStatus(scope, "", true);
+  if (!status) return;
+  status.textContent = (error && error.message ? error.message : "添付できませんでした。") + " ";
+  var retry = document.createElement("button");
+  retry.type = "button";
+  retry.className = "idea-attachment__retry";
+  retry.setAttribute("data-idea-attachment-retry", "");
+  retry.textContent = "再試行";
+  retry.addEventListener("click", function () { ideaAttachOne(scope, noteId, file); });
+  status.appendChild(retry);
+  status.hidden = false;
+}
+function ideaAttachOne(scope, noteId, file) {
+  ideaAttachmentStatus(scope, "アップロード中: " + file.name, false);
+  ideaAttachmentShowProgress(scope, 0.05);
+  return ideaPrepareAttachment(file).then(function (prepared) {
+    return ideaUploadAttachment(noteId, prepared, function (ratio) { ideaAttachmentShowProgress(scope, ratio); });
+  }).then(function (attachment) {
+    ideaAttachmentShowProgress(scope, 0);
+    ideaAttachmentStatus(scope, attachment.kind === "image" ? "画像を添付しました。" : "添付しました。", false);
+    ideaAttachmentAppend(scope, attachment);
+    return null;
+  }).catch(function (error) {
+    ideaAttachmentShowProgress(scope, 0);
+    ideaAttachmentRetry(scope, noteId, file, error);
+  });
+}
+function ideaAttachFiles(scope, noteId, files) {
+  if (!scope || !noteId) return;
+  var list = Array.prototype.slice.call(files || []);
+  if (list.length === 0) { ideaAttachmentStatus(scope, "ファイルを検出できませんでした。", true); return; }
+  var accepted = list.filter(function (file) {
+    if (ideaImageType(file) === "") {
+      ideaAttachmentStatus(scope, "この形式は添付できません（" + (file.type || "不明") + "）。", true);
+      return false;
+    }
+    if (file.size > ideaAttachmentLimit(file)) {
+      ideaAttachmentStatus(scope, ideaTooLargeMessage(file), true);
+      return false;
+    }
+    return true;
+  });
+  if (accepted.length === 0) return;
+  accepted.reduce(function (chain, file) {
+    return chain.then(function () { return ideaAttachOne(scope, noteId, file); });
+  }, Promise.resolve());
+}
+function ideaAttachmentNoteId(zone) {
+  if (!zone) return "";
+  if (zone.hasAttribute("data-idea-detail")) return zone.getAttribute("data-idea-note-id") || "";
+  return ideaCardId(zone) || "";
+}
+function ideaAttachmentDropActive(zone, active) {
+  if (!zone) return;
+  zone.classList.toggle("idea-card--dragover", active);
+  var hint = zone.querySelector("[data-idea-attachment-drop], [data-idea-detail-drop]");
+  if (hint) hint.hidden = !active;
+}
+function ideaBindAttachmentDropZone(zone) {
+  if (!zone || zone.getAttribute("data-idea-drop-ready") === "true") return;
+  zone.setAttribute("data-idea-drop-ready", "true");
+  var show = function (event) {
+    if (!ideaHasFileDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    ideaAttachmentDropActive(zone, true);
+  };
+  zone.addEventListener("dragenter", show);
+  zone.addEventListener("dragover", show);
+  ["dragleave", "dragend"].forEach(function (type) {
+    zone.addEventListener(type, function () { ideaAttachmentDropActive(zone, false); });
+  });
+  zone.addEventListener("drop", function (event) {
+    var files = ideaDroppedFiles(event.dataTransfer);
+    event.preventDefault();
+    ideaAttachmentDropActive(zone, false);
+    if (files.length > 0) ideaAttachFiles(zone, ideaAttachmentNoteId(zone), files);
+  });
+}
+function initializeIdeaAttachmentDrops(page) {
+  ideaCards().forEach(ideaBindAttachmentDropZone);
+  var root = ideaDetail();
+  if (root) ideaBindAttachmentDropZone(root);
+}
+function ideaAttachmentPreviewable(attachment) {
+  return attachment && (attachment.content_type === "text/html" || attachment.content_type === "image/svg+xml");
+}
+/** 添付 SVG を DOM へ入れる場合の無害化。script / foreignObject / on* / 外部参照を除去する。 */
+function ideaSanitizeSvg(source) {
+  var doc = null;
+  try { doc = new DOMParser().parseFromString(source, "image/svg+xml"); } catch (error) { return ""; }
+  if (!doc || !doc.documentElement) return "";
+  Array.prototype.slice.call(doc.querySelectorAll("script, foreignObject")).forEach(function (node) { node.remove(); });
+  Array.prototype.slice.call(doc.querySelectorAll("*")).forEach(function (element) {
+    Array.prototype.slice.call(element.attributes).forEach(function (attribute) {
+      var name = attribute.name.toLowerCase();
+      if (name.indexOf("on") === 0) element.removeAttribute(attribute.name);
+      if ((name === "href" || name === "xlink:href") && !/^#|^data:/.test(attribute.value)) element.removeAttribute(attribute.name);
+    });
+  });
+  try { return new XMLSerializer().serializeToString(doc.documentElement); } catch (error) { return ""; }
+}
+function ideaAttachmentSourceNode(attachment) {
+  var pre = document.createElement("pre");
+  pre.className = "idea-attachment__source";
+  pre.setAttribute("data-idea-attachment-source", attachment.id);
+  pre.textContent = "読み込み中…";
+  fetch(attachment.url).then(function (response) {
+    if (!response.ok) throw new Error("source failed");
+    return response.text();
+  }).then(function (text) {
+    pre.textContent = attachment.content_type === "image/svg+xml" ? ideaSanitizeSvg(text) : text;
+  }).catch(function () { pre.textContent = "読み込めませんでした。"; });
+  return pre;
+}
+/** HTML は sandbox iframe、SVG は img 経由。生の内容を innerHTML へ入れることはない。 */
+function ideaAttachmentView(attachment) {
+  var view = document.createElement("div");
+  view.className = "idea-attachment__view";
+  view.setAttribute("data-idea-attachment-view", attachment.id);
+  if (attachment.preview === "download") {
+    var link = document.createElement("a");
+    link.className = "idea-attachment__download";
+    link.href = attachment.url + "?download=1";
+    link.setAttribute("download", attachment.name);
+    link.setAttribute("data-idea-attachment-download", attachment.id);
+    link.textContent = "ダウンロード";
+    view.appendChild(link);
+    return view;
+  }
+  if (attachment.preview === "source") {
+    view.appendChild(ideaAttachmentSourceNode(attachment));
+    return view;
+  }
+  if (attachment.content_type === "text/html") {
+    var frame = document.createElement("iframe");
+    frame.className = "idea-attachment__frame";
+    frame.setAttribute("sandbox", "");
+    frame.setAttribute("src", attachment.url);
+    frame.setAttribute("title", attachment.name);
+    frame.setAttribute("data-idea-attachment-frame", attachment.id);
+    view.appendChild(frame);
+    return view;
+  }
+  var image = document.createElement("img");
+  image.className = "idea-attachment__preview-image";
+  image.src = attachment.url;
+  image.alt = attachment.name;
+  image.setAttribute("data-idea-attachment-preview-image", attachment.id);
+  view.appendChild(image);
+  return view;
+}
+function ideaAttachmentSetPreview(wrap, attachment) {
+  var view = wrap.querySelector("[data-idea-attachment-view]");
+  if (view) wrap.replaceChild(ideaAttachmentView(attachment), view);
+  Array.prototype.slice.call(wrap.querySelectorAll("[data-idea-attachment-mode]")).forEach(function (button) {
+    var active = button.getAttribute("data-idea-attachment-mode") === attachment.preview;
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.className = "idea-attachment__tab" + (active ? " is-active" : "");
+  });
+  var chip = wrap.querySelector("[data-idea-attachment-id]");
+  if (chip) chip.setAttribute("data-idea-attachment-preview", attachment.preview);
+}
+function ideaAttachmentTabs(attachment, wrap) {
+  var tabs = document.createElement("div");
+  tabs.className = "idea-attachment__tabs";
+  [["inline", "プレビュー"], ["source", "ソース"], ["download", "ダウンロードのみ"]].forEach(function (mode) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "idea-attachment__tab" + (attachment.preview === mode[0] ? " is-active" : "");
+    button.setAttribute("data-idea-attachment-mode", mode[0]);
+    button.setAttribute("aria-pressed", attachment.preview === mode[0] ? "true" : "false");
+    button.textContent = mode[1];
+    tabs.appendChild(button);
+  });
+  tabs.addEventListener("click", function (event) {
+    var target = event.target;
+    var button = target && target.closest ? target.closest("[data-idea-attachment-mode]") : null;
+    if (!button) return;
+    var preview = button.getAttribute("data-idea-attachment-mode") || "inline";
+    ideaApi("/api/ideas/attachments/" + encodeURIComponent(attachment.id), {
+      method: "PATCH",
+      body: JSON.stringify({ preview: preview }),
+    }).then(function (updated) {
+      attachment.preview = updated && updated.preview ? updated.preview : preview;
+      ideaAttachmentSetPreview(wrap, attachment);
+      var card = ideaDetailCard(ideaDetail());
+      if (card) {
+        ideaAttachmentStore(card, ideaAttachmentStored(card).map(function (item) {
+          return item.id === attachment.id ? attachment : item;
+        }));
+      }
+    }).catch(function () {});
+  });
+  return tabs;
+}
+function ideaDetailAttachmentNode(attachment) {
+  var wrap = document.createElement("div");
+  wrap.className = "idea-detail__attachment";
+  wrap.setAttribute("data-idea-detail-attachment", attachment.id);
+  wrap.appendChild(ideaAttachmentChip(attachment));
+  if (ideaAttachmentPreviewable(attachment)) {
+    wrap.appendChild(ideaAttachmentTabs(attachment, wrap));
+    wrap.appendChild(ideaAttachmentView(attachment));
+  }
+  return wrap;
+}
+function ideaDetailRenderAttachments(root, card) {
+  var box = root.querySelector("[data-idea-detail-attachment-items]");
+  if (!box) return;
+  box.textContent = "";
+  if (card === null) return;
+  ideaAttachmentStored(card).forEach(function (attachment) {
+    box.appendChild(ideaDetailAttachmentNode(attachment));
   });
 }
 function ideaSetPinned(card) {
@@ -291,7 +712,7 @@ function initializeIdeaComposerImageInput(composer) {
     add.addEventListener("click", function () { input.click(); });
     input.addEventListener("change", function () {
       var files = input.files ? Array.prototype.slice.call(input.files) : [];
-      files.forEach(function (file) { ideaUploadComposerImage(composer, file); });
+      ideaQueueComposerFiles(composer, files);
       input.value = "";
     });
   }
@@ -306,9 +727,7 @@ function initializeIdeaComposerImageInput(composer) {
       var files = ideaDroppedFiles(event.dataTransfer);
       if (files.length === 0) return;
       event.preventDefault();
-      var imageFiles = files.filter(ideaIsImageFile);
-      if (imageFiles.length === 0) { ideaShowComposerError(composer, "対応していない画像形式です。"); return; }
-      imageFiles.forEach(function (file) { ideaUploadComposerImage(composer, file); });
+      ideaQueueComposerFiles(composer, files);
     });
   }
   composer.addEventListener("click", function (event) {
@@ -332,6 +751,19 @@ function initializeIdeaComposer(page) {
   if (cancel) cancel.addEventListener("click", function () { resetIdeaComposer(composer); setIdeaComposerOpen(composer, false); });
   var save = composer.querySelector("[data-idea-composer-save]");
   if (save) save.addEventListener("click", function () { saveIdeaComposer(composer); });
+  var retry = composer.querySelector("[data-idea-composer-retry]");
+  if (retry) {
+    retry.addEventListener("click", function () {
+      retry.hidden = true;
+      ideaShowComposerError(composer, "");
+      ideaUploadComposerAttachments(composer).then(function () {
+        window.location.assign("/ideas");
+      }).catch(function (error) {
+        ideaShowComposerError(composer, error && error.message ? error.message : "添付できませんでした。");
+        retry.hidden = false;
+      });
+    });
+  }
   composer.querySelectorAll("[data-idea-composer-color]").forEach(function (button) {
     button.addEventListener("click", function () {
       selectIdeaComposerColor(composer, button.getAttribute("data-idea-composer-color") || "default");
@@ -356,6 +788,13 @@ function initializeIdeaActions(page) {
   page.addEventListener("click", function (event) {
     var target = event.target;
     if (!target || !target.closest) return;
+    var attachmentRemove = target.closest("[data-idea-attachment-remove]");
+    if (attachmentRemove) {
+      event.preventDefault();
+      var scope = attachmentRemove.closest("[data-idea-detail]") || attachmentRemove.closest("[data-idea-id]");
+      ideaAttachmentRemove(scope, attachmentRemove.getAttribute("data-idea-attachment-remove") || "");
+      return;
+    }
     var imageRemove = target.closest("[data-idea-image-remove]");
     if (imageRemove) {
       event.preventDefault();
@@ -368,12 +807,26 @@ function initializeIdeaActions(page) {
 }
 function initializeIdeaPaste(page) {
   document.addEventListener("paste", function (event) {
+    var files = ideaDroppedFiles(event.clipboardData);
+    if (files.length === 0) return;
     var composer = page.querySelector("[data-idea-composer]");
-    if (!composer || composer.getAttribute("data-idea-composer-open") !== "true") return;
-    var imageFiles = ideaImageFiles(event.clipboardData);
-    if (imageFiles.length === 0) return;
-    event.preventDefault();
-    imageFiles.forEach(function (file) { ideaUploadComposerImage(composer, file); });
+    if (composer && composer.getAttribute("data-idea-composer-open") === "true") {
+      event.preventDefault();
+      ideaQueueComposerFiles(composer, files);
+      return;
+    }
+    var root = ideaDetail();
+    if (root && root.hidden === false) {
+      event.preventDefault();
+      ideaAttachFiles(root, ideaAttachmentNoteId(root), files);
+      return;
+    }
+    var active = document.activeElement;
+    var card = active && active.closest ? active.closest("[data-idea-id]") : null;
+    if (card) {
+      event.preventDefault();
+      ideaAttachFiles(card, ideaCardId(card) || "", files);
+    }
   });
 }
 var IDEA_SORT_KEY = "idea-sort:v1";
@@ -679,6 +1132,7 @@ function ideaDetailOpen(card) {
   var pin = ideaDetailField(root, "pin");
   if (pin) pin.setAttribute("aria-pressed", card.getAttribute("data-idea-pinned") === "true" ? "true" : "false");
   ideaDetailRenderImages(root, card);
+  ideaDetailRenderAttachments(root, card);
   ideaGrowDetail(root);
   ideaDetailError(root, "");
   root.hidden = false;
@@ -771,6 +1225,7 @@ function initializeIdea() {
   initializeIdeaPaste(page);
   initializeIdeaDetail(page);
   initializeIdeaSideOpen(page);
+  initializeIdeaAttachmentDrops(page);
   initializeIdeaSort(page);
   initializeIdeaDates(page);
   initializeIdeaSaved(page);

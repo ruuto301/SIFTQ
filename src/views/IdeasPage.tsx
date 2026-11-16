@@ -1,6 +1,14 @@
 import { IDEA_COLORS, IDEA_DATE_KINDS, IDEA_DEFAULT_SORT, ideaSortParts } from "../idea";
 import type { IdeaColor, IdeaNoteCounts, IdeaDateKind, IdeaFilter, IdeaImage, IdeaNote, IdeaSort } from "../idea";
+import {
+  IDEA_ATTACHMENT_CONTENT_TYPES,
+  formatIdeaAttachmentBytes,
+  ideaAttachmentKind,
+} from "../idea-attachment";
+import type { IdeaAttachment } from "../idea-attachment";
 import { extractIdeaPreviewUrl } from "../idea-link-preview";
+
+const IDEA_ATTACHMENT_ACCEPT = IDEA_ATTACHMENT_CONTENT_TYPES.join(",");
 
 const IDEA_FILTER_LABELS: Record<IdeaFilter, string> = {
   notes: "メモ",
@@ -70,13 +78,14 @@ function IdeaComposerAttachments() {
   return (
     <div class="idea-composer__attachments">
       <span class="idea-composer__hint">📋 Ctrl+V で画像を貼り付け</span>
+      <span class="idea-composer__hint">📎 PDF・テキスト等はドロップ / 選択で添付</span>
       <button class="button small" type="button" data-idea-composer-image-add>
-        画像を追加
+        ファイルを追加
       </button>
       <input
         class="idea-composer__file"
         type="file"
-        accept="image/png,image/webp,image/jpeg"
+        accept={IDEA_ATTACHMENT_ACCEPT}
         multiple
         tabindex={-1}
         aria-hidden="true"
@@ -116,6 +125,9 @@ function IdeaComposer() {
           <ul class="idea-composer__image-list" data-idea-composer-image-list></ul>
         </div>
         <p class="idea-composer__error" data-idea-composer-error role="status" hidden></p>
+        <button class="button small" type="button" data-idea-composer-retry hidden>
+          再試行
+        </button>
         <IdeaComposerAttachments />
         <div class="idea-composer__actions">
           <button class="button small" type="button" data-idea-composer-cancel data-cancel>
@@ -344,6 +356,65 @@ function IdeaCardImage({ image }: { readonly image: IdeaImage | undefined }) {
   );
 }
 
+/** カードと詳細が共有する添付チップ。画像はサムネイル、それ以外は名前とサイズ。 */
+function IdeaAttachmentChip({ attachment }: { readonly attachment: IdeaAttachment }) {
+  const kind = ideaAttachmentKind(attachment.content_type);
+  return (
+    <span
+      class={`idea-attachment idea-attachment--${kind}`}
+      data-idea-attachment-id={attachment.id}
+      data-idea-attachment-kind={kind}
+      data-idea-attachment-preview={attachment.preview}
+      data-idea-attachment-type={attachment.content_type}
+    >
+      {kind === "image" ? (
+        <img
+          class="idea-attachment__thumb"
+          src={`/api/attachments/${encodeURIComponent(attachment.id)}`}
+          alt=""
+          loading="lazy"
+        />
+      ) : (
+        <span class="idea-attachment__icon" aria-hidden="true">
+          📄
+        </span>
+      )}
+      <span class="idea-attachment__name">{attachment.name}</span>
+      <span class="idea-attachment__size">{formatIdeaAttachmentBytes(attachment.bytes)}</span>
+      <button
+        class="idea-attachment__remove"
+        type="button"
+        data-idea-attachment-remove={attachment.id}
+        aria-label={`${attachment.name} を削除`}
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
+function IdeaCardAttachments({ attachments }: { readonly attachments: readonly IdeaAttachment[] }) {
+  return (
+    <div class="idea-card__attachments" data-idea-attachment-panel>
+      <span class="idea-card__attachment-drop" data-idea-attachment-drop hidden>
+        ここに添付
+      </span>
+      <span class="idea-card__attachment-count" data-idea-attachment-count hidden={attachments.length === 0}>
+        📎 {attachments.length}
+      </span>
+      <div class="idea-card__attachment-items" data-idea-attachment-items>
+        {attachments.map((attachment) => (
+          <IdeaAttachmentChip key={attachment.id} attachment={attachment} />
+        ))}
+      </div>
+      <div class="idea-attachment__progress" data-idea-attachment-progress hidden>
+        <i />
+      </div>
+      <p class="idea-card__attachment-status" data-idea-attachment-status hidden />
+    </div>
+  );
+}
+
 function ideaPreviewDomain(note: IdeaNote, url: string): string {
   if (note.preview_domain !== null && note.preview_domain !== "") return note.preview_domain;
   try {
@@ -390,12 +461,29 @@ function IdeaCardPreview({ note }: { readonly note: IdeaNote }) {
   );
 }
 
+/** 詳細ダイアログが JS で描画するため、添付はカード上の JSON にも持たせる。 */
+function ideaAttachmentJson(attachments: readonly IdeaAttachment[]): string {
+  return JSON.stringify(
+    attachments.map((attachment) => ({
+      id: attachment.id,
+      name: attachment.name,
+      content_type: attachment.content_type,
+      bytes: attachment.bytes,
+      kind: attachment.kind,
+      preview: attachment.preview,
+      url: `/api/attachments/${encodeURIComponent(attachment.id)}`,
+    })),
+  );
+}
+
 function IdeaCard({
   note,
   images,
+  attachments,
 }: {
   readonly note: IdeaNote;
   readonly images: readonly IdeaImage[];
+  readonly attachments: readonly IdeaAttachment[];
 }) {
   return (
     <article
@@ -411,6 +499,7 @@ function IdeaCard({
           src: `/api/images/${encodeURIComponent(image.image_id)}`,
         })),
       )}
+      data-idea-attachments={ideaAttachmentJson(attachments)}
       data-idea-open
     >
       <IdeaCardActions note={note} />
@@ -418,6 +507,7 @@ function IdeaCard({
       <IdeaCardImage image={images[0]} />
       {note.body === "" ? null : <p class="idea-card__body">{note.body}</p>}
       <IdeaCardPreview note={note} />
+      <IdeaCardAttachments attachments={attachments} />
     </article>
   );
 }
@@ -493,6 +583,19 @@ function IdeaDetailSwatches() {
   );
 }
 
+/** 詳細の添付一覧。中身は開いたときに JS がカードの JSON から描く。 */
+function IdeaDetailAttachments() {
+  return (
+    <div class="idea-detail__attachments" data-idea-detail-attachments>
+      <div class="idea-detail__attachment-items" data-idea-detail-attachment-items />
+      <div class="idea-attachment__progress" data-idea-attachment-progress hidden>
+        <i />
+      </div>
+      <p class="idea-detail__attachment-status" data-idea-attachment-status hidden />
+    </div>
+  );
+}
+
 /**
  * Keep のノート画面に合わせた詳細ダイアログ。実際の値はカードから JS が流し込む。
  */
@@ -534,7 +637,11 @@ function IdeaDetailDialog() {
             data-idea-detail-body
           />
           <div class="idea-detail__images" data-idea-detail-images />
+          <IdeaDetailAttachments />
         </div>
+        <p class="idea-detail__drop" data-idea-detail-drop hidden>
+          ここに添付
+        </p>
         <div class="idea-detail__bar">
           <IdeaDetailMoreMenu />
           <button class="idea-detail__icon" type="button" data-idea-detail-palette aria-label="パレット">
@@ -572,9 +679,11 @@ function IdeaHeader() {
 function IdeaGrid({
   notes,
   images,
+  attachments,
 }: {
   readonly notes: readonly IdeaNote[];
   readonly images: Readonly<Record<string, readonly IdeaImage[]>>;
+  readonly attachments: Readonly<Record<string, readonly IdeaAttachment[]>>;
 }) {
   if (notes.length === 0) {
     return (
@@ -586,7 +695,12 @@ function IdeaGrid({
   return (
     <div class="idea-grid" data-idea-grid>
       {notes.map((note) => (
-        <IdeaCard key={note.id} note={note} images={images[note.id] ?? []} />
+        <IdeaCard
+          key={note.id}
+          note={note}
+          images={images[note.id] ?? []}
+          attachments={attachments[note.id] ?? []}
+        />
       ))}
     </div>
   );
@@ -597,11 +711,13 @@ export function IdeasPage({
   counts,
   state,
   images,
+  attachments,
 }: {
   readonly notes: readonly IdeaNote[];
   readonly counts: IdeaNoteCounts;
   readonly state: IdeaState;
   readonly images: Readonly<Record<string, readonly IdeaImage[]>>;
+  readonly attachments: Readonly<Record<string, readonly IdeaAttachment[]>>;
 }) {
   return (
     <div class="page page--idea" data-idea-page data-idea-sort={state.sort ?? IDEA_DEFAULT_SORT}>
@@ -614,7 +730,7 @@ export function IdeasPage({
             <IdeaFilterMenu counts={counts} state={state} />
           </div>
           <IdeaComposer />
-          <IdeaGrid notes={notes} images={images} />
+          <IdeaGrid notes={notes} images={images} attachments={attachments} />
         </section>
       </div>
       <IdeaDetailDialog />

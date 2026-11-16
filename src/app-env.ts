@@ -14,6 +14,7 @@ export type Env = GithubOAuthEnv & {
   OAUTH_REPOSITORY?: OAuthRepository;
   DB?: D1Database;
   BACKUPS?: R2Bucket;
+  ATTACHMENTS?: R2Bucket;
   SESSION_SECRET?: string;
   PREVIEW_MODE?: string;
   DSH_TRANSPORT_URL?: string;

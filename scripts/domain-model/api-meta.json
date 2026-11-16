@@ -495,5 +495,91 @@
         "code": "NOT_FOUND"
       }
     ]
+  },
+  "ideas_notes_id_attachments": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_ATTACHMENT"
+      },
+      {
+        "status": 400,
+        "code": "UNSUPPORTED_ATTACHMENT"
+      },
+      {
+        "status": 400,
+        "code": "ATTACHMENT_LIMIT_EXCEEDED"
+      },
+      {
+        "status": 400,
+        "code": "ATTACHMENT_TOTAL_EXCEEDED"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 413,
+        "code": "ATTACHMENT_TOO_LARGE"
+      },
+      {
+        "status": 503,
+        "code": "ATTACHMENTS_UNAVAILABLE"
+      },
+      {
+        "status": 500,
+        "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "ideas_notes_id_attachments_get": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 500
+      }
+    ]
+  },
+  "ideas_attachments_id": {
+    "errors": [
+      {
+        "status": 400,
+        "code": "INVALID_INPUT"
+      },
+      {
+        "status": 400,
+        "code": "INVALID_PREVIEW"
+      },
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "ideas_attachments_id_delete": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      }
+    ]
+  },
+  "attachments_get": {
+    "errors": [
+      {
+        "status": 404,
+        "code": "NOT_FOUND"
+      },
+      {
+        "status": 503,
+        "code": "ATTACHMENTS_UNAVAILABLE"
+      },
+      {
+        "status": 500
+      }
+    ]
   }
 }

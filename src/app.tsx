@@ -21,6 +21,8 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerTaskApiRoutes } from "./routes/task-api";
 import { registerIdeaApiRoutes } from "./routes/idea-api";
 import { registerIdeaImageApiRoutes } from "./routes/idea-image-api";
+import { registerIdeaAttachmentApiRoutes } from "./routes/idea-attachment-api";
+import type { IdeaAttachmentBucket } from "./routes/idea-attachment-api";
 import { registerImageApiRoutes } from "./routes/image-api";
 import { registerMarkdownApiRoutes } from "./routes/markdown-api";
 import { registerTaskScreenRoutes } from "./routes/task-screens";
@@ -126,9 +128,15 @@ function imageRepository(c: Context<AppEnv>): ImageRepository {
   throw new Error("image repository is not configured");
 }
 
+/** 添付は R2 バケットが無い環境では 503 を返し、起動自体は継続する。 */
+function attachmentBucket(c: Context<AppEnv>): IdeaAttachmentBucket | null {
+  return c.env.ATTACHMENTS ?? null;
+}
+
 registerTaskApiRoutes(app, repository, ideaRepository, projectRepository, imageRepository);
 registerIdeaApiRoutes(app, ideaRepository);
 registerIdeaImageApiRoutes(app, ideaRepository, imageRepository);
+registerIdeaAttachmentApiRoutes(app, ideaRepository, attachmentBucket);
 registerImageApiRoutes(app, imageRepository);
 registerMarkdownApiRoutes(app);
 registerTaskScreenRoutes(app, repository, projectRepository);
