@@ -97,7 +97,10 @@ tasks:
       - |
           output="$(mktemp)"
           trap 'rm -f "$output"' EXIT
-          if timeout 5 bun audit --audit-level high >"$output" 2>&1; then
+          # GHSA-fc5q-39xc-vjpf: picomatch is a dev-only transitive dependency
+          # (dependency-cruiser / knip / vitest) and 4.0.8 is not published yet.
+          # Remove this ignore once a patched release is available.
+          if timeout 5 bun audit --audit-level high --ignore=GHSA-fc5q-39xc-vjpf >"$output" 2>&1; then
             cat "$output"
           else
             audit_status=$?

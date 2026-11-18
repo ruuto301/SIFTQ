@@ -7,6 +7,7 @@ import {
 } from "../idea-attachment";
 import type { IdeaAttachment } from "../idea-attachment";
 import { extractIdeaPreviewUrl } from "../idea-link-preview";
+import { displayHostname, displayUrl } from "../url-display";
 
 const IDEA_ATTACHMENT_ACCEPT = IDEA_ATTACHMENT_CONTENT_TYPES.join(",");
 
@@ -416,9 +417,9 @@ function IdeaCardAttachments({ attachments }: { readonly attachments: readonly I
 }
 
 function ideaPreviewDomain(note: IdeaNote, url: string): string {
-  if (note.preview_domain !== null && note.preview_domain !== "") return note.preview_domain;
+  if (note.preview_domain !== null && note.preview_domain !== "") return displayHostname(note.preview_domain);
   try {
-    return new URL(url).hostname;
+    return displayHostname(new URL(url).hostname);
   } catch {
     return url;
   }
@@ -437,7 +438,15 @@ function IdeaCardPreview({ note }: { readonly note: IdeaNote }) {
       {ideaPreviewDomain(note, url)}
     </a>
   );
-  if (!hasIdeaPreview(note)) return <p class="idea-card__plain-link">{link}</p>;
+  if (!hasIdeaPreview(note)) {
+    return (
+      <p class="idea-card__plain-link">
+        <a class="idea-card__link" href={url} target="_blank" rel="noopener noreferrer nofollow" data-idea-link>
+          {displayUrl(url)}
+        </a>
+      </p>
+    );
+  }
   return (
     <div class="idea-card__preview" data-idea-preview>
       {note.preview_image === null ? null : (
