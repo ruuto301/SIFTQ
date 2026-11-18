@@ -1,3 +1,5 @@
+import { displayUrl } from "./url-display";
+
 export type DescriptionSegment = { text: string; href?: string; src?: string };
 
 const DESCRIPTION_PATTERN = /\/api\/images\/[0-9A-Za-z_-]+|https?:\/\/[^\s<>]+/g;
@@ -38,7 +40,7 @@ export function splitDescription(description: string): DescriptionSegment[] {
     if (url === "") {
       segments.push({ text: rawUrl });
     } else {
-      segments.push({ text: url, href: url });
+      segments.push({ text: displayUrl(url), href: url });
       if (url.length < rawUrl.length) segments.push({ text: rawUrl.slice(url.length) });
     }
     cursor = start + rawUrl.length;

@@ -39,4 +39,20 @@ describe("splitDescription", () => {
       { text: "https://example.com/api/images/abc", href: "https://example.com/api/images/abc" },
     ]);
   });
+
+  it("shows percent-encoded Japanese decoded while keeping the raw href", () => {
+    const [segment] = splitDescription(
+      "https://example.com/%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B?q=%E6%97%A5%E6%9C%AC%E8%AA%9E",
+    );
+    expect(segment).toEqual({
+      text: "https://example.com/問い合わせ?q=日本語",
+      href: "https://example.com/%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B?q=%E6%97%A5%E6%9C%AC%E8%AA%9E",
+    });
+  });
+
+  it("keeps malformed percent-encoding as-is", () => {
+    expect(splitDescription("https://example.com/50%OFF")).toEqual([
+      { text: "https://example.com/50%OFF", href: "https://example.com/50%OFF" },
+    ]);
+  });
 });

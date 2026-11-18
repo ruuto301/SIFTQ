@@ -5,6 +5,13 @@
  */
 export const DESCRIPTION_TABS_SCRIPT = [
   "function descriptionEditorValue(editor) {",
+  '  const links = Array.prototype.slice.call(editor.querySelectorAll("a[href]"));',
+  "  const linkReplacements = links.map(function (link) {",
+  '    const span = document.createElement("span");',
+  '    span.textContent = link.getAttribute("href") || "";',
+  "    link.parentNode.replaceChild(span, link);",
+  "    return { link: link, span: span };",
+  "  });",
   '  const images = Array.prototype.slice.call(editor.querySelectorAll("img[data-token]"));',
   "  const replacements = images.map(function (image) {",
   '    const span = document.createElement("span");',
@@ -13,6 +20,9 @@ export const DESCRIPTION_TABS_SCRIPT = [
   "    return { image: image, span: span };",
   "  });",
   '  const value = editor.innerText.replace(/\\n$/, "").replace(/\\u00a0/g, " ");',
+  "  linkReplacements.forEach(function (replacement) {",
+  "    if (replacement.span.parentNode) replacement.span.parentNode.replaceChild(replacement.link, replacement.span);",
+  "  });",
   "  replacements.forEach(function (replacement) {",
   "    if (replacement.span.parentNode) replacement.span.parentNode.replaceChild(replacement.image, replacement.span);",
   "  });",

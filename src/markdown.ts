@@ -14,6 +14,8 @@
  * strikethrough, links, images and http/https autolinks.
  */
 
+import { displayUrl } from "./url-display";
+
 const SAFE_URL_PREFIXES = ["http://", "https://", "mailto:"];
 const INLINE_MAX_DEPTH = 4;
 
@@ -100,7 +102,7 @@ function renderLink(label: string, url: string, depth: number): string {
 
 function renderAutoLink(url: string): string {
   if (!isSafeUrl(url)) return url;
-  return `<a href="${url}" rel="noopener noreferrer">${url}</a>`;
+  return `<a href="${url}" rel="noopener noreferrer">${displayUrl(url)}</a>`;
 }
 
 function codeSpanAt(text: string, index: number): InlineToken | null {
