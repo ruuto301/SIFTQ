@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { splitDescription } from "../src/description";
 
-describe("splitDescription", () => {
+describe("splitDescription links", () => {
   it("splits http and https URLs into link segments", () => {
     expect(splitDescription("Read https://example.com/docs and http://localhost:8787."))
       .toEqual([
@@ -19,24 +19,15 @@ describe("splitDescription", () => {
     ]);
   });
 
-  it("splits image tokens into image segments", () => {
-    expect(splitDescription("before /api/images/abc-123 after")).toEqual([
-      { text: "before " },
-      { text: "/api/images/abc-123", src: "/api/images/abc-123" },
-      { text: " after" },
-    ]);
-  });
-
-  it("keeps surrounding punctuation outside an image token", () => {
-    expect(splitDescription("/api/images/abc-123.")).toEqual([
-      { text: "/api/images/abc-123", src: "/api/images/abc-123" },
-      { text: "." },
-    ]);
-  });
-
   it("does not treat an image token inside a URL as an image", () => {
     expect(splitDescription("https://example.com/api/images/abc")).toEqual([
       { text: "https://example.com/api/images/abc", href: "https://example.com/api/images/abc" },
+    ]);
+  });
+
+  it("does not treat an attachment token inside a URL as an image", () => {
+    expect(splitDescription("https://example.com/api/attachments/abc")).toEqual([
+      { text: "https://example.com/api/attachments/abc", href: "https://example.com/api/attachments/abc" },
     ]);
   });
 
@@ -53,6 +44,45 @@ describe("splitDescription", () => {
   it("keeps malformed percent-encoding as-is", () => {
     expect(splitDescription("https://example.com/50%OFF")).toEqual([
       { text: "https://example.com/50%OFF", href: "https://example.com/50%OFF" },
+    ]);
+  });
+});
+
+describe("splitDescription images", () => {
+  it("splits image tokens into image segments", () => {
+    expect(splitDescription("before /api/images/abc-123 after")).toEqual([
+      { text: "before " },
+      { text: "/api/images/abc-123", src: "/api/images/abc-123" },
+      { text: " after" },
+    ]);
+  });
+
+  it("keeps surrounding punctuation outside an image token", () => {
+    expect(splitDescription("/api/images/abc-123.")).toEqual([
+      { text: "/api/images/abc-123", src: "/api/images/abc-123" },
+      { text: "." },
+    ]);
+  });
+
+  it("splits an idea attachment token into an image segment", () => {
+    expect(splitDescription("before /api/attachments/abc-123 after")).toEqual([
+      { text: "before " },
+      { text: "/api/attachments/abc-123", src: "/api/attachments/abc-123" },
+      { text: " after" },
+    ]);
+  });
+
+  it("splits a Markdown attachment image into one image segment", () => {
+    expect(splitDescription("前半![](/api/attachments/abc-123)後半")).toEqual([
+      { text: "前半" },
+      { text: "/api/attachments/abc-123", src: "/api/attachments/abc-123" },
+      { text: "後半" },
+    ]);
+  });
+
+  it("splits a Markdown image with surrounding whitespace inside the parentheses", () => {
+    expect(splitDescription("![]( /api/attachments/abc-123 )")).toEqual([
+      { text: "/api/attachments/abc-123", src: "/api/attachments/abc-123" },
     ]);
   });
 });

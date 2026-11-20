@@ -80,7 +80,6 @@ export function LoginPage({
             {error === null ? null : (
               <div class="login-error" role="alert">
                 <p class="login-error__message">{ERROR_MESSAGES[error]}</p>
-                <p class="login-error__code">{`code: ${error}`}</p>
               </div>
             )}
             {error === null ? (

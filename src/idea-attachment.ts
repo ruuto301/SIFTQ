@@ -243,3 +243,28 @@ export function formatIdeaAttachmentBytes(bytes: number): string {
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
 }
+
+/**
+ * 本文が `/api/attachments/<id>` として参照している添付は、本文中のインライン画像として描画する。
+ * 同じ画像を添付欄にも並べないよう、本文が参照しているぶんを添付一覧から取り除く。
+ */
+export function ideaAttachmentsOutsideBody(
+  body: string,
+  attachments: readonly IdeaAttachment[],
+): readonly IdeaAttachment[] {
+  return attachments.filter((attachment) => !bodyReferencesAttachment(body, attachment.id));
+}
+
+const ATTACHMENT_ID_CHARACTER = /[0-9A-Za-z_-]/;
+
+/** id は前方一致ではなくトークン境界で判定する（`abc` が `abcd` に一致しない）。 */
+function bodyReferencesAttachment(body: string, id: string): boolean {
+  const token = `/api/attachments/${id}`;
+  let index = body.indexOf(token);
+  while (index !== -1) {
+    const next = body.charAt(index + token.length);
+    if (!ATTACHMENT_ID_CHARACTER.test(next)) return true;
+    index = body.indexOf(token, index + 1);
+  }
+  return false;
+}

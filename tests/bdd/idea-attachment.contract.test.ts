@@ -286,3 +286,30 @@ describe("Ideas attachment management", () => {
     expect(await response.json()).toEqual({ code: "ATTACHMENTS_UNAVAILABLE" });
   });
 });
+
+describe("Ideas inline image paste (BDD-TM-058)", () => {
+  it("renders a body-referenced attachment inline instead of as a chip", async () => {
+    const noteId = await createNote("インライン画像");
+    const attachment = await uploaded(await upload(noteId, "pixel.png", "image/png", PNG));
+    const patched = await request(`/api/ideas/notes/${noteId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ body: `前半![](${attachment.url})後半` }),
+    });
+    expect(patched.status).toBe(200);
+
+    const html = await (await request("/ideas")).text();
+    expect(html).toContain('class="idea-card__image"');
+    expect(html).toContain(`src="${attachment.url}"`);
+    // 本文が参照する添付は添付欄のチップに出さない。
+    expect(html).not.toContain(`data-idea-attachment-id="${attachment.id}"`);
+  });
+
+  it("keeps the attachment chip when the body does not reference it", async () => {
+    const noteId = await createNote("通常の添付");
+    const attachment = await uploaded(await upload(noteId, "pixel.png", "image/png", PNG));
+
+    const html = await (await request("/ideas")).text();
+    expect(html).toContain(`data-idea-attachment-id="${attachment.id}"`);
+  });
+});

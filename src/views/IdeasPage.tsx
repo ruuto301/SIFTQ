@@ -1,5 +1,8 @@
+import type { JSX } from "hono/jsx/jsx-runtime";
 import { IDEA_COLORS, IDEA_DATE_KINDS, IDEA_DEFAULT_SORT, ideaSortParts } from "../idea";
 import type { IdeaColor, IdeaNoteCounts, IdeaDateKind, IdeaFilter, IdeaImage, IdeaNote, IdeaSort } from "../idea";
+import { splitDescription } from "../description";
+import type { DescriptionSegment } from "../description";
 import {
   IDEA_ATTACHMENT_CONTENT_TYPES,
   formatIdeaAttachmentBytes,
@@ -485,6 +488,25 @@ function ideaAttachmentJson(attachments: readonly IdeaAttachment[]): string {
   );
 }
 
+/** 本文はテキスト・リンク・画像のセグメントで描画する。貼り付けた画像もここで表示する。 */
+function ideaBodySegment(segment: DescriptionSegment, index: number): JSX.Element | string {
+  if (segment.src !== undefined) {
+    return <img key={index} class="idea-card__image" src={segment.src} alt="" loading="lazy" decoding="async" />;
+  }
+  if (segment.href !== undefined) {
+    return (
+      <a key={index} class="idea-card__link" href={segment.href} target="_blank" rel="noopener noreferrer nofollow">
+        {segment.text}
+      </a>
+    );
+  }
+  return segment.text;
+}
+
+function IdeaBody({ body }: { readonly body: string }) {
+  return <p class="idea-card__body">{splitDescription(body).map(ideaBodySegment)}</p>;
+}
+
 function IdeaCard({
   note,
   images,
@@ -514,7 +536,7 @@ function IdeaCard({
       <IdeaCardActions note={note} />
       <h2 class="idea-card__title">{note.title}</h2>
       <IdeaCardImage image={images[0]} />
-      {note.body === "" ? null : <p class="idea-card__body">{note.body}</p>}
+      {note.body === "" ? null : <IdeaBody body={note.body} />}
       <IdeaCardPreview note={note} />
       <IdeaCardAttachments attachments={attachments} />
     </article>
