@@ -10,10 +10,34 @@ describe("LoginPage", () => {
     expect(html).toContain("Sign in with GitHub");
   });
 
-  it("shows an error when authentication fails", () => {
-    const html = renderToString(<LoginPage error />);
+  it("returns the cause code and a retry action when authentication fails (BDD-TM-056)", () => {
+    const html = renderToString(<LoginPage error="state_missing" />);
 
-    expect(html).toContain("GitHub sign-in failed");
+    expect(html).toContain("code: state_missing");
+    expect(html).toContain("Cookie がブロックされている可能性");
+    expect(html).toContain("もう一度ログイン");
+    expect(html).toContain('href="/auth/github?next=%2Fideas"');
+  });
+
+  it("offers a reset action so one failure does not stick (BDD-TM-056)", () => {
+    const html = renderToString(<LoginPage error="state_mismatch" />);
+
+    expect(html).toContain('action="/auth/reset"');
+    expect(html).toContain("ログインをリセット");
+  });
+
+  it("keeps the plain sign-in layout when there is no error", () => {
+    const html = renderToString(<LoginPage />);
+
+    expect(html).not.toContain("code:");
+    expect(html).not.toContain('action="/auth/reset"');
+  });
+
+  it("uses a dedicated message for an expired state", () => {
+    const html = renderToString(<LoginPage error="state_expired" />);
+
+    expect(html).toContain("30分");
+    expect(html).toContain("code: state_expired");
   });
 
   it("declares an inline SVG favicon", () => {

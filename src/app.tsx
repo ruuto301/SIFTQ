@@ -41,6 +41,7 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/auth/github",
   "/auth/github/callback",
+  "/auth/reset",
   "/.well-known/oauth-protected-resource",
   "/.well-known/oauth-authorization-server",
   "/oauth/register",

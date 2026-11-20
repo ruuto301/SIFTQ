@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import app from "../src/index";
-import { OAUTH_STATE_COOKIE_NAME, SESSION_COOKIE_NAME } from "../src/auth";
+import {
+  OAUTH_STATE_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
+  createOAuthState,
+} from "../src/auth";
 import type { Env } from "../src/app-env";
 
 const ALLOWED_LOGIN = "octocat";
@@ -97,12 +101,12 @@ describe("GitHub OAuth login", () => {
     expect(setCookie).toContain("HttpOnly");
   });
 
-  it("rejects a GitHub login outside the allowlist", async () => {
+  it("rejects a GitHub login outside the allowlist with a cause code", async () => {
     stubGithubFetch("intruder");
     const response = await callback("issued");
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/login?error=1");
+    expect(response.headers.get("location")).toBe("/login?error=not_allowed");
     expect(response.headers.getSetCookie().join("\n")).not.toContain(`${SESSION_COOKIE_NAME}=`);
   });
 
@@ -111,16 +115,71 @@ describe("GitHub OAuth login", () => {
     const response = await callback("issued");
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/login?error=1");
+    expect(response.headers.get("location")).toBe("/login?error=not_allowed");
     expect(response.headers.getSetCookie().join("\n")).not.toContain(`${SESSION_COOKIE_NAME}=`);
   });
 
-  it("rejects a callback whose state does not match the state cookie", async () => {
+  it("rejects a callback whose state is not signed by us", async () => {
     stubGithubFetch(ALLOWED_LOGIN);
     const response = await callback("forged");
 
     expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toBe("/login?error=1");
+    expect(response.headers.get("location")).toBe("/login?error=state_mismatch");
     expect(response.headers.getSetCookie().join("\n")).not.toContain(`${SESSION_COOKIE_NAME}=`);
+  });
+
+  it("logs in even when the browser dropped the state cookie (BDD-TM-056)", async () => {
+    // モバイルの強化ブラウザは Cookie を落とすことがある。署名付き state だけで成立させる。
+    stubGithubFetch(ALLOWED_LOGIN);
+    const start = await app.request("/auth/github", undefined, bindings());
+    const issued = cookieValue(start, OAUTH_STATE_COOKIE_NAME);
+    if (issued === null) throw new Error("state cookie was not issued");
+
+    const response = await app.request(
+      `/auth/github/callback?code=code&state=${issued}`,
+      undefined,
+      bindings(),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/ideas");
+    expect(response.headers.getSetCookie().join("\n")).toContain(`${SESSION_COOKIE_NAME}=`);
+  });
+});
+
+describe("GitHub OAuth failure handling (BDD-TM-056)", () => {
+  it("reports a missing state instead of a generic failure", async () => {
+    const response = await app.request("/auth/github/callback?code=code", undefined, bindings());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?error=state_missing");
+  });
+
+  it("reports an expired state", async () => {
+    const expired = await createOAuthState("test-secret", Date.now() - 1_000, "nonce");
+    const response = await app.request(
+      `/auth/github/callback?code=code&state=${expired}`,
+      undefined,
+      bindings(),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?error=state_expired");
+  });
+
+  it("reports a cancelled authorization", async () => {
+    const response = await app.request("/auth/github/callback?state=x", undefined, bindings());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login?error=denied");
+  });
+
+  it("resets cookies so a failure does not stick (BDD-TM-056)", async () => {
+    const response = await app.request("/auth/reset", { method: "POST" }, bindings());
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/login");
+    expect(response.headers.get("Clear-Site-Data")).toContain("cookies");
+    expect(response.headers.getSetCookie().join("\n")).toContain(`${SESSION_COOKIE_NAME}=`);
   });
 });
