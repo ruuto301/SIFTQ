@@ -1,5 +1,5 @@
 import { BASE_CSS } from "./styles/base";
-import { COMMON_CSS, LOGIN_CSS } from "./styles/login";
+import { COMMON_CSS, LOGIN_CSS, LOGIN_EXTRA_CSS } from "./styles/login";
 import { DSH_CHAT_CSS } from "./styles/dsh-chat";
 import { DS_CSS } from "./styles/ds";
 import { IDEA_CSS } from "./styles/idea";
@@ -16,6 +16,7 @@ export const STYLES_CSS =
   COMMON_CSS +
   TASK_LIST_RESPONSIVE_CSS +
   LOGIN_CSS +
+  LOGIN_EXTRA_CSS +
   DSH_CHAT_CSS +
   DS_CSS +
   SETTINGS_CSS;
