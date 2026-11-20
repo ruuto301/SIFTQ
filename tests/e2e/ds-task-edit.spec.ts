@@ -20,7 +20,7 @@ async function openTaskInDs(page: Page, title: string) {
   await waitForPageSettle(page);
 }
 
-test("autosaves the description and saves the title with Ctrl + Enter (BDD-TM-036)", async ({ page }) => {
+test("saves the title with Ctrl + Enter and autosaves it after typing stops (BDD-TM-036)", async ({ page }) => {
   const title = `ds edit ${Date.now()}`;
   const description = "最初の説明";
   await createTask(page, title, description);
@@ -36,7 +36,6 @@ test("autosaves the description and saves the title with Ctrl + Enter (BDD-TM-03
   await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
 
   await page.locator("#ds-task-title").fill(updatedTitle);
-  await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
   await page.locator("#ds-task-title").press("Control+Enter");
   await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
 
@@ -47,6 +46,20 @@ test("autosaves the description and saves the title with Ctrl + Enter (BDD-TM-03
   await page.reload();
   await expect(page.locator("#ds-task-title")).toHaveValue(updatedTitle);
   await expect(page.locator("#ds-task-description")).toHaveValue(updatedDescription);
+});
+
+test("autosaves the title after typing stops (BDD-TM-036)", async ({ page }) => {
+  const title = `ds title autosave ${Date.now()}`;
+  await createTask(page, title, "説明");
+  await openTaskInDs(page, title);
+
+  const updatedTitle = `${title} 停止後`;
+  await page.locator("#ds-task-title").fill(updatedTitle);
+  await expect(page.locator("#ds-task-status")).toHaveText("保存しました", { timeout: 3000 });
+  await expect(page.locator(".ds__task").filter({ hasText: updatedTitle })).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.locator("#ds-task-title")).toHaveValue(updatedTitle);
 });
 
 test("shows the saving state without sending overlapping requests (BDD-TM-036)", async ({ page }) => {
@@ -113,11 +126,21 @@ test("saves with Ctrl + Enter and reverts with Escape (BDD-TM-036)", async ({ pa
   await createTask(page, title, "キー操作の説明");
   await openTaskInDs(page, title);
 
+  const patches: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PATCH" && request.url().includes("/api/tasks/")) patches.push(request.url());
+  });
+  await page.clock.install();
+
   await page.locator("#ds-task-title").fill(`${title} 変更`);
   await page.locator("#ds-task-title").press("Escape");
   await expect(page.locator("#ds-task-title")).toHaveValue(title);
   await expect(page.locator("#ds-task-status")).toHaveText("");
+  // Past the 600ms autosave debounce: Escape cancels the pending save.
+  await page.clock.fastForward(1000);
+  expect(patches).toEqual([]);
 
+  await page.clock.resume();
   const saved = `${title} 保存`;
   await page.locator("#ds-task-title").fill(saved);
   await page.locator("#ds-task-title").press("Control+Enter");

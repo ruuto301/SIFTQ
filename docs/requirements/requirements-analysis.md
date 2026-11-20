@@ -48,7 +48,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | REQ-TM-023 | ユーザーは、長時間の利用でも目が疲れにくい画面で SIFTQ を使いたい。 | screens.md |
 | REQ-TM-024 | ユーザーは、作成したタスクを DS の同じプロジェクトの先頭で見つけたい。 | screens.md |
 | REQ-TM-025 | ユーザーは、Tasks のラベル絞り込みを検索と同じ場所から使いたい。 | screens.md |
-| REQ-TM-026 | ユーザーは、DS で説明を書き終えたら保存操作なしで残したい。 | screens.md |
+| REQ-TM-026 | ユーザーは、DS で title と説明を書き終えたら自動で残し、区切りで即時保存したい。 | screens.md |
 | REQ-TM-027 | ユーザーは、Tasks の連続した複数をまとめて選択したい。 | screens.md |
 | REQ-TM-028 | ユーザーは、Tasks の選択チェックボックスを押し間違えずに操作したい。 | screens.md |
 | REQ-TM-029 | ユーザーは、メモを開いてタイトル・本文・色・画像をまとめて直したい。 | screens.md |
@@ -95,7 +95,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-032 | REQ-TM-023 | 全画面は無彩色（彩度 0）のモノクロームとし、ページ `#cccccc`、面板 `#d8d8d8`、操作要素 `#e4e4e4`、本文 `#303030`、補助 `#555555` を使う。一覧・パネル・ポップオーバー・操作要素は 2px `#1f1f1f` の黒縁、黒地の要素は `#262626` + 2px `#dcdcdc` の軟白縁、タスク一覧は外周 1 枠で行間は 1px `#bdbdbd` のヘアライン、ドロップダウンは本体 2px・項目 1px の黒縁とする。本文は Atkinson Hyperlegible と Noto Sans JP を優先するフォントスタック、行間 1.7 とし、文字コントラスト 4.5:1 以上・境界 3:1 以上を満たす（外部フォントは読み込まない）。 | BDD-TM-038 |
 | SPEC-TM-033 | REQ-TM-024 | task の作成は、既存 task の `order` を 1 つずつ繰り下げてから新しい task を `order = 1` で挿入する。`/tasks` の新規作成フォームと `POST /api/tasks` の `position: "first"` で同じ並びになる。 | BDD-TM-039 |
 | SPEC-TM-034 | REQ-TM-025 | Tasks のラベル絞り込みは `Filter` という表示名で、検索入力欄と 🔍 の間（🔍 の左）に置く。`All labels` / `working:on` / `working:off` と Projects 節の選択肢は変えない。絞り込み中は `Filter` を黒地 `#262626` + 2px `#dcdcdc` 縁 + `#dcdcdc` 文字で反転表示する。絞り込みは検索と同じ 1 行に収まり、入力欄が縮んで並ぶ。 | BDD-TM-040 |
-| SPEC-TM-035 | REQ-TM-026 | DS 右ペインの description は入力が止まって 600ms 後に `PATCH /api/tasks/<id>` で自動保存する。保存ボタンとショートカット案内は表示せず、`Ctrl`/`⌘` + `S` では保存しない（ブラウザ既定の動作も抑止しない）。保存中は「保存中…」、成功時は「保存しました」、失敗時は「保存できませんでした」を表示し、保存中の入力は多重化せず最後の内容を保存する。失敗時も入力内容を保持する。 | BDD-TM-041 |
+| SPEC-TM-035 | REQ-TM-026 | DS 右ペインの title と description は入力が止まって 600ms 後に `PATCH /api/tasks/<id>` で自動保存する。`Ctrl`/`⌘` + `S` と `保存` ボタン、`Ctrl` + `Enter` は即時保存し、`Ctrl`/`⌘` + `S` ではブラウザ既定の保存を抑止する。案内文言 `Ctrl + S で保存 / Esc で取り消し` と `保存` ボタンを表示する。`Escape` は編集前の値へ戻して保留中の自動保存を取り消す。保存中は「保存中…」、成功時は「保存しました」、失敗時は「保存できませんでした」を表示し、保存中の入力は多重化せず最後の内容を保存する。失敗時も入力内容を保持する。 | BDD-TM-041 |
 | SPEC-TM-036 | REQ-TM-027 | Tasks 一覧の checkbox は、直前にクリックした行を起点として Shift + クリックで起点から対象行までの範囲をまとめて選択する。範囲は対象行の新しい状態（選択 / 解除）に揃え、起点が無いときは通常の 1 件トグルとして扱う。全選択の変更と一括操作の完了で起点をリセットする。範囲選択は checkbox のみを対象とし、ページをまたがない。 | BDD-TM-042 |
 | SPEC-TM-037 | REQ-TM-028 | Tasks の選択 checkbox は当たり判定を 44×44px、チェック本体を 24px とし、hover で背景 `#dcdcdc` を表示する。一覧の checkbox 列は 44px 幅で、タイトルのリンクと重ならない。ツールバーの全選択 checkbox も 44×44px で、一覧の checkbox と同じ中心 x に揃える。行の余白（`a, button, input, label, summary, details` 以外）のクリックで選択をトグルし、ページ遷移しない。 | BDD-TM-043 |
 | SPEC-TM-038 | REQ-TM-029 | Ideas のカード押下で中央の詳細ダイアログを開く。ダイアログはメモの色で表示し、タイトル・本文・色・画像・ピン・アーカイブ・ゴミ箱・削除を編集できる。編集は自動保存し、閉じても破棄しない。 | BDD-TM-044 |
@@ -145,7 +145,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-038 | SPEC-TM-032 | Tasks・New task・DS・ログインのいずれでもモノクロームの色・2px 黒縁・1 枠のタスク一覧・黒縁のドロップダウンが適用され、フォントスタックに Atkinson Hyperlegible と Noto Sans JP が含まれる。 | 正常 |
 | BDD-TM-039 | SPEC-TM-033 | `/tasks` から新規作成した task が、DS の同じ project グループの先頭に表示される。 | 正常 |
 | BDD-TM-040 | SPEC-TM-034 | Tasks 画面の検索行が 入力欄 → `Filter` → 🔍 の順で並び、ツールバーには `Filter` が無い。`working:on` を選ぶと `Filter` が反転表示になる。 | 正常 |
-| BDD-TM-041 | SPEC-TM-035 | DS で description の編集を止めると 600ms 後に自動保存され、再読み込み後も反映されている。保存ボタンと `Ctrl + S` の案内は表示されなくても保存できる。 | 正常 |
+| BDD-TM-041 | SPEC-TM-035 | DS で title と description の編集を止めると 600ms 後に自動保存され、再読み込み後も反映されている。`Ctrl + S` と `保存` ボタンでも保存でき、案内文言が表示される。 | 正常 |
 | BDD-TM-042 | SPEC-TM-036 | Tasks 一覧で 2 行目をチェックして 5 行目を Shift + クリックすると 4 件が選択され、`4 of M selected` と `is-selected` 4 行になる。上向きでも同じ範囲になり、選択済みの行への Shift + クリックで範囲を解除できる。 | 正常 |
 | BDD-TM-043 | SPEC-TM-037 | Tasks 一覧で行の checkbox の当たり判定が 44×44px・本体が 24px で、全選択の checkbox と同じ中心に並ぶ。行の右余白をクリックすると選択がトグルされ、遷移しない。 | 正常 |
 | BDD-TM-044 | SPEC-TM-038 | メモのカードを押すと詳細ダイアログが開き、編集した内容が保存されて再読み込み後も反映される。 | 正常 |
