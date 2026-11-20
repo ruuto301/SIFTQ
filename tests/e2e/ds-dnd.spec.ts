@@ -22,6 +22,42 @@ async function draggedOver(page: Page): Promise<boolean[]> {
   return page.evaluate(() => window.__dsDragOver);
 }
 
+/**
+ * Dispatches the HTML5 drag sequence directly. Chromium does not reliably start
+ * a native drag from a `<button draggable="true">` in headless runs, so the test
+ * drives the app's dragstart/dragover/drop handlers explicitly.
+ */
+async function dragGroupHead(page: Page, fromId: string, toId: string): Promise<void> {
+  await page.evaluate(
+    ({ fromId, toId }) => {
+      const from = document.querySelector(
+        `.ds__group[data-ds-group-id="${fromId}"] .ds__group-head`,
+      );
+      const to = document.querySelector(
+        `.ds__group[data-ds-group-id="${toId}"] .ds__group-head`,
+      );
+      if (!(from instanceof HTMLElement) || !(to instanceof HTMLElement)) {
+        throw new Error("group head not found");
+      }
+      const transfer = new DataTransfer();
+      const rect = to.getBoundingClientRect();
+      from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: transfer }));
+      to.dispatchEvent(
+        new DragEvent("dragover", {
+          bubbles: true,
+          dataTransfer: transfer,
+          clientY: rect.top + 1,
+        }),
+      );
+      to.dispatchEvent(
+        new DragEvent("drop", { bubbles: true, dataTransfer: transfer, clientY: rect.top + 1 }),
+      );
+      from.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+    },
+    { fromId, toId },
+  );
+}
+
 async function groupOrder(page: Page): Promise<(string | null)[]> {
   return page
     .locator(".ds__groups > .ds__group")
@@ -81,7 +117,7 @@ test("reorders project groups by drag and drop and keeps the order after reload 
   const reordered = page.waitForRequest(
     (request) => request.method() === "POST" && request.url().includes("/api/projects/reorder"),
   );
-  await group(page, dragged).locator(".ds__group-head").dragTo(group(page, anchor).locator(".ds__group-head"));
+  await dragGroupHead(page, dragged, anchor);
   await reordered;
 
   const after = await groupOrder(page);

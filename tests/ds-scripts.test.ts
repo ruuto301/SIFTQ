@@ -139,10 +139,13 @@ describe("DS task action menu", () => {
 });
 
 describe("DS task pane shortcuts", () => {
-  it("leaves Ctrl/Cmd + S to the browser and never saves from it (BDD-TM-041)", () => {
-    expect(DS_SCRIPT).not.toContain('key !== "s"');
-    expect(DS_SCRIPT).not.toContain('event.key.toLowerCase()');
-    expect(DS_SCRIPT).not.toContain('getElementById("ds-task-save")');
+  it("saves immediately with Ctrl/Cmd + S and blocks the browser default (BDD-TM-041)", () => {
+    expect(DS_SCRIPT).toContain('key !== "s"');
+    expect(DS_SCRIPT).toContain('event.key.toLowerCase()');
+    expect(DS_SCRIPT).toContain('getElementById("ds-task-save")');
+    expect(DS_SCRIPT).toContain('if (saveButton) saveButton.addEventListener("click", saveNow);');
+    expect(DS_SCRIPT).toContain("if (key !== \"s\" || !(event.ctrlKey || event.metaKey)) return;");
+    expect(DS_SCRIPT).toContain("event.preventDefault();\n      if (!titleInput || !descriptionInput) return;\n      saveNow();");
   });
 
   it("saves the title with Ctrl/Cmd + Enter and reverts with Escape (BDD-TM-036)", () => {
@@ -198,9 +201,10 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("version: Number(pane.getAttribute(\"data-task-version\"))");
   });
 
-  it("autosaves the description 600ms after input stops (BDD-TM-036)", () => {
+  it("autosaves title and description 600ms after input stops (BDD-TM-036)", () => {
     expect(DS_SCRIPT).toContain("setTimeout(function () {");
     expect(DS_SCRIPT).toContain("}, 600);");
+    expect(DS_SCRIPT).toContain("saveDirty(false);");
     expect(DS_SCRIPT).toContain('addEventListener("input", function (event)');
     expect(DS_SCRIPT).toContain('setStatus("保存中…", "saving")');
     expect(DS_SCRIPT).toContain('setStatus("保存できませんでした", "error")');
@@ -217,14 +221,15 @@ describe("DS task list DnD", () => {
 });
 
 describe("DS task autosave", () => {
-  it("does not multiplex saves and keeps the latest description (BDD-TM-036)", () => {
-    expect(DS_SCRIPT).toContain("if (saving) { queuedDescription = true; return; }");
-    expect(DS_SCRIPT).toContain("if (saving) { queuedTitle = true; return; }");
+  it("does not multiplex saves and keeps the latest title and description (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain("if (titleChanged) queuedTitle = true;");
+    expect(DS_SCRIPT).toContain("if (descriptionChanged) queuedDescription = true;");
     // A queued title save survives a queued description save.
     expect(DS_SCRIPT).toContain("var nextTitle = queuedTitle;");
     expect(DS_SCRIPT).toContain("var nextDescription = queuedDescription;");
     // The pending text survives the response; the next request sends it.
     expect(DS_SCRIPT).toContain("if (descriptionInput.value === sentDescription) descriptionInput.value = task.description;");
+    expect(DS_SCRIPT).toContain("if (titleInput.value.trim() === sentTitle) titleInput.value = task.title;");
   });
 
   it("patches only the changed fields (BDD-TM-036)", () => {

@@ -921,15 +921,25 @@ export const DS_SCRIPT = `(function () {
 
 })();
 
-  // Task pane: the title saves on Ctrl/Cmd + Enter, the description autosaves 600ms
-  // after the last input. One request runs at a time and the latest text wins.
+  // Task pane: title and description autosave 600ms after the last input, and
+  // Ctrl/Cmd + S, Ctrl/Cmd + Enter or the save button save immediately. One
+  // request runs at a time and the latest text wins.
   (function () {
     var pane = document.getElementById("ds-task");
     if (!pane) return;
     var titleInput = document.getElementById("ds-task-title");
     var descriptionInput = document.getElementById("ds-task-description");
     var status = document.getElementById("ds-task-status");
+    var saveButton = document.getElementById("ds-task-save");
     var error = document.getElementById("ds-task-error");
+    // Ctrl/Cmd + S saves from anywhere on the DS screen; the browser save dialog never opens here.
+    document.addEventListener("keydown", function (event) {
+      var key = typeof event.key === "string" ? event.key.toLowerCase() : "";
+      if (key !== "s" || !(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      if (!titleInput || !descriptionInput) return;
+      saveNow();
+    });
     if (!titleInput || !descriptionInput) return;
     var baselineTitle = titleInput.value;
     var baselineDescription = descriptionInput.value;
@@ -973,18 +983,32 @@ export const DS_SCRIPT = `(function () {
       queuedTitle = false;
       queuedDescription = false;
     }
+    /**
+     * Saves the changed fields; a running request defers them. An empty title is
+     * only reported by an explicit save, so autosave never nags while clearing it.
+     */
+    function saveDirty(reportInvalidTitle) {
+      var titleChanged = titleDirty();
+      var descriptionChanged = descriptionDirty();
+      if (titleChanged && !reportInvalidTitle && titleInput.value.trim() === "") titleChanged = false;
+      if (!titleChanged && !descriptionChanged) return;
+      if (saving) {
+        if (titleChanged) queuedTitle = true;
+        if (descriptionChanged) queuedDescription = true;
+        return;
+      }
+      save(titleChanged, descriptionChanged);
+    }
     function scheduleAutosave() {
       cancelAutosave();
       autosaveTimer = setTimeout(function () {
         autosaveTimer = null;
-        if (!descriptionDirty()) return;
-        if (saving) { queuedDescription = true; return; }
-        save(false, true);
+        saveDirty(false);
       }, 600);
     }
-    function saveTitle() {
-      if (saving) { queuedTitle = true; return; }
-      save(true, descriptionDirty());
+    function saveNow() {
+      cancelAutosave();
+      saveDirty(true);
     }
     function revert() {
       cancelAutosave();
@@ -1004,8 +1028,8 @@ export const DS_SCRIPT = `(function () {
       if (title) title.textContent = task.title;
     }
     /**
-     * Patches the changed fields only: the description autosave never rewrites the
-     * title, and Ctrl/Cmd + Enter saves both pending fields.
+     * Patches the changed fields only, so an autosave of one field never rewrites
+     * the other one.
      */
     function save(sendsTitle, sendsDescription) {
       var title = titleInput.value.trim();
@@ -1073,8 +1097,8 @@ export const DS_SCRIPT = `(function () {
     }
 
     titleInput.addEventListener("input", function () {
-      if (refresh()) return;
-      setStatus("", undefined);
+      if (!refresh()) setStatus("", undefined);
+      scheduleAutosave();
     });
     // The shared editor script writes the hidden textarea before this event bubbles,
     // so the autosave reads the synced value.
@@ -1085,11 +1109,12 @@ export const DS_SCRIPT = `(function () {
       if (!refresh()) setStatus("", undefined);
       scheduleAutosave();
     });
+    // Ctrl/Cmd + S and the save button save both pending fields immediately.
+    if (saveButton) saveButton.addEventListener("click", saveNow);
     pane.addEventListener("keydown", function (event) {
       if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
         event.preventDefault();
-        cancelAutosave();
-        saveTitle();
+        saveNow();
         return;
       }
       if (event.key === "Escape") { event.preventDefault(); revert(); }

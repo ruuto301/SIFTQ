@@ -215,13 +215,13 @@ describe("DsPage task list", () => {
     expect(html).toContain('value="チャットのタイトルを表示する"');
   });
 
-  it("autosaves the description so the save button and shortcut hint are gone (BDD-TM-036)", () => {
+  it("renders the save button and shortcut hint next to the status (BDD-TM-041)", () => {
     const selected = taskFixture({ id: "t1", title: "自動保存する", description: "自動保存" });
     const html = renderToString(page([selected], selected));
 
-    expect(html).not.toContain('id="ds-task-save"');
-    expect(html).not.toContain("Ctrl + S");
-    expect(html).not.toContain(">保存<");
+    expect(html).toContain('id="ds-task-save"');
+    expect(html).toContain(">保存<");
+    expect(html).toContain("Ctrl + S で保存 / Esc で取り消し");
     expect(html).toContain('id="ds-task-status"');
     expect(html).toContain('aria-live="polite"');
   });

@@ -190,8 +190,8 @@ function TaskDescriptionField({ task }: { task: Task }) {
 }
 
 /**
- * Task detail pane: edits the selected task title and description. The description
- * autosaves after typing stops because the DSH agent writes the same field too.
+ * Task detail pane: edits the selected task title and description. Both fields
+ * autosave after typing stops because the DSH agent writes the same fields too.
  */
 function TaskEditPane({ selected }: { selected: Task | undefined }) {
   if (selected === undefined) {
@@ -225,6 +225,10 @@ function TaskEditPane({ selected }: { selected: Task | undefined }) {
       </div>
       <div class="ds-task__foot">
         <span class="ds-task__status" id="ds-task-status" role="status" aria-live="polite"></span>
+        <span class="ds-task__hint">Ctrl + S で保存 / Esc で取り消し</span>
+        <button type="button" class="button ds-task__save" id="ds-task-save">
+          保存
+        </button>
       </div>
       <p class="ds-task__error" id="ds-task-error" role="alert" hidden></p>
     </div>
