@@ -66,7 +66,9 @@ export async function isValidSession(secret: string, value: string): Promise<boo
  * `+` が空白に化ける環境でも壊れないようにする。
  */
 function toBase64Url(value: string): string {
-  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  let end = value.length;
+  while (end > 0 && value.charAt(end - 1) === "=") end -= 1;
+  return value.slice(0, end).replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 /**
