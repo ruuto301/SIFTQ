@@ -33,6 +33,29 @@ describe("LoginPage", () => {
     expect(html).not.toContain('action="/auth/reset"');
   });
 
+  it("offers account switch and GitHub logout for a rejected account (BDD-TM-057)", () => {
+    const html = renderToString(<LoginPage error="not_allowed" />);
+
+    expect(html).toContain('href="/auth/github?switch=1"');
+    expect(html).toContain("別のアカウントでサインイン");
+    expect(html).toContain('href="https://github.com/logout"');
+    expect(html).toContain("シークレットウィンドウ");
+  });
+
+  it("stops offering the switch once attempts are exhausted (BDD-TM-057)", () => {
+    const html = renderToString(<LoginPage error="switch_exhausted" />);
+
+    expect(html).not.toContain('href="/auth/github?switch=1"');
+    expect(html).toContain('href="https://github.com/logout"');
+    expect(html).toContain("code: switch_exhausted");
+  });
+
+  it("does not show GitHub logout for unrelated failures", () => {
+    const html = renderToString(<LoginPage error="state_expired" />);
+
+    expect(html).not.toContain("github.com/logout");
+  });
+
   it("uses a dedicated message for an expired state", () => {
     const html = renderToString(<LoginPage error="state_expired" />);
 

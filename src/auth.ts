@@ -6,6 +6,9 @@ export const OAUTH_STATE_COOKIE_NAME = "github_oauth_state";
 export const OAUTH_NEXT_COOKIE_NAME = "github_oauth_next";
 export const OAUTH_STATE_DURATION_MS = 30 * 60 * 1000;
 export const OAUTH_STATE_VERSION = "v1";
+export const OAUTH_SWITCH_COOKIE_NAME = "github_oauth_switch";
+/** アカウント選択画面を出してよい回数。超えたらログアウト案内へ切り替える。 */
+export const OAUTH_SWITCH_MAX_ATTEMPTS = 2;
 
 /** GitHub ログインが失敗した理由。画面とログの両方でこの語彙を使う。 */
 export const OAUTH_ERROR_CODES = [
@@ -15,6 +18,7 @@ export const OAUTH_ERROR_CODES = [
   "denied",
   "exchange_failed",
   "not_allowed",
+  "switch_exhausted",
 ] as const;
 
 export type OAuthErrorCode = (typeof OAUTH_ERROR_CODES)[number];
@@ -58,6 +62,14 @@ export async function isValidSession(secret: string, value: string): Promise<boo
 }
 
 /**
+ * base64 を URL 安全な形にする。state はクエリ文字列で往復するため、
+ * `+` が空白に化ける環境でも壊れないようにする。
+ */
+function toBase64Url(value: string): string {
+  return value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
  * 署名付きの state トークンを作る。Cookie がブロックされる環境（モバイルの
  * 強化ブラウザ等）でもログインが成立するよう、state は Cookie ではなく
  * URL パラメータで往復させる。認証情報は含めない（期限と nonce のみ）。
@@ -68,7 +80,7 @@ export async function createOAuthState(
   nonce: string,
 ): Promise<string> {
   const payload = `${OAUTH_STATE_VERSION}.${expires}.${nonce}`;
-  return `${payload}.${await sign(secret, payload)}`;
+  return `${payload}.${toBase64Url(await sign(secret, payload))}`;
 }
 
 export type OAuthStateResult = { ok: true } | { ok: false; reason: "expired" | "invalid" };
@@ -93,10 +105,17 @@ export async function verifyOAuthState(
   if (version !== OAUTH_STATE_VERSION || nonce === "") return { ok: false, reason: "invalid" };
 
   const payload = `${version}.${expiresText}.${nonce}`;
-  if (!timingSafeEqual(await sign(secret, payload), signature)) {
+  if (!timingSafeEqual(toBase64Url(await sign(secret, payload)), signature)) {
     return { ok: false, reason: "invalid" };
   }
   const expires = Number(expiresText);
   if (!Number.isInteger(expires) || expires < now) return { ok: false, reason: "expired" };
   return { ok: true };
+}
+
+/** switch 用 Cookie の値を試行回数として読む。壊れた値は 0 として扱う。 */
+export function readSwitchCount(raw: string | undefined): number {
+  if (raw === undefined) return 0;
+  const value = Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : 0;
 }

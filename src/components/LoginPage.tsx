@@ -15,7 +15,46 @@ const ERROR_MESSAGES: Record<OAuthErrorCode, string> = {
   denied: "GitHub の認可がキャンセルされました",
   exchange_failed: "ログイン処理に失敗しました。時間をおいて再試行してください",
   not_allowed: "このアカウントでは利用できません",
+  switch_exhausted:
+    "アカウントを切り替えても許可されませんでした。GitHub からログアウトして、許可されたアカウントで入り直してください",
 };
+
+function errorHint(error: OAuthErrorCode): string {
+  return error === "not_allowed" || error === "switch_exhausted"
+    ? "GitHub のアカウントを切り替えるには、GitHub からログアウトするか、シークレットウィンドウで開いてください。"
+    : "リセットは Cookie を消してやり直します。1回の失敗が次に影響しません。";
+}
+
+function ErrorActions({ error }: { error: OAuthErrorCode }): JSX.Element {
+  const canSwitch = error !== "switch_exhausted";
+  return (
+    <>
+      <div class="login-actions">
+        <a class="button primary" href="/auth/github?next=%2Fideas">
+          もう一度ログイン
+        </a>
+        {canSwitch ? (
+          <a class="button" href="/auth/github?switch=1">
+            別のアカウントでサインイン
+          </a>
+        ) : null}
+        <form method="post" action="/auth/reset" class="login-reset">
+          <button class="button" type="submit">
+            ログインをリセット
+          </button>
+        </form>
+      </div>
+      <p class="login-hint">{errorHint(error)}</p>
+      {error === "not_allowed" || error === "switch_exhausted" ? (
+        <p class="login-hint">
+          <a href="https://github.com/logout" target="_blank" rel="noopener noreferrer">
+            GitHub からログアウト
+          </a>
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 export function LoginPage({
   error = null,
@@ -44,22 +83,14 @@ export function LoginPage({
                 <p class="login-error__code">{`code: ${error}`}</p>
               </div>
             )}
-            <div class="login-actions">
-              <a class="button primary" href={signInHref}>
-                {error === null ? "Sign in with GitHub" : "もう一度ログイン"}
-              </a>
-              {error === null ? null : (
-                <form method="post" action="/auth/reset" class="login-reset">
-                  <button class="button" type="submit">
-                    ログインをリセット
-                  </button>
-                </form>
-              )}
-            </div>
-            {error === null ? null : (
-              <p class="login-hint">
-                リセットは Cookie を消してやり直します。1回の失敗が次に影響しません。
-              </p>
+            {error === null ? (
+              <div class="login-actions">
+                <a class="button primary" href={signInHref}>
+                  Sign in with GitHub
+                </a>
+              </div>
+            ) : (
+              <ErrorActions error={error} />
             )}
           </div>
         </main>
