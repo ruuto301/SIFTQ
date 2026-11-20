@@ -921,26 +921,24 @@ export const DS_SCRIPT = `(function () {
 
 })();
 
-  // Task pane: edit the selected task title and description, then save with optimistic locking.
+  // Task pane: the title saves on Ctrl/Cmd + Enter, the description autosaves 600ms
+  // after the last input. One request runs at a time and the latest text wins.
   (function () {
     var pane = document.getElementById("ds-task");
     if (!pane) return;
     var titleInput = document.getElementById("ds-task-title");
     var descriptionInput = document.getElementById("ds-task-description");
     var status = document.getElementById("ds-task-status");
-    var saveButton = document.getElementById("ds-task-save");
     var error = document.getElementById("ds-task-error");
-    // Ctrl/Cmd + S saves from anywhere on the DS screen; the browser save dialog never opens here.
-    document.addEventListener("keydown", function (event) {
-      var key = typeof event.key === "string" ? event.key.toLowerCase() : "";
-      if (key !== "s" || !(event.ctrlKey || event.metaKey)) return;
-      event.preventDefault();
-      if (!titleInput || !descriptionInput || !dirty()) return;
-      save();
-    });
     if (!titleInput || !descriptionInput) return;
     var baselineTitle = titleInput.value;
     var baselineDescription = descriptionInput.value;
+    var autosaveTimer = null;
+    var saving = false;
+    var queuedTitle = false;
+    var queuedDescription = false;
+    // A late response must not overwrite an Escape revert.
+    var saveGeneration = 0;
 
     function setStatus(text, kind) {
       if (!status) return;
@@ -952,15 +950,46 @@ export const DS_SCRIPT = `(function () {
       error.textContent = text;
       error.hidden = text === "";
     }
+    function titleDirty() {
+      return titleInput.value.trim() !== baselineTitle;
+    }
+    function descriptionDirty() {
+      return descriptionInput.value !== baselineDescription;
+    }
     function dirty() {
-      return titleInput.value.trim() !== baselineTitle || descriptionInput.value !== baselineDescription;
+      return titleDirty() || descriptionDirty();
     }
     function refresh() {
       var changed = dirty();
       if (changed) setStatus("未保存の変更", "dirty");
       return changed;
     }
+    function cancelAutosave() {
+      if (autosaveTimer === null) return;
+      clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+    }
+    function clearQueued() {
+      queuedTitle = false;
+      queuedDescription = false;
+    }
+    function scheduleAutosave() {
+      cancelAutosave();
+      autosaveTimer = setTimeout(function () {
+        autosaveTimer = null;
+        if (!descriptionDirty()) return;
+        if (saving) { queuedDescription = true; return; }
+        save(false, true);
+      }, 600);
+    }
+    function saveTitle() {
+      if (saving) { queuedTitle = true; return; }
+      save(true, descriptionDirty());
+    }
     function revert() {
+      cancelAutosave();
+      clearQueued();
+      saveGeneration += 1;
       titleInput.value = baselineTitle;
       descriptionInput.value = baselineDescription;
       refresh();
@@ -974,54 +1003,95 @@ export const DS_SCRIPT = `(function () {
       var title = row.querySelector(".ds__task-title");
       if (title) title.textContent = task.title;
     }
-    function save() {
+    /**
+     * Patches the changed fields only: the description autosave never rewrites the
+     * title, and Ctrl/Cmd + Enter saves both pending fields.
+     */
+    function save(sendsTitle, sendsDescription) {
       var title = titleInput.value.trim();
-      if (title === "") { setError("title を入力してください。"); return; }
+      var patch = { version: Number(pane.getAttribute("data-task-version")) };
+      if (!sendsTitle && !sendsDescription) return;
+      if (sendsTitle && title === "") { setError("title を入力してください。"); return; }
+      if (sendsTitle) patch.title = title;
+      if (sendsDescription) patch.description = descriptionInput.value;
+      var sentTitle = title;
+      var sentDescription = descriptionInput.value;
+      var generation = saveGeneration;
+      var canQueue = true;
       setError("");
-      if (saveButton) saveButton.disabled = true;
+      saving = true;
+      setStatus("保存中…", "saving");
       fetch("/api/tasks/" + encodeURIComponent(pane.getAttribute("data-task-id") || ""), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title,
-          description: descriptionInput.value,
-          version: Number(pane.getAttribute("data-task-version")),
-        }),
+        body: JSON.stringify(patch),
       })
         .then(function (response) {
           if (response.status === 409) {
-            setError("他の更新と衝突しました。内容を確認してから再読み込みしてください。");
+            canQueue = false;
+            if (generation === saveGeneration) {
+              setStatus("保存できませんでした", "error");
+              setError("他の更新と衝突しました。内容を確認してから再読み込みしてください。");
+            }
             return null;
           }
-          if (!response.ok) { setError("保存に失敗しました。"); return null; }
+          if (!response.ok) {
+            canQueue = false;
+            if (generation === saveGeneration) setStatus("保存できませんでした", "error");
+            return null;
+          }
           return response.json();
         })
         .then(function (task) {
           if (task === null || task === undefined) return;
           pane.setAttribute("data-task-version", String(task.version));
-          baselineTitle = task.title;
-          baselineDescription = task.description;
-          titleInput.value = task.title;
-          descriptionInput.value = task.description;
-          refresh();
-          setStatus("保存しました", "saved");
+          if (generation !== saveGeneration) return;
+          if (sendsTitle) {
+            baselineTitle = task.title;
+            if (titleInput.value.trim() === sentTitle) titleInput.value = task.title;
+          }
+          if (sendsDescription) {
+            baselineDescription = task.description;
+            // Keep text typed while the request was running; the queued save sends it next.
+            if (descriptionInput.value === sentDescription) descriptionInput.value = task.description;
+          }
           updateRow(task);
+          setStatus(dirty() ? "未保存の変更" : "保存しました", dirty() ? "dirty" : "saved");
         })
-        .catch(function () { setError("保存に失敗しました。"); })
-        .then(function () { if (saveButton) saveButton.disabled = false; });
+        .catch(function () {
+          canQueue = false;
+          if (generation === saveGeneration) setStatus("保存できませんでした", "error");
+        })
+        .then(function () {
+          saving = false;
+          var nextTitle = queuedTitle;
+          var nextDescription = queuedDescription;
+          clearQueued();
+          if (!canQueue || !nextTitle && !nextDescription) return;
+          save(nextTitle && titleDirty(), nextDescription && descriptionDirty());
+        });
     }
 
     titleInput.addEventListener("input", function () {
       if (refresh()) return;
       setStatus("", undefined);
     });
-    descriptionInput.addEventListener("input", function () {
-      if (refresh()) return;
-      setStatus("", undefined);
+    // The shared editor script writes the hidden textarea before this event bubbles,
+    // so the autosave reads the synced value.
+    pane.addEventListener("input", function (event) {
+      var target = event.target;
+      var editor = target && target.closest ? target.closest("[data-description-editor]") : null;
+      if (!editor) return;
+      if (!refresh()) setStatus("", undefined);
+      scheduleAutosave();
     });
-    if (saveButton) saveButton.addEventListener("click", save);
     pane.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); save(); return; }
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        cancelAutosave();
+        saveTitle();
+        return;
+      }
       if (event.key === "Escape") { event.preventDefault(); revert(); }
     });
     refresh();

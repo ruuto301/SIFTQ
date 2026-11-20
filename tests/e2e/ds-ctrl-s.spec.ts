@@ -10,31 +10,39 @@ async function openTask(page: Page, title: string) {
   await expect(page.locator("#ds-task-title")).toHaveValue(title);
 }
 
-test("saves the task pane with Ctrl + S (BDD-TM-041)", async ({ page }) => {
+test("does not save on Ctrl + S and leaves the browser default alone (BDD-TM-041)", async ({ page }) => {
   const title = `ctrl s ${Date.now()}`;
   await openTask(page, title);
+
+  const patches: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "PATCH" && request.url().includes("/api/tasks/")) patches.push(request.url());
+  });
 
   const updated = `${title} 更新`;
   await page.locator("#ds-task-title").fill(updated);
   await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
 
-  await page.keyboard.press("Control+s");
+  // A real Ctrl+S would open the browser save dialog; a synthetic keydown lets the
+  // test assert that the pane neither prevents the default nor saves.
+  const prevented = await page.locator("#ds-task-title").evaluate((input) => {
+    const event = new KeyboardEvent("keydown", { key: "s", ctrlKey: true, bubbles: true, cancelable: true });
+    input.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(false);
+  await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
+  expect(patches).toEqual([]);
 
-  await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
-  // The save is persisted, not just painted.
+  // The title is still unsaved: reload brings the stored title back.
   await page.reload();
-  await expect(page.locator("#ds-task-title")).toHaveValue(updated);
+  await expect(page.locator("#ds-task-title")).toHaveValue(title);
 });
 
-test("does not save when Ctrl + S has nothing to save (BDD-TM-041)", async ({ page }) => {
+test("does not show a save button or shortcut hint (BDD-TM-041)", async ({ page }) => {
   const title = `ctrl s clean ${Date.now()}`;
   await openTask(page, title);
 
-  // A save bumps the stored version, so an unchanged version proves no request was sent.
-  const version = await page.locator("#ds-task").getAttribute("data-task-version");
-  await page.keyboard.press("Control+s");
-
-  await page.reload();
-  await expect(page.locator("#ds-task")).toHaveAttribute("data-task-version", version ?? "1");
-  await expect(page.locator("#ds-task-status")).toHaveText("");
+  await expect(page.locator("#ds-task-save")).toHaveCount(0);
+  await expect(page.getByText("Ctrl + S")).toHaveCount(0);
 });

@@ -454,9 +454,9 @@ export const DS_CSS = `
 .ds-task__foot { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
 .ds-task__status { font-size: 11px; color: #555555; }
 .ds-task__status--dirty { color: #1f1f1f; font-weight: 700; }
+.ds-task__status--saving { color: #1f1f1f; font-weight: 700; }
 .ds-task__status--saved { color: #555555; font-weight: 700; }
-.ds-task__hint { font-size: 11px; color: #555555; }
-.ds-task__save { margin-left: auto; }
+.ds-task__status--error { color: #1f1f1f; font-weight: 700; }
 .ds-task__error {
   margin: 0 16px 12px;
   padding: 8px 12px;

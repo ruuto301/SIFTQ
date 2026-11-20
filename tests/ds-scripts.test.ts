@@ -139,12 +139,15 @@ describe("DS task action menu", () => {
 });
 
 describe("DS task pane shortcuts", () => {
-  it("saves with Ctrl/Cmd + S from anywhere on the DS screen (BDD-TM-041)", () => {
-    expect(DS_SCRIPT).toContain('var key = typeof event.key === "string" ? event.key.toLowerCase() : ""');
-    expect(DS_SCRIPT).toContain('key !== "s" || !(event.ctrlKey || event.metaKey)');
-    // The browser save dialog is blocked even when there is nothing to save.
-    expect(DS_SCRIPT).toContain("event.preventDefault();");
-    expect(DS_SCRIPT).toContain("if (!titleInput || !descriptionInput || !dirty()) return;");
+  it("leaves Ctrl/Cmd + S to the browser and never saves from it (BDD-TM-041)", () => {
+    expect(DS_SCRIPT).not.toContain('key !== "s"');
+    expect(DS_SCRIPT).not.toContain('event.key.toLowerCase()');
+    expect(DS_SCRIPT).not.toContain('getElementById("ds-task-save")');
+  });
+
+  it("saves the title with Ctrl/Cmd + Enter and reverts with Escape (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain('event.key === "Enter" && (event.ctrlKey || event.metaKey)');
+    expect(DS_SCRIPT).toContain('event.key === "Escape"');
   });
 
 });
@@ -186,7 +189,6 @@ describe("DS task list DnD", () => {
     for (const hook of [
       'getElementById("ds-task-title")',
       'getElementById("ds-task-description")',
-      'getElementById("ds-task-save")',
       'getElementById("ds-task-status")',
     ]) {
       expect(DS_SCRIPT).toContain(hook);
@@ -196,16 +198,44 @@ describe("DS task list DnD", () => {
     expect(DS_SCRIPT).toContain("version: Number(pane.getAttribute(\"data-task-version\"))");
   });
 
+  it("autosaves the description 600ms after input stops (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain("setTimeout(function () {");
+    expect(DS_SCRIPT).toContain("}, 600);");
+    expect(DS_SCRIPT).toContain('addEventListener("input", function (event)');
+    expect(DS_SCRIPT).toContain('setStatus("保存中…", "saving")');
+    expect(DS_SCRIPT).toContain('setStatus("保存できませんでした", "error")');
+  });
+
   it("keeps unsaved edits, reports conflicts and updates the left card (BDD-TM-036)", () => {
     expect(DS_SCRIPT).toContain("他の更新と衝突しました");
     expect(DS_SCRIPT).toContain("未保存の変更");
     expect(DS_SCRIPT).toContain("保存しました");
-    // Escape restores the baseline, Ctrl/Cmd + Enter saves.
-    expect(DS_SCRIPT).toContain('event.key === "Escape"');
-    expect(DS_SCRIPT).toContain('event.key === "Enter" && (event.ctrlKey || event.metaKey)');
     expect(DS_SCRIPT).toContain('row.querySelector(".ds__task-title")');
     // The removed chat pane no longer forwards description updates.
     expect(DS_SCRIPT).not.toContain('addEventListener("ds-task-description"');
+  });
+});
+
+describe("DS task autosave", () => {
+  it("does not multiplex saves and keeps the latest description (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain("if (saving) { queuedDescription = true; return; }");
+    expect(DS_SCRIPT).toContain("if (saving) { queuedTitle = true; return; }");
+    // A queued title save survives a queued description save.
+    expect(DS_SCRIPT).toContain("var nextTitle = queuedTitle;");
+    expect(DS_SCRIPT).toContain("var nextDescription = queuedDescription;");
+    // The pending text survives the response; the next request sends it.
+    expect(DS_SCRIPT).toContain("if (descriptionInput.value === sentDescription) descriptionInput.value = task.description;");
+  });
+
+  it("patches only the changed fields (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain("function save(sendsTitle, sendsDescription) {");
+    expect(DS_SCRIPT).toContain("if (sendsTitle) patch.title = title;");
+    expect(DS_SCRIPT).toContain("if (sendsDescription) patch.description = descriptionInput.value;");
+  });
+
+  it("ignores a late response after Escape reverts the pane (BDD-TM-036)", () => {
+    expect(DS_SCRIPT).toContain("saveGeneration += 1;");
+    expect(DS_SCRIPT).toContain("if (generation !== saveGeneration) return;");
   });
 });
 
