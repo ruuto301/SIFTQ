@@ -494,6 +494,28 @@ describe("Ideas phase 3 screen controls", () => {
   });
 });
 
+describe("Ideas inline image paste (BDD-TM-057)", () => {
+  it("renders a pasted attachment image inside the card body", async () => {
+    const note = await createNote("貼り付けメモ", "前半![](/api/attachments/abc-123)後半", "default");
+    const html = await (await request("/ideas")).text();
+
+    expect(html).toContain(`data-idea-id="${note.id}"`);
+    expect(html).toContain('class="idea-card__image"');
+    expect(html).toContain('src="/api/attachments/abc-123"');
+    expect(html).toContain("前半");
+    expect(html).toContain("後半");
+  });
+
+  it("keeps a bare image path and a link in the card body", async () => {
+    const note = await createNote("素の画像", "/api/attachments/def-456 https://example.com/docs", "default");
+    const html = await (await request("/ideas")).text();
+
+    expect(html).toContain(`data-idea-id="${note.id}"`);
+    expect(html).toContain('src="/api/attachments/def-456"');
+    expect(html).toContain('href="https://example.com/docs"');
+  });
+});
+
 describe("Ideas detail dialog (BDD-TM-044)", () => {
   it("renders the Keep-style detail dialog with every editable control", async () => {
     const html = await (await request("/ideas")).text();

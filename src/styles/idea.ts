@@ -424,6 +424,15 @@ export const IDEA_CSS = `
   white-space: pre-wrap;
 }
 
+/* 本文に貼り付けた画像はカード幅に収め、角を丸める。 */
+.idea-card__image {
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  margin: 6px 0;
+  max-width: 100%;
+}
+
 .idea-card--default {
   background: #ffffff;
 }

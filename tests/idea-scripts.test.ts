@@ -52,3 +52,51 @@ describe("Ideas browser script", () => {
     expect(IDEA_SCRIPT).not.toContain("data-idea-snackbar-undo");
   });
 });
+
+describe("Ideas image paste script", () => {
+  it("deduplicates clipboard files by name, size, type, and lastModified", () => {
+    expect(IDEA_SCRIPT).toContain("function ideaFileFingerprint(file)");
+    expect(IDEA_SCRIPT).toContain('[file.name || "", file.size || 0, file.type || "", file.lastModified || 0]');
+    expect(IDEA_SCRIPT).toContain("if (seen.indexOf(key) !== -1) return;");
+  });
+
+  it("deduplicates clipboard files by name, size, type, and lastModified", () => {
+    expect(IDEA_SCRIPT).toContain("function ideaFileFingerprint(file)");
+    expect(IDEA_SCRIPT).toContain('[file.name || "", file.size || 0, file.type || "", file.lastModified || 0]');
+    expect(IDEA_SCRIPT).toContain("if (seen.indexOf(key) !== -1) return;");
+  });
+
+  it("inserts a pasted image at the caret of the body textarea", () => {
+    expect(IDEA_SCRIPT).toContain('document.execCommand("insertText", false, text)');
+    expect(IDEA_SCRIPT).toContain("field.setRangeText(text, start, end, \"end\")");
+    expect(IDEA_SCRIPT).toContain("target.closest(\"[data-idea-composer-body]\")");
+    expect(IDEA_SCRIPT).toContain("target.closest(\"[data-idea-detail-body]\")");
+  });
+
+  it("replaces the pending token with the uploaded attachment URL", () => {
+    expect(IDEA_SCRIPT).toContain('var IDEA_PENDING_PREFIX = "pending-";');
+    expect(IDEA_SCRIPT).toContain('return "![](" + IDEA_PENDING_PREFIX + String(Date.now()) + "-" + String(ideaPasteSequence) + ")";');
+    expect(IDEA_SCRIPT).toContain('field.setRangeText(replacement, index, index + token.length, "preserve")');
+    expect(IDEA_SCRIPT).toContain('ideaInsertReplace(field, token, "![](" + attachment.url + ")")');
+  });
+
+  it("keeps non-image files on the attachment path", () => {
+    expect(IDEA_SCRIPT).toContain("function ideaPasteAttachments(page, files)");
+    expect(IDEA_SCRIPT).toContain("function ideaPasteIsImage(file) { return ideaAttachmentKindOf(file) === \"image\"; }");
+    expect(IDEA_SCRIPT).toContain("ideaQueueComposerFiles(composer, files);");
+  });
+
+  it("uploads composer images after the note exists and patches the replaced body", () => {
+    expect(IDEA_SCRIPT).toContain("function ideaUploadComposerInline(composer, noteId)");
+    expect(IDEA_SCRIPT).toContain("ideaUploadComposerInline(composer, note.id)");
+    expect(IDEA_SCRIPT).toContain('method: "PATCH",');
+    expect(IDEA_SCRIPT).toContain("body: JSON.stringify({ body: field.value })");
+  });
+
+  it("re-renders the card body segments after autosave", () => {
+    expect(IDEA_SCRIPT).toContain("function ideaBodySegments(body)");
+    expect(IDEA_SCRIPT).toContain("function ideaCardBodyNode(body)");
+    expect(IDEA_SCRIPT).toContain('image.className = "idea-card__image"');
+    expect(IDEA_SCRIPT).toContain("card.replaceChild(ideaCardBodyNode(note.body), body)");
+  });
+});

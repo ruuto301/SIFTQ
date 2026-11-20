@@ -5,6 +5,8 @@ import { IdeasPage } from "../views/IdeasPage";
 import type { IdeaState } from "../views/IdeasPage";
 import { isIdeaColor, isIdeaDateKind, isIdeaFilter, parseIdeaSort, sortIdeaNotesByQuery } from "../idea";
 import { normalizeIdeaDateBound } from "../idea-query";
+import { ideaAttachmentsOutsideBody } from "../idea-attachment";
+import type { IdeaAttachment } from "../idea-attachment";
 import type {
   IdeaColor,
   IdeaDateKind,
@@ -97,10 +99,17 @@ export function registerIdeaScreenRoutes(app: Hono<AppEnv>, repository: Reposito
     ]);
     if (!listed.ok || !counts.ok) return c.text("Internal Server Error", 500);
     const notes = sortIdeaNotesByQuery(listed.value, sort);
-    const [images, attachments] = await Promise.all([
+    const [images, storedAttachments] = await Promise.all([
       groupByNote(notes, (note) => repositoryForRequest.listImages(note.id, OWNER_ID)),
       groupByNote(notes, (note) => repositoryForRequest.listAttachments(note.id, OWNER_ID)),
     ]);
+    // 本文が参照する添付はインライン画像として描くので、添付欄には出さない。
+    const attachments: Record<string, readonly IdeaAttachment[]> = Object.fromEntries(
+      notes.map((note): [string, readonly IdeaAttachment[]] => [
+        note.id,
+        ideaAttachmentsOutsideBody(note.body, storedAttachments[note.id] ?? []),
+      ]),
+    );
     return renderIdeaPage(
       c,
       <IdeasPage
