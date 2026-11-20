@@ -1371,6 +1371,13 @@
       "trigger": "POST",
       "view": "screen:P14",
       "gateway": "idea-scripts.ts",
+      "api": "ideas_notes_id"
+    },
+    {
+      "screen": "P14",
+      "trigger": "POST",
+      "view": "screen:P14",
+      "gateway": "idea-scripts.ts",
       "api": "ideas_images_id_delete"
     },
     {
@@ -1386,13 +1393,6 @@
       "view": "screen:P14",
       "gateway": "idea-scripts.ts",
       "api": "ideas_attachments_id"
-    },
-    {
-      "screen": "P14",
-      "trigger": "POST",
-      "view": "screen:P14",
-      "gateway": "idea-scripts.ts",
-      "api": "ideas_notes_id"
     },
     {
       "screen": "P14",

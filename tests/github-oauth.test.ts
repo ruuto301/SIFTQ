@@ -51,7 +51,8 @@ function cookieValue(response: Response, name: string): string | null {
     const pair = entry.split(";")[0] ?? "";
     const separator = pair.indexOf("=");
     if (separator > 0 && pair.slice(0, separator) === name) {
-      return pair.slice(separator + 1);
+      // Hono は Set-Cookie の値を percent-encode する。URL へ入れる前に生の値へ戻す。
+      return decodeURIComponent(pair.slice(separator + 1));
     }
   }
   return null;
@@ -70,7 +71,7 @@ async function callback(state: string): Promise<Response> {
   const issuedState = cookieValue(start, OAUTH_STATE_COOKIE_NAME);
   if (issuedState === null) throw new Error("state cookie was not issued");
   return app.request(
-    `/auth/github/callback?code=code&state=${state === "issued" ? issuedState : state}`,
+    `/auth/github/callback?code=code&state=${encodeURIComponent(state === "issued" ? issuedState : state)}`,
     { headers: { Cookie: cookieHeader(start) } },
     bindings(),
   );
@@ -136,7 +137,7 @@ describe("GitHub OAuth login", () => {
     if (issued === null) throw new Error("state cookie was not issued");
 
     const response = await app.request(
-      `/auth/github/callback?code=code&state=${issued}`,
+      `/auth/github/callback?code=code&state=${encodeURIComponent(issued)}`,
       undefined,
       bindings(),
     );
@@ -158,7 +159,7 @@ describe("GitHub OAuth failure handling (BDD-TM-056)", () => {
   it("reports an expired state", async () => {
     const expired = await createOAuthState("test-secret", Date.now() - 1_000, "nonce");
     const response = await app.request(
-      `/auth/github/callback?code=code&state=${expired}`,
+      `/auth/github/callback?code=code&state=${encodeURIComponent(expired)}`,
       undefined,
       bindings(),
     );

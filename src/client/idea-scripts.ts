@@ -52,6 +52,7 @@ function resetIdeaComposer(composer) {
   selectIdeaComposerColor(composer, "default");
   ideaComposerImages(composer).forEach(function (item) { if (item.url) URL.revokeObjectURL(item.url); });
   composer.__mkAttachments = [];
+  composer.__mkInline = [];
   composer.__mkNoteId = "";
   ideaRenderComposerImages(composer);
   var retry = composer.querySelector("[data-idea-composer-retry]");
@@ -146,17 +147,29 @@ function ideaTooLargeMessage(file) {
   var kind = ideaAttachmentKindOf(file);
   return (kind === "image" ? "画像は 5MB" : "ファイルは 25MB") + "までです（" + ideaFormatBytes(file.size) + "）。";
 }
+/** items と files は同じ画像でも別オブジェクトになることがある。指紋で 1 件に統合する。 */
+function ideaFileFingerprint(file) {
+  if (!file) return "";
+  return [file.name || "", file.size || 0, file.type || "", file.lastModified || 0].join(":");
+}
 function ideaDroppedFiles(source) {
   if (!source) return [];
   var files = [];
+  var seen = [];
+  var add = function (file) {
+    if (!file) return;
+    var key = ideaFileFingerprint(file);
+    if (seen.indexOf(key) !== -1) return;
+    seen.push(key);
+    files.push(file);
+  };
   var items = source.items ? Array.prototype.slice.call(source.items) : [];
   items.forEach(function (item) {
     if (!item || item.kind !== "file" || typeof item.getAsFile !== "function") return;
-    var file = item.getAsFile();
-    if (file) files.push(file);
+    add(item.getAsFile());
   });
   var direct = source.files ? Array.prototype.slice.call(source.files) : [];
-  direct.forEach(function (file) { if (file && files.indexOf(file) === -1) files.push(file); });
+  direct.forEach(add);
   return files;
 }
 function ideaHasFileDrag(source) {
@@ -280,7 +293,9 @@ function saveIdeaComposer(composer) {
     body: JSON.stringify({ title: value, body: body ? body.value : "", color: ideaComposerColor(composer) }),
   }).then(function (note) {
     composer.__mkNoteId = note.id;
-    return ideaUploadComposerAttachments(composer).then(function () {
+    return ideaUploadComposerInline(composer, note.id).then(function () {
+      return ideaUploadComposerAttachments(composer);
+    }).then(function () {
       // 本文に URL があればプレビューを先に取得する。失敗しても作成は成功として扱う。
       return ideaRequestPreview(note.id).catch(function () { return null; });
     });
@@ -306,6 +321,51 @@ function ideaQueueComposerFiles(composer, files) {
   });
   ideaRenderComposerImages(composer);
   ideaShowComposerError(composer, error);
+}
+function ideaComposerInline(composer) {
+  if (!composer.__mkInline) composer.__mkInline = [];
+  return composer.__mkInline;
+}
+/** 貼り付けた画像は本文のカーソル位置へ仮トークンで入れ、メモ作成後に実 URL へ置き換える。 */
+function ideaQueueComposerInlineFiles(composer, field, files) {
+  var items = ideaComposerInline(composer);
+  Array.prototype.slice.call(files || []).forEach(function (file) {
+    if (ideaAttachmentKindOf(file) !== "image") { ideaShowComposerError(composer, "画像以外は添付欄へ追加されます。"); return; }
+    if (file.size > ideaAttachmentLimit(file)) { ideaShowComposerError(composer, ideaTooLargeMessage(file)); return; }
+    var token = ideaPendingToken();
+    items.push({ token: token, file: file, name: file.name || "image" });
+    ideaInsertText(field, token);
+    ideaGrowComposer(composer);
+  });
+}
+/** メモ作成後、本文の仮トークンを実 URL へ置き換えて保存し直す。 */
+function ideaUploadComposerInline(composer, noteId) {
+  var field = composer.querySelector("[data-idea-composer-body]");
+  var items = ideaComposerInline(composer);
+  if (items.length === 0) return Promise.resolve();
+  return items.reduce(function (chain, item) {
+    return chain.then(function () {
+      if (item.done) return null;
+      return ideaPrepareAttachment(item.file).then(function (prepared) {
+        return ideaUploadAttachment(noteId, prepared, null);
+      }).then(function (attachment) {
+        if (field) ideaInsertReplace(field, item.token, "![](" + attachment.url + ")");
+        item.done = true;
+      }).catch(function (error) {
+        if (field) ideaInsertReplace(field, item.token, ideaInsertErrorMessage(error));
+        ideaShowComposerError(composer, "画像を挿入できませんでした。");
+        item.done = true;
+      });
+    });
+  }, Promise.resolve()).then(function () {
+    if (!field) return null;
+    ideaGrowComposer(composer);
+    // 作成時の本文は仮トークンのままなので、置換後の本文で上書きする。
+    return ideaApi("/api/ideas/notes/" + encodeURIComponent(noteId), {
+      method: "PATCH",
+      body: JSON.stringify({ body: field.value }),
+    });
+  });
 }
 function ideaRemoveComposerImage(composer, key) {
   composer.__mkAttachments = ideaComposerImages(composer).filter(function (item) {
@@ -763,7 +823,9 @@ function initializeIdeaComposer(page) {
     retry.addEventListener("click", function () {
       retry.hidden = true;
       ideaShowComposerError(composer, "");
-      ideaUploadComposerAttachments(composer).then(function () {
+      ideaUploadComposerInline(composer, composer.__mkNoteId).then(function () {
+        return ideaUploadComposerAttachments(composer);
+      }).then(function () {
         window.location.assign("/ideas");
       }).catch(function (error) {
         ideaShowComposerError(composer, error && error.message ? error.message : "添付できませんでした。");
@@ -812,28 +874,120 @@ function initializeIdeaActions(page) {
     if (card && target.closest("[data-idea-pin]")) { event.preventDefault(); ideaSetPinned(card); return; }
   });
 }
+var IDEA_PENDING_PREFIX = "pending-";
+var ideaPasteSequence = 0;
+/** アップロード完了まで本文に置く仮トークン。 */
+function ideaPendingToken() {
+  ideaPasteSequence += 1;
+  return "![](" + IDEA_PENDING_PREFIX + String(Date.now()) + "-" + String(ideaPasteSequence) + ")";
+}
+function ideaInsertErrorMessage(error) {
+  return "（画像を挿入できませんでした: " + (error && error.message ? error.message : "不明") + "）";
+}
+/** execCommand は Ctrl+Z で戻せる挿入になる。使えない環境では setRangeText へ落とす。 */
+function ideaInsertText(field, text) {
+  if (!field) return;
+  var before = field.value;
+  var start = typeof field.selectionStart === "number" ? field.selectionStart : before.length;
+  var end = typeof field.selectionEnd === "number" ? field.selectionEnd : start;
+  field.focus();
+  if (field.selectionStart !== start || field.selectionEnd !== end) field.setSelectionRange(start, end);
+  var inserted = false;
+  try { inserted = document.execCommand("insertText", false, text); } catch (error) { inserted = false; }
+  if (!inserted || field.value === before) field.setRangeText(text, start, end, "end");
+}
+/** 仮トークンを実 URL へ置き換える。置換は undo の対象外でよく、キャレットは画像トークンの直後へ置く。 */
+function ideaInsertReplace(field, token, replacement) {
+  if (!field) return false;
+  var index = field.value.indexOf(token);
+  if (index < 0) return false;
+  var caret = typeof field.selectionStart === "number" ? field.selectionStart : index;
+  field.setRangeText(replacement, index, index + token.length, "preserve");
+  var next = caret;
+  if (caret >= index + token.length) next = caret + replacement.length - token.length;
+  else if (caret > index) next = index + replacement.length;
+  field.setSelectionRange(next, next);
+  return true;
+}
+/** 貼り付け先が本文 textarea のときだけ、その本文欄と所属（composer / detail）を返す。 */
+function ideaPasteField(event) {
+  var target = event.target;
+  if (!target || !target.closest) return null;
+  if (target.closest("[data-idea-composer-body]")) {
+    var composer = target.closest("[data-idea-composer]");
+    return composer ? { field: target, composer: composer, detail: null } : null;
+  }
+  if (target.closest("[data-idea-detail-body]")) {
+    var root = target.closest("[data-idea-detail]");
+    if (!root || root.hidden !== false) return null;
+    return { field: target, composer: null, detail: root };
+  }
+  return null;
+}
+function ideaPasteIsImage(file) { return ideaAttachmentKindOf(file) === "image"; }
+/** 詳細ダイアログは note があるので即アップロードし、完了後に仮トークンを実 URL へ置き換える。 */
+function ideaPasteDetailImages(root, field, images) {
+  var noteId = ideaAttachmentNoteId(root);
+  images.forEach(function (file) {
+    var token = ideaPendingToken();
+    ideaInsertText(field, token);
+    ideaGrowDetail(root);
+    ideaPrepareAttachment(file).then(function (prepared) {
+      return ideaUploadAttachment(noteId, prepared, null);
+    }).then(function (attachment) {
+      ideaInsertReplace(field, token, "![](" + attachment.url + ")");
+      ideaGrowDetail(root);
+      ideaDetailSave(root);
+    }).catch(function (error) {
+      // 失敗した仮トークンだけをエラー文言へ置き換え、本文の他の部分はそのまま残す。
+      ideaInsertReplace(field, token, ideaInsertErrorMessage(error));
+      ideaGrowDetail(root);
+      ideaDetailSave(root);
+      ideaDetailError(root, "画像を挿入できませんでした。");
+    });
+  });
+}
+/** 本文へ画像を挿入できたら true。 */
+function ideaPasteIntoBody(target, images) {
+  if (target.composer) { ideaQueueComposerInlineFiles(target.composer, target.field, images); return true; }
+  if (!target.detail || ideaAttachmentNoteId(target.detail) === "") return false;
+  ideaPasteDetailImages(target.detail, target.field, images);
+  return true;
+}
+/** 画像以外のファイルと、本文以外への貼り付けは従来どおり添付欄へ入れる。 */
+function ideaPasteAttachments(page, files) {
+  if (files.length === 0) return false;
+  var composer = page.querySelector("[data-idea-composer]");
+  if (composer && composer.getAttribute("data-idea-composer-open") === "true") {
+    ideaQueueComposerFiles(composer, files);
+    return true;
+  }
+  var root = ideaDetail();
+  if (root && root.hidden === false) {
+    ideaAttachFiles(root, ideaAttachmentNoteId(root), files);
+    return true;
+  }
+  var active = document.activeElement;
+  var card = active && active.closest ? active.closest("[data-idea-id]") : null;
+  if (!card) return false;
+  ideaAttachFiles(card, ideaCardId(card) || "", files);
+  return true;
+}
 function initializeIdeaPaste(page) {
   document.addEventListener("paste", function (event) {
     var files = ideaDroppedFiles(event.clipboardData);
     if (files.length === 0) return;
-    var composer = page.querySelector("[data-idea-composer]");
-    if (composer && composer.getAttribute("data-idea-composer-open") === "true") {
+    var images = files.filter(ideaPasteIsImage);
+    var others = files.filter(function (file) { return !ideaPasteIsImage(file); });
+    var target = ideaPasteField(event);
+    // 画像の貼り付けは本文のカーソル位置へ入れる。画像以外は添付欄へ回す。
+    if (target && images.length > 0 && ideaPasteIntoBody(target, images)) {
       event.preventDefault();
-      ideaQueueComposerFiles(composer, files);
+      ideaPasteAttachments(page, others);
       return;
     }
-    var root = ideaDetail();
-    if (root && root.hidden === false) {
-      event.preventDefault();
-      ideaAttachFiles(root, ideaAttachmentNoteId(root), files);
-      return;
-    }
-    var active = document.activeElement;
-    var card = active && active.closest ? active.closest("[data-idea-id]") : null;
-    if (card) {
-      event.preventDefault();
-      ideaAttachFiles(card, ideaCardId(card) || "", files);
-    }
+    if (!ideaPasteAttachments(page, files)) return;
+    event.preventDefault();
   });
 }
 var IDEA_SORT_KEY = "idea-sort:v1";
@@ -1053,6 +1207,78 @@ function ideaDetailRenderImages(root, card) {
     box.appendChild(wrap);
   });
 }
+// サーバ側 splitDescription と同じ区切りで、自動保存後のカード本文も描き直す。
+var IDEA_BODY_PATTERN = /!\\[\\]\\(\\s*(\\/api\\/(?:images|attachments)\\/[0-9A-Za-z_-]+)\\s*\\)|\\/api\\/(?:images|attachments)\\/[0-9A-Za-z_-]+|https?:\\/\\/[^\\s<>]+/g;
+var IDEA_BODY_TRAILING = ".,!?;:";
+function ideaBodyImagePath(value) {
+  return value.indexOf("/api/images/") === 0 || value.indexOf("/api/attachments/") === 0;
+}
+function ideaBodyBoundary(character) {
+  return character === undefined || character === "" || /[\\s<>]/.test(character);
+}
+function ideaBodyDisplayUrl(url) {
+  try { return decodeURI(url); } catch (error) { return url; }
+}
+function ideaBodySegments(body) {
+  var text = body || "";
+  var segments = [];
+  var cursor = 0;
+  var match;
+  IDEA_BODY_PATTERN.lastIndex = 0;
+  while ((match = IDEA_BODY_PATTERN.exec(text)) !== null) {
+    var matched = match[0];
+    var start = match.index;
+    if (start > cursor) segments.push({ text: text.slice(cursor, start) });
+    var image = match[1] || (ideaBodyImagePath(matched) ? matched : "");
+    if (image !== "") {
+      segments.push({ text: image, src: image });
+      cursor = start + matched.length;
+      continue;
+    }
+    var end = start + matched.length;
+    while (!ideaBodyBoundary(text.charAt(end))) end += 1;
+    var rawUrl = text.slice(start, end);
+    var url = rawUrl;
+    while (url.length > 0 && IDEA_BODY_TRAILING.indexOf(url.charAt(url.length - 1)) !== -1) url = url.slice(0, -1);
+    if (url === "") {
+      segments.push({ text: rawUrl });
+    } else {
+      segments.push({ text: ideaBodyDisplayUrl(url), href: url });
+      if (url.length < rawUrl.length) segments.push({ text: rawUrl.slice(url.length) });
+    }
+    cursor = start + rawUrl.length;
+  }
+  if (cursor < text.length) segments.push({ text: text.slice(cursor) });
+  return segments;
+}
+function ideaCardBodyNode(body) {
+  var node = document.createElement("p");
+  node.className = "idea-card__body";
+  ideaBodySegments(body).forEach(function (segment) {
+    if (segment.src) {
+      var image = document.createElement("img");
+      image.className = "idea-card__image";
+      image.src = segment.src;
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      node.appendChild(image);
+      return;
+    }
+    if (segment.href) {
+      var link = document.createElement("a");
+      link.className = "idea-card__link";
+      link.href = segment.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer nofollow";
+      link.textContent = segment.text;
+      node.appendChild(link);
+      return;
+    }
+    node.appendChild(document.createTextNode(segment.text));
+  });
+  return node;
+}
 function ideaDetailApply(root, note) {
   var card = ideaDetailCard(root);
   if (card !== null) {
@@ -1064,7 +1290,7 @@ function ideaDetailApply(root, note) {
     var title = card.querySelector(".idea-card__title");
     if (title) title.textContent = note.title;
     var body = card.querySelector(".idea-card__body");
-    if (body) body.textContent = note.body;
+    if (body) card.replaceChild(ideaCardBodyNode(note.body), body);
   }
   ideaDetailSetColor(root, note.color);
   var pin = ideaDetailField(root, "pin");

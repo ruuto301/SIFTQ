@@ -11,6 +11,7 @@ import {
   formatIdeaAttachmentBytes,
   ideaAttachmentKind,
   ideaAttachmentLimitBytes,
+  ideaAttachmentsOutsideBody,
   isIdeaAttachment,
   isIdeaAttachmentContentType,
   isIdeaAttachmentPreview,
@@ -246,5 +247,28 @@ describe("attachment positions", () => {
   it("appends after the highest position even after removals", () => {
     expect(nextIdeaAttachmentPosition([])).toBe(1);
     expect(nextIdeaAttachmentPosition([attachment({ position: 1 }), attachment({ id: "b", position: 7 })])).toBe(8);
+  });
+});
+
+describe("ideaAttachmentsOutsideBody", () => {
+  it("hides attachments that the note body renders inline", () => {
+    const inline = attachment({ id: "inline-1" });
+    const chip = attachment({ id: "chip-1", position: 2 });
+    const body = "前半![](/api/attachments/inline-1)後半";
+
+    expect(ideaAttachmentsOutsideBody(body, [inline, chip])).toEqual([chip]);
+  });
+
+  it("keeps every attachment when the body has no token", () => {
+    const first = attachment({ id: "a" });
+    const second = attachment({ id: "b", position: 2 });
+
+    expect(ideaAttachmentsOutsideBody("本文", [first, second])).toEqual([first, second]);
+  });
+
+  it("keeps an attachment whose id only appears elsewhere", () => {
+    const other = attachment({ id: "abc" });
+
+    expect(ideaAttachmentsOutsideBody("![](/api/attachments/abcd)", [other])).toEqual([other]);
   });
 });
