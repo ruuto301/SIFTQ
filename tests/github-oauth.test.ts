@@ -239,3 +239,19 @@ describe("account switch flow (BDD-TM-057)", () => {
     expect(response.headers.getSetCookie().join("\n")).toContain("github_oauth_switch=");
   });
 });
+
+describe("login failure logging (BDD-TM-059)", () => {
+  it("logs the cause code without leaking secrets", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await app.request("/auth/github/callback?code=code", undefined, bindings());
+
+      const logged = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      expect(logged).toContain("github_login_failed");
+      expect(logged).toContain("state_missing");
+      expect(logged).not.toContain("code=code");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
