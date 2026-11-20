@@ -51,6 +51,8 @@
 - `Task detail` (`/tasks/:id`)
   - title と description を編集する。
   - description は `編集` / `プレビュー` タブで切り替える。既定は description が空なら `編集`、それ以外は `プレビュー` とする。
+  - ログインは GitHub OAuth のみとし、認証情報は保存しない。state はサーバー署名付きの URL パラメータで往復させ、Cookie が保存されないブラウザでも成立させる（Cookie がある場合は一致も確認する）。
+  - ログイン失敗時は原因コード（`state_missing` / `state_mismatch` / `state_expired` / `denied` / `exchange_failed` / `not_allowed`）を画面に表示し、「もう一度ログイン」と「ログインをリセット」（`POST /auth/reset`）を出す。ログイン導線のボタンは全幅・高さ 48px 以上とする。
   - description 内の URL は、表示テキストだけパーセントエンコードを日本語にデコードして表示する（例: `/%E5%95%8F...` → `/問い合わせ`）。`href` は元の URL を維持し、国際化ドメイン（`xn--...`）も日本語で表示する。不正な `%xx` は原文のまま表示する。
   - Ideas のカードの URL は、ドメインだけでなくパスを含む URL 全体を、同じデコード規則で表示する。
   - `プレビュー` は description を Markdown（見出し・強調・リンク・リスト・チェックリスト・表・コードブロック・引用・取り消し線・水平線・自動リンク）として描画した HTML を表示する。
