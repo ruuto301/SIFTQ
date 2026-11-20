@@ -79,13 +79,6 @@ export const LOGIN_EXTRA_CSS = `
   margin: 0;
 }
 
-.login-error__code {
-  color: #5a6470;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  margin: 0;
-}
-
 .login-hint {
   color: #39424d;
   font-size: 11.5px;

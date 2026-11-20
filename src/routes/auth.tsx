@@ -58,6 +58,8 @@ function clearOAuthCookies<T extends AuthEnv>(c: Context<T>): void {
 }
 
 function failure<T extends AuthEnv>(c: Context<T>, code: OAuthErrorCode): Response {
+  // 画面には出さず、原因はログに残す。認証情報・state・authorization code は出力しない。
+  console.warn(JSON.stringify({ event: "github_login_failed", code }));
   clearOAuthCookies(c);
   return c.redirect(`/login?error=${code}`);
 }
