@@ -4,11 +4,14 @@ import {
   OAUTH_NEXT_COOKIE_NAME,
   OAUTH_STATE_COOKIE_NAME,
   OAUTH_STATE_DURATION_MS,
+  OAUTH_SWITCH_COOKIE_NAME,
+  OAUTH_SWITCH_MAX_ATTEMPTS,
   SESSION_COOKIE_NAME,
   SESSION_DURATION_MS,
   createOAuthState,
   createSession,
   isOAuthErrorCode,
+  readSwitchCount,
   verifyOAuthState,
 } from "../auth";
 import type { OAuthErrorCode } from "../auth";
@@ -44,7 +47,11 @@ function cookieOptions(url: URL, expires: Date) {
  * 妨げないよう、Secure 有無の両方で削除する。
  */
 function clearOAuthCookies<T extends AuthEnv>(c: Context<T>): void {
-  for (const name of [OAUTH_STATE_COOKIE_NAME, OAUTH_NEXT_COOKIE_NAME]) {
+  for (const name of [
+    OAUTH_STATE_COOKIE_NAME,
+    OAUTH_NEXT_COOKIE_NAME,
+    OAUTH_SWITCH_COOKIE_NAME,
+  ]) {
     deleteCookie(c, name, { path: "/" });
     deleteCookie(c, name, { path: "/", secure: true, sameSite: "Lax" });
   }
@@ -133,6 +140,16 @@ function registerGithubRoutes<T extends AuthEnv>(app: Hono<T>) {
     const expiresAt = Date.now() + OAUTH_STATE_DURATION_MS;
     const state = await createOAuthState(secret, expiresAt, crypto.randomUUID());
     const expires = new Date(expiresAt);
+
+    // 許可されないアカウントで詰まったときの「別のアカウントでサインイン」。
+    // 同じアカウントを選び続ける無限ループを避けるため回数に上限を置く。
+    let selectAccount = false;
+    if (c.req.query("switch") === "1") {
+      const attempts = readSwitchCount(getCookie(c, OAUTH_SWITCH_COOKIE_NAME));
+      if (attempts >= OAUTH_SWITCH_MAX_ATTEMPTS) return failure(c, "switch_exhausted");
+      selectAccount = true;
+      setCookie(c, OAUTH_SWITCH_COOKIE_NAME, String(attempts + 1), cookieOptions(url, expires));
+    }
     // Cookie は補助（無くても署名検証で成立する）。
     setCookie(c, OAUTH_STATE_COOKIE_NAME, state, cookieOptions(url, expires));
     setCookie(
@@ -141,7 +158,9 @@ function registerGithubRoutes<T extends AuthEnv>(app: Hono<T>) {
       safeNextPath(c.req.query("next")),
       cookieOptions(url, expires),
     );
-    return c.redirect(githubAuthorizeUrl(config, callbackUrl(c.req.url), state));
+    return c.redirect(
+      githubAuthorizeUrl(config, callbackUrl(c.req.url), state, { selectAccount }),
+    );
   });
 
   app.get("/auth/github/callback", async (c) => {

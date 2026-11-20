@@ -40,12 +40,16 @@ export function githubAuthorizeUrl(
   config: GithubOAuthConfig,
   redirectUri: string,
   state: string,
+  options: { selectAccount?: boolean } = {},
 ): string {
   const url = new URL(`${config.oauthBase}/login/oauth/authorize`);
   url.searchParams.set("client_id", config.clientId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("scope", "read:user");
   url.searchParams.set("state", state);
+  // GitHub のアカウント選択画面を強制する。許可されないアカウントで
+  // サインインしている利用者が、別アカウントへ切り替えるための導線。
+  if (options.selectAccount === true) url.searchParams.set("prompt", "select_account");
   return url.toString();
 }
 
