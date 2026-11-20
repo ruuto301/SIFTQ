@@ -22,6 +22,17 @@ describe("Ideas browser script", () => {
     expect(IDEA_SCRIPT).toContain("setTimeout(function () { ideaDetailSave(root); }, 400)");
   });
 
+  it("keeps the composer scroll position while the body grows", () => {
+    expect(IDEA_SCRIPT).toContain("var savedFieldTop = field.scrollTop;");
+    expect(IDEA_SCRIPT).toContain("var savedWindowY = window.scrollY;");
+    expect(IDEA_SCRIPT).toContain("window.scrollTo(0, savedWindowY)");
+  });
+
+  it("keeps the detail scroll position while the body grows", () => {
+    expect(IDEA_SCRIPT).toContain("var savedScrollTop = scroll ? scroll.scrollTop : 0;");
+    expect(IDEA_SCRIPT).toContain("if (scroll && scroll.scrollTop !== savedScrollTop) scroll.scrollTop = savedScrollTop;");
+  });
+
   it("converts the date range to browser-local bounds", () => {
     expect(IDEA_SCRIPT).toContain("data-idea-date-form");
     expect(IDEA_SCRIPT).toContain("toISOString");

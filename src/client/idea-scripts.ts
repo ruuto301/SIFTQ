@@ -17,7 +17,14 @@ function ideaReload() { window.location.reload(); }
 function ideaRun(path, init) { ideaApi(path, init).then(ideaReload).catch(function () {}); }
 function ideaComposerColor(composer) { return composer.getAttribute("data-idea-color") || "default"; }
 function ideaGrowComposer(composer) {
-  ideaAutoGrow(composer.querySelector("[data-idea-composer-body]"), IDEA_COMPOSER_MAX_ROWS);
+  var field = composer.querySelector("[data-idea-composer-body]");
+  if (!field) return;
+  // Auto-grow momentarily collapses the field: keep the page and field scroll anchored.
+  var savedFieldTop = field.scrollTop;
+  var savedWindowY = window.scrollY;
+  ideaAutoGrow(field, IDEA_COMPOSER_MAX_ROWS);
+  if (field.scrollTop !== savedFieldTop) field.scrollTop = savedFieldTop;
+  if (window.scrollY !== savedWindowY) window.scrollTo(0, savedWindowY);
 }
 function setIdeaComposerOpen(composer, open) {
   composer.classList.toggle("idea-composer--open", open);
@@ -996,9 +1003,12 @@ function ideaAutoGrow(field, maxRows) {
 }
 function ideaGrowDetail(root) {
   var body = ideaDetailField(root, "body");
-  ideaAutoGrow(body, 0);
+  if (!body) return;
   var scroll = ideaDetailField(root, "scroll");
-  if (scroll) scroll.scrollTop = scroll.scrollTop;
+  // Auto-grow momentarily collapses the textarea: keep the dialog scroll anchored.
+  var savedScrollTop = scroll ? scroll.scrollTop : 0;
+  ideaAutoGrow(body, 0);
+  if (scroll && scroll.scrollTop !== savedScrollTop) scroll.scrollTop = savedScrollTop;
 }
 function ideaDetail() { return document.querySelector("[data-idea-detail]"); }
 function ideaDetailField(root, name) { return root.querySelector("[data-idea-detail-" + name + "]"); }
