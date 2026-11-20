@@ -42,7 +42,7 @@ async function createIdea(page: Page, title: string, body: string): Promise<void
   }, { title, body });
 }
 
-test("inserts a pasted screenshot at the caret of the idea detail body (BDD-TM-057)", async ({ page }) => {
+test("inserts a pasted screenshot at the caret of the idea detail body (BDD-TM-058)", async ({ page }) => {
   await signIn(page);
   const title = `detail paste ${Date.now()}`;
   await createIdea(page, title, "前後");
@@ -71,7 +71,7 @@ test("inserts a pasted screenshot at the caret of the idea detail body (BDD-TM-0
   );
 });
 
-test("inserts a pasted screenshot at the caret of the idea composer body (BDD-TM-057)", async ({ page }) => {
+test("inserts a pasted screenshot at the caret of the idea composer body (BDD-TM-058)", async ({ page }) => {
   await signIn(page);
   const title = `composer paste ${Date.now()}`;
   await page.goto("/ideas");
@@ -96,7 +96,7 @@ test("inserts a pasted screenshot at the caret of the idea composer body (BDD-TM
   await expect(card.locator("[data-idea-attachment-id]")).toHaveCount(0);
 });
 
-test("inserts one image when the clipboard holds the same screenshot twice (BDD-TM-057)", async ({ page }) => {
+test("inserts one image when the clipboard holds the same screenshot twice (BDD-TM-058)", async ({ page }) => {
   await signIn(page);
   const title = `detail dedupe ${Date.now()}`;
   await createIdea(page, title, "本文");
@@ -114,7 +114,7 @@ test("inserts one image when the clipboard holds the same screenshot twice (BDD-
   expect(tokens).toHaveLength(1);
 });
 
-test("drops a pasted non-image file on the attachment list (BDD-TM-057)", async ({ page }) => {
+test("drops a pasted non-image file on the attachment list (BDD-TM-058)", async ({ page }) => {
   await signIn(page);
   const title = `detail file ${Date.now()}`;
   await createIdea(page, title, "本文");

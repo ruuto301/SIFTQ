@@ -287,7 +287,7 @@ describe("Ideas attachment management", () => {
   });
 });
 
-describe("Ideas inline image paste (BDD-TM-057)", () => {
+describe("Ideas inline image paste (BDD-TM-058)", () => {
   it("renders a body-referenced attachment inline instead of as a chip", async () => {
     const noteId = await createNote("インライン画像");
     const attachment = await uploaded(await upload(noteId, "pixel.png", "image/png", PNG));

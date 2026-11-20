@@ -494,7 +494,7 @@ describe("Ideas phase 3 screen controls", () => {
   });
 });
 
-describe("Ideas inline image paste (BDD-TM-057)", () => {
+describe("Ideas inline image paste (BDD-TM-058)", () => {
   it("renders a pasted attachment image inside the card body", async () => {
     const note = await createNote("貼り付けメモ", "前半![](/api/attachments/abc-123)後半", "default");
     const html = await (await request("/ideas")).text();
