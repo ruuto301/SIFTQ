@@ -20,7 +20,7 @@ async function openTaskInDs(page: Page, title: string) {
   await waitForPageSettle(page);
 }
 
-test("edits title and description in the DS task tab (BDD-TM-036)", async ({ page }) => {
+test("autosaves the description and saves the title with Ctrl + Enter (BDD-TM-036)", async ({ page }) => {
   const title = `ds edit ${Date.now()}`;
   const description = "最初の説明";
   await createTask(page, title, description);
@@ -30,13 +30,14 @@ test("edits title and description in the DS task tab (BDD-TM-036)", async ({ pag
 
   const updatedTitle = `${title} 更新`;
   const updatedDescription = "更新した説明\n- 追記";
-  await page.locator("#ds-task-title").fill(updatedTitle);
-  await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
   // A stored description opens on プレビュー, so switch to 編集 before typing.
   await page.getByRole("tab", { name: "編集" }).click();
   await page.locator("#ds-description-editor").fill(updatedDescription);
+  await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
 
-  await page.locator("#ds-task-save").click();
+  await page.locator("#ds-task-title").fill(updatedTitle);
+  await expect(page.locator("#ds-task-status")).toHaveText("未保存の変更");
+  await page.locator("#ds-task-title").press("Control+Enter");
   await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
 
   // The left pane card follows the save without a page reload.
@@ -46,6 +47,65 @@ test("edits title and description in the DS task tab (BDD-TM-036)", async ({ pag
   await page.reload();
   await expect(page.locator("#ds-task-title")).toHaveValue(updatedTitle);
   await expect(page.locator("#ds-task-description")).toHaveValue(updatedDescription);
+});
+
+test("shows the saving state without sending overlapping requests (BDD-TM-036)", async ({ page }) => {
+  const title = `ds autosave ${Date.now()}`;
+  await createTask(page, title, "自動保存の説明");
+  await openTaskInDs(page, title);
+  await page.getByRole("tab", { name: "編集" }).click();
+
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const patches: string[] = [];
+  await page.route("**/api/tasks/*", async (route) => {
+    if (route.request().method() !== "PATCH") {
+      await route.continue();
+      return;
+    }
+    patches.push(route.request().postData() ?? "");
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    // Outlast the 600ms autosave debounce so a second edit queues behind this request.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    inFlight -= 1;
+    await route.continue();
+  });
+
+  const editor = page.locator("#ds-description-editor");
+  await editor.fill("1 回目");
+  await expect(page.locator("#ds-task-status")).toHaveText("保存中…");
+  // Type again while the first request is in flight: the last text wins.
+  await editor.fill("2 回目");
+  await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
+  expect(maxInFlight).toBe(1);
+  expect(patches.at(-1)).toContain("2 回目");
+
+  await page.unroute("**/api/tasks/*");
+  await page.reload();
+  await expect(page.locator("#ds-task-description")).toHaveValue("2 回目");
+});
+
+test("keeps the input when the autosave fails (BDD-TM-036)", async ({ page }) => {
+  const title = `ds autosave failure ${Date.now()}`;
+  await createTask(page, title, "失敗する説明");
+  await openTaskInDs(page, title);
+  await page.getByRole("tab", { name: "編集" }).click();
+
+  await page.route("**/api/tasks/*", (route) =>
+    route.request().method() === "PATCH" ? route.fulfill({ status: 500, body: "" }) : route.continue(),
+  );
+
+  const editor = page.locator("#ds-description-editor");
+  await editor.fill("失敗しても残る");
+  await expect(page.locator("#ds-task-status")).toHaveText("保存できませんでした");
+  await expect(page.locator("#ds-task-description")).toHaveValue("失敗しても残る");
+
+  await page.unroute("**/api/tasks/*");
+  await editor.fill("失敗しても残る 2");
+  await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
+  await page.reload();
+  await expect(page.locator("#ds-task-description")).toHaveValue("失敗しても残る 2");
 });
 
 test("saves with Ctrl + Enter and reverts with Escape (BDD-TM-036)", async ({ page }) => {
@@ -72,7 +132,7 @@ test("rejects an empty title (BDD-TM-036)", async ({ page }) => {
   await openTaskInDs(page, title);
 
   await page.locator("#ds-task-title").fill("   ");
-  await page.locator("#ds-task-save").click();
+  await page.locator("#ds-task-title").press("Control+Enter");
 
   await expect(page.locator("#ds-task-error")).toContainText("title を入力してください。");
 });

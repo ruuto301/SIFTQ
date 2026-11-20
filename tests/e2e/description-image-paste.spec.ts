@@ -162,8 +162,8 @@ test("pasting an image into the DS description saves and renders it (BDD-TM-049)
     const token = await page.locator("#ds-task-description").inputValue();
     expect(token).toMatch(/^\/api\/images\/[0-9A-Za-z_-]+$/);
 
-    await page.locator("#ds-task-save").click();
-    await expect(page.locator("#ds-task-status")).toHaveText(/保存しました/);
+    // The description autosaves after the input stops.
+    await expect(page.locator("#ds-task-status")).toHaveText("保存しました");
 
     await page.reload();
     await expect(page.locator("#ds-description-editor img.description-image")).toHaveCount(1);

@@ -202,7 +202,6 @@ describe("DsPage task list", () => {
     expect(html).toContain('value="DS で編集する"');
     expect(html).toContain('id="ds-task-description"');
     expect(html).toContain("手順は https://example.com/docs を参照");
-    expect(html).toContain('id="ds-task-save"');
     expect(html).toContain('data-ds-pane="task"');
   });
 
@@ -214,7 +213,17 @@ describe("DsPage task list", () => {
     expect(html).not.toContain("ds__chat-title");
     expect(html).toContain('id="ds-task-title"');
     expect(html).toContain('value="チャットのタイトルを表示する"');
-    expect(html).toContain("Ctrl + S で保存 / Esc で取り消し");
+  });
+
+  it("autosaves the description so the save button and shortcut hint are gone (BDD-TM-036)", () => {
+    const selected = taskFixture({ id: "t1", title: "自動保存する", description: "自動保存" });
+    const html = renderToString(page([selected], selected));
+
+    expect(html).not.toContain('id="ds-task-save"');
+    expect(html).not.toContain("Ctrl + S");
+    expect(html).not.toContain(">保存<");
+    expect(html).toContain('id="ds-task-status"');
+    expect(html).toContain('aria-live="polite"');
   });
 
   it("does not render a title strip when no task is selected", () => {
