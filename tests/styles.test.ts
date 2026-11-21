@@ -227,13 +227,22 @@ describe("unified palette", () => {
   });
 });
 
+describe("hidden attribute", () => {
+  it("hides any element with the hidden attribute regardless of component display", () => {
+    const rule = cssBlock(/(?:^|\n)\[hidden\]\s*\{[^}]*\}/);
+    expect(rule).toContain("display: none !important;");
+    // 共通ルールに一本化したので、コンポーネント側の個別上書き（.foo[hidden]）は残さない。
+    expect(STYLES_CSS).not.toMatch(/\.[A-Za-z0-9_-]+\[hidden\]/);
+  });
+});
+
 describe("Description preview tabs", () => {
   it("marks the selected tab and hides the inactive panel", () => {
     const selected = cssBlock(/(?:^|\n)\.description-tab\[aria-selected="true"\]\s*\{[^}]*\}/);
     expect(selected).toContain("background: #262626;");
 
-    const hidden = cssBlock(/(?:^|\n)\.description-tabs__panel\[hidden\]\s*\{[^}]*\}/);
-    expect(hidden).toContain("display: none;");
+    const hidden = cssBlock(/(?:^|\n)\[hidden\]\s*\{[^}]*\}/);
+    expect(hidden).toContain("display: none !important;");
   });
 
   it("frames the rendered markdown like the description editor", () => {

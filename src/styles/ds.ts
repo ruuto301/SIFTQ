@@ -204,7 +204,6 @@ export const DS_CSS = `
   color: #303030;
   font-size: 12px;
 }
-.ds__new-error[hidden] { display: none; }
 
 .ds__groups {
   flex: 1;
@@ -240,7 +239,6 @@ export const DS_CSS = `
   font-size: 12px;
 }
 
-.ds__groups-status[hidden] { display: none; }
 
 .ds__group.dragging { opacity: 0.6; }
 .ds__group--drop { outline: 2px dashed #1f1f1f; outline-offset: 2px; border-radius: 8px; }
@@ -468,7 +466,6 @@ export const DS_CSS = `
   color: #303030;
   font-size: 12px;
 }
-.ds-task__error[hidden] { display: none; }
 
 .ds .button { color: #303030; border-radius: 8px; }
 .ds .button.small { min-height: 28px; padding: 4px 12px; font-size: 12px; }
