@@ -48,8 +48,8 @@ describe("Ideas browser script", () => {
     // The card only keeps the pin button; delete and preview fetch are gone.
     expect(IDEA_SCRIPT).not.toContain("data-idea-preview-fetch");
     expect(IDEA_SCRIPT).not.toContain("data-idea-delete");
-    // The snackbar no longer offers undo.
-    expect(IDEA_SCRIPT).not.toContain("data-idea-snackbar-undo");
+    // The unused snackbar is gone entirely.
+    expect(IDEA_SCRIPT).not.toContain("data-idea-snackbar");
   });
 });
 
