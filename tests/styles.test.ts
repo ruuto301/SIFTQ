@@ -175,13 +175,26 @@ describe("DS page width and resizer", () => {
     expect(title).toContain("text-overflow: ellipsis;");
   });
 
-  it("falls back to a single pane below 900px and hides the resizer", () => {
-    const media = STYLES_CSS.match(/@media \(max-width: 900px\)\s*\{[\s\S]*?\n\}/);
+  it("falls back to a single scrolling pane below 60rem and hides the resizer", () => {
+    const media = STYLES_CSS.match(/@media \(width < 60rem\)\s*\{[\s\S]*?\n\}/);
     expect(media?.[0]).toContain(".ds__resizer { display: none; }");
     expect(media?.[0]).toContain('.ds[data-ds-view="list"] .ds__pane--detail { display: none; }');
     expect(media?.[0]).toContain('.ds[data-ds-view="detail"] .ds__pane--tasks { display: none; }');
     expect(media?.[0]).toContain(".ds__back { display: inline-flex; }");
+    // The shell keeps the viewport height instead of growing with the task list.
+    expect(media?.[0]).toContain("height: var(--ds-shell-height, calc(100dvh - 152px));");
+    expect(media?.[0]).not.toContain("height: auto;");
+    expect(STYLES_CSS).not.toContain("@media (max-width: 900px)");
     expect(STYLES_CSS).not.toContain("@media (max-width: 1100px)");
+  });
+
+  it("keeps the DS status pills at their normal height on a narrow screen", () => {
+    const tabs = cssBlock(/(?:^|\n)\.ds__status-tabs\s*\{[^}]*\}/);
+    // The shared toolbar rule makes the filter flexible; DS must not inherit that.
+    expect(tabs).toContain("flex: 0 0 auto;");
+    expect(tabs).toContain("align-items: center;");
+    expect(tabs).toContain("flex-wrap: wrap;");
+    expect(STYLES_CSS).toContain(".ds__status-tabs .button.small {");
   });
 });
 
@@ -259,5 +272,26 @@ describe("Description preview tabs", () => {
     expect(field).toContain("min-height: 0;");
     expect(field).toContain("flex-direction: column;");
     expect(STYLES_CSS).toContain(".ds-task__description-field .description-tabs__panel");
+  });
+});
+
+describe("Settings project rows", () => {
+  it("wraps a project row on a narrow screen instead of overflowing", () => {
+    // Several rules share the 40rem threshold; pick the block that owns the settings row.
+    const blocks = STYLES_CSS.match(/@media \(width < 40rem\)\s*\{[\s\S]*?\n\}/g) ?? [];
+    const media = blocks.find((block) => block.includes(".settings-row"));
+    expect(media).toContain(".settings-row { flex-wrap: wrap; }");
+    expect(media).toContain(".settings-row__name,");
+    expect(media).toContain(".settings-row__actions { flex: 1 1 100%; justify-content: flex-end; }");
+  });
+
+  it("lets a long project id shrink instead of pushing the actions out", () => {
+    const id = cssBlock(/(?:^|\n)\.settings-row__id\s*\{[^}]*\}/);
+    expect(id).toContain("min-width: 0;");
+
+    // Narrow screens truncate the id so it never forces the row wider.
+    const blocks = STYLES_CSS.match(/@media \(width < 40rem\)\s*\{[\s\S]*?\n\}/g) ?? [];
+    const media = blocks.find((block) => block.includes(".settings-row"));
+    expect(media).toContain("text-overflow: ellipsis;");
   });
 });

@@ -29,6 +29,7 @@ export const SETTINGS_CSS = `
 }
 .settings-row__id {
   flex: 0 0 auto;
+  min-width: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: #555555;
@@ -65,5 +66,20 @@ export const SETTINGS_CSS = `
   color: #303030;
   font-size: 12px;
 }
-
+/* Narrow screens: the name takes its own line, the id and count share the next
+   one, and the actions sit on a full-width row. Nothing overlaps or overflows. */
+@media (width < 40rem) {
+  .settings-row { flex-wrap: wrap; }
+  .settings-row__name,
+  .settings-row__input { flex: 1 1 100%; }
+  .settings-row__id {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .settings-row__count { flex: 0 0 auto; }
+  .settings-row__actions { flex: 1 1 100%; justify-content: flex-end; }
+}
 `;

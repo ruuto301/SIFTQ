@@ -117,9 +117,13 @@ export const DS_CSS = `
 .ds__resizer.dragging .ds__width-tag,
 .ds__resizer:focus-visible .ds__width-tag { opacity: 1; }
 
-/* Left pane: status pills and task cards. */
+/* Left pane: status pills and task cards. The pills keep their own height even
+   when the shared toolbar rule makes the filter flexible on narrow screens. */
 .ds__status-tabs {
   display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 0;
   padding: 10px 12px 4px;
@@ -470,15 +474,20 @@ export const DS_CSS = `
 .ds .button { color: #303030; border-radius: 8px; }
 .ds .button.small { min-height: 28px; padding: 4px 12px; font-size: 12px; }
 
-@media (max-width: 900px) {
+@media (width < 60rem) {
+  /* One column: keep the shell inside the viewport and let the panes scroll.
+     The client script measures the header and sets --ds-shell-height. */
   .ds {
     grid-template-columns: minmax(0, 1fr);
-    height: auto;
+    grid-template-rows: minmax(0, 1fr);
+    height: var(--ds-shell-height, calc(100dvh - 152px));
+    min-height: 320px;
   }
 
   .ds__resizer { display: none; }
   .ds[data-ds-view="list"] .ds__pane--detail { display: none; }
   .ds[data-ds-view="detail"] .ds__pane--tasks { display: none; }
+  .ds__pane--detail { overflow-y: auto; }
   .ds__back { display: inline-flex; }
 }
 `;
