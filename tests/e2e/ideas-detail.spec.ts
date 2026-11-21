@@ -27,7 +27,7 @@ test("opens the Keep-style detail dialog from a card (BDD-TM-044)", async ({ pag
 
   const dialog = await openDetail(page, title);
   await expect(dialog.getByLabel("メモのタイトル")).toHaveValue(title);
-  await expect(dialog.getByLabel("メモの本文")).toHaveValue("最初の本文");
+  await expect(dialog.locator("[data-idea-detail-body]")).toHaveValue("最初の本文");
   // Keep's toolbar: more, background colour and close. Archive lives in the more menu.
   for (const control of ["palette", "close", "pin"]) {
     await expect(dialog.locator(`[data-idea-detail-${control}]`)).toBeVisible();

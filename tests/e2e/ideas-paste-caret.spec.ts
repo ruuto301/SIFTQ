@@ -25,9 +25,27 @@ async function pasteImage(page: Page, selector: string, duplicates = false): Pro
 
 async function placeCaret(page: Page, selector: string, offset: number): Promise<void> {
   await page.locator(selector).evaluate((element, position) => {
-    if (!(element instanceof HTMLTextAreaElement)) return;
     element.focus();
-    element.setSelectionRange(position, position);
+    // WYSIWYG（contenteditable）では本文のテキストオフセットへキャレットを置く。
+    const range = document.createRange();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let remaining = position;
+    let node = walker.nextNode();
+    while (node) {
+      const length = node.textContent ? node.textContent.length : 0;
+      if (remaining <= length) {
+        range.setStart(node, remaining);
+        range.collapse(true);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        return;
+      }
+      remaining -= length;
+      node = walker.nextNode();
+    }
   }, offset);
 }
 
@@ -51,17 +69,17 @@ test("inserts a pasted screenshot at the caret of the idea detail body (BDD-TM-0
   await page.locator(".idea-card").filter({ hasText: title }).locator(".idea-card__title").click();
   const dialog = page.locator("[data-idea-detail-dialog]");
   const body = dialog.locator("[data-idea-detail-body]");
-  await expect(body).toBeVisible();
+  const editor = dialog.locator("[data-idea-body-editor]");
+  await expect(editor).toBeVisible();
 
-  await placeCaret(page, "[data-idea-detail-body]", 1);
-  await pasteImage(page, "[data-idea-detail-body]");
+  await placeCaret(page, "[data-idea-detail-dialog] [data-idea-body-editor]", 1);
+  await pasteImage(page, "[data-idea-detail-dialog] [data-idea-body-editor]");
 
   await expect(body).toHaveValue(/^前!\[\]\(\/api\/attachments\/[0-9A-Za-z_-]+\)後$/);
   // 画像は本文へ入るので添付欄は増えない。
   await expect(dialog.locator("[data-idea-attachment-id]")).toHaveCount(0);
-  // キャレットは画像トークンの直後に置く。
-  const caret = await body.evaluate((element) => (element instanceof HTMLTextAreaElement ? element.selectionStart : -1));
-  expect(caret).toBe((await body.inputValue()).length - 1);
+  // 画像はその場に表示される（WYSIWYG）。
+  await expect(editor.locator("img")).toHaveCount(1);
 
   await dialog.getByRole("button", { name: "閉じる" }).click();
   await page.reload();
@@ -80,9 +98,10 @@ test("inserts a pasted screenshot at the caret of the idea composer body (BDD-TM
   const composer = page.locator("[data-idea-composer]");
   await composer.getByLabel("メモのタイトル").fill(title);
   const body = composer.locator("[data-idea-composer-body]");
-  await body.fill("AB");
-  await placeCaret(page, "[data-idea-composer-body]", 1);
-  await pasteImage(page, "[data-idea-composer-body]");
+  const composerEditor = composer.locator("[data-idea-body-editor]");
+  await composerEditor.fill("AB");
+  await placeCaret(page, "[data-idea-composer] [data-idea-body-editor]", 1);
+  await pasteImage(page, "[data-idea-composer] [data-idea-body-editor]");
 
   await expect(body).toHaveValue(/^A!\[\]\(pending-\d+-\d+\)B$/);
   // 貼り付けた画像は添付欄ではなく本文へ入る。
@@ -104,10 +123,10 @@ test("inserts one image when the clipboard holds the same screenshot twice (BDD-
 
   await page.locator(".idea-card").filter({ hasText: title }).locator(".idea-card__title").click();
   const body = page.locator("[data-idea-detail-body]");
-  await expect(body).toBeVisible();
+  await expect(page.locator("[data-idea-detail-dialog] [data-idea-body-editor]")).toBeVisible();
 
-  await placeCaret(page, "[data-idea-detail-body]", 0);
-  await pasteImage(page, "[data-idea-detail-body]", true);
+  await placeCaret(page, "[data-idea-detail-dialog] [data-idea-body-editor]", 0);
+  await pasteImage(page, "[data-idea-detail-dialog] [data-idea-body-editor]", true);
 
   await expect(body).toHaveValue(/^!\[\]\(\/api\/attachments\/[0-9A-Za-z_-]+\)本文$/);
   const tokens = (await body.inputValue()).match(/!\[\]\(/g) ?? [];
@@ -122,10 +141,10 @@ test("drops a pasted non-image file on the attachment list (BDD-TM-058)", async 
 
   await page.locator(".idea-card").filter({ hasText: title }).locator(".idea-card__title").click();
   const dialog = page.locator("[data-idea-detail-dialog]");
-  await expect(dialog.locator("[data-idea-detail-body]")).toBeVisible();
+  await expect(dialog.locator("[data-idea-body-editor]")).toBeVisible();
 
-  await placeCaret(page, "[data-idea-detail-body]", 2);
-  await page.locator("[data-idea-detail-body]").evaluate((element) => {
+  await placeCaret(page, "[data-idea-detail-dialog] [data-idea-body-editor]", 2);
+  await page.locator("[data-idea-detail-dialog] [data-idea-body-editor]").evaluate((element) => {
     const transfer = new DataTransfer();
     transfer.items.add(new File(["hello"], "note.txt", { type: "text/plain" }));
     const event = new Event("paste", { bubbles: true, cancelable: true });

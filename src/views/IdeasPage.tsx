@@ -10,12 +10,7 @@ import {
 } from "../idea-attachment";
 import type { IdeaAttachment } from "../idea-attachment";
 import { extractIdeaPreviewUrl } from "../idea-link-preview";
-import {
-  DescriptionTabList,
-  descriptionPanelId,
-  descriptionTabId,
-} from "../components/DescriptionTabs";
-import type { DescriptionTab } from "../components/DescriptionTabs";
+import { DescriptionContent } from "../components/DescriptionContent";
 import { displayHostname, displayUrl } from "../url-display";
 
 const IDEA_ATTACHMENT_ACCEPT = IDEA_ATTACHMENT_CONTENT_TYPES.join(",");
@@ -110,59 +105,40 @@ function IdeaComposerAttachments() {
  * プレビューは DS / Tasks の description と同じ [data-description-tabs] を
  * 使うので、タブ切替とプレビュー更新は共通スクリプトが担う。
  */
-/** Ideas の本文は既定で編集を開く。 */
-function ideaBodyDefaultTab(): DescriptionTab {
-  return "edit";
-}
-
-function IdeaBodyTabs({
-  prefix,
-  textareaClass,
-  rows,
-  maxlength,
-  placeholder,
+/**
+ * Ideas の本文は WYSIWYG（DS / Tasks の description と同じ contenteditable）。
+ * 画像は貼った位置にそのまま表示され、編集/プレビューの切り替えは要らない。
+ * 保存値は隠し textarea が持ち、共通スクリプトが同期する。
+ */
+function IdeaBodyEditor({
+  editorClass,
   label,
-  textareaAttributes,
+  placeholder,
+  bodyAttributes,
+  description = "",
 }: {
-  readonly prefix: string;
-  readonly textareaClass: string;
-  readonly rows: number;
-  readonly maxlength?: number;
-  readonly placeholder?: string;
+  readonly editorClass: string;
   readonly label: string;
-  readonly textareaAttributes: Record<string, string>;
+  readonly placeholder?: string;
+  readonly bodyAttributes: Record<string, string>;
+  readonly description?: string;
 }): JSX.Element {
-  const selected = ideaBodyDefaultTab();
   return (
-    <div class={`${prefix}__tabs idea-body-tabs`} data-description-tabs data-default-tab={selected}>
-      <DescriptionTabList prefix={prefix} selected={selected} />
+    <div class="idea-body-editor" data-description-scope>
       <div
-        id={descriptionPanelId(prefix, "edit")}
-        class="description-tabs__panel"
-        role="tabpanel"
-        aria-labelledby={descriptionTabId(prefix, "edit")}
-        data-description-panel="edit"
-        hidden={selected !== "edit"}
+        class={`${editorClass} idea-body-editor__surface`}
+        contenteditable={true}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={label}
+        data-description-editor
+        data-idea-body-editor
+        data-description-image-upload="off"
+        data-placeholder={placeholder}
       >
-        <textarea
-          class={textareaClass}
-          rows={rows}
-          maxlength={maxlength}
-          placeholder={placeholder}
-          aria-label={label}
-          data-description-value
-          {...textareaAttributes}
-        />
+        <DescriptionContent description={description} />
       </div>
-      <div
-        id={descriptionPanelId(prefix, "preview")}
-        class="description-tabs__panel description-preview"
-        role="tabpanel"
-        aria-labelledby={descriptionTabId(prefix, "preview")}
-        data-description-panel="preview"
-        data-description-preview
-        hidden={selected !== "preview"}
-      ></div>
+      <textarea class="idea-body-editor__value" data-description-value hidden {...bodyAttributes} />
     </div>
   );
 }
@@ -184,13 +160,11 @@ function IdeaComposer() {
           aria-label="メモのタイトル"
           data-idea-composer-title
         />
-        <IdeaBodyTabs
-          prefix="idea-composer"
-          textareaClass="idea-composer__body"
-          rows={3}
-          placeholder="本文。Ctrl+V で画像を貼り付けできます。"
+        <IdeaBodyEditor
+          editorClass="idea-composer__body"
           label="メモの本文"
-          textareaAttributes={{ "data-idea-composer-body": "" }}
+          placeholder="本文。Ctrl+V で画像を貼り付けできます。"
+          bodyAttributes={{ "data-idea-composer-body": "" }}
         />
         <IdeaComposerColors />
         <div class="idea-composer__images" data-idea-composer-images hidden>
@@ -728,13 +702,10 @@ function IdeaDetailDialog() {
           </button>
         </div>
         <div class="idea-detail__body" data-idea-detail-scroll>
-          <IdeaBodyTabs
-            prefix="idea-detail"
-            textareaClass="idea-detail__text"
-            rows={2}
-            maxlength={16384}
+          <IdeaBodyEditor
+            editorClass="idea-detail__text"
             label="メモの本文"
-            textareaAttributes={{ "data-idea-detail-body": "" }}
+            bodyAttributes={{ "data-idea-detail-body": "", maxlength: "16384" }}
           />
           <div class="idea-detail__images" data-idea-detail-images />
           <IdeaDetailAttachments />

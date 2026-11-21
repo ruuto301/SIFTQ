@@ -842,7 +842,70 @@ function ideaInsertErrorMessage(error) {
   return "（画像を挿入できませんでした: " + (error && error.message ? error.message : "不明") + "）";
 }
 /** execCommand は Ctrl+Z で戻せる挿入になる。使えない環境では setRangeText へ落とす。 */
+/** WYSIWYG 本文の値（画像はトークン文字列）を共通スクリプトから取る。 */
+function ideaEditorText(editor) {
+  if (typeof descriptionEditorValue === "function") return descriptionEditorValue(editor);
+  return editor.innerText.replace(/\\n$/, "");
+}
+/** 本文テキストを本文エディタへ描画する。画像トークンはサーバー描画で <img> になる。 */
+function ideaEditorRender(editor, text) {
+  if (!editor) return Promise.resolve();
+  var value = text || "";
+  if (value.trim() === "") {
+    editor.innerHTML = "";
+    if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
+    return Promise.resolve();
+  }
+  // 描画 API を待つ間も本文が見えるように、まず素のテキストを置く（キャレットも置ける）。
+  editor.textContent = value;
+  if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
+  return fetch("/api/markdown/preview", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: value })
+  }).then(function (response) {
+    if (!response.ok) throw new Error("preview failed");
+    return response.json();
+  }).then(function (result) {
+    editor.innerHTML = result && typeof result.html === "string" ? result.html : "";
+    // 保存時に画像をトークンへ戻せるよう、描画した img へ data-token を持たせる。
+    Array.prototype.slice.call(editor.querySelectorAll("img")).forEach(function (image) {
+      if (image.getAttribute("data-token")) return;
+      var src = image.getAttribute("src") || "";
+      image.setAttribute("data-token", src.indexOf("/api/") === 0 ? "![](" + src + ")" : src);
+    });
+    if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
+  }).catch(function () {
+    editor.textContent = value;
+  });
+}
 function ideaInsertText(field, text) {
+  if (field && field.isContentEditable) {
+    var before = field.textContent || "";
+    field.focus();
+    var selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !field.contains(selection.anchorNode)) {
+      var range = document.createRange();
+      range.selectNodeContents(field);
+      range.collapse(false);
+      if (selection) { selection.removeAllRanges(); selection.addRange(range); }
+    }
+    var typed = false;
+    try { typed = document.execCommand("insertText", false, text); } catch (error) { typed = false; }
+    // execCommand は選択が無いと true を返しつつ何も入れないことがあるため、結果で判定する。
+    if (!typed || (field.textContent || "") === before) {
+      var current = window.getSelection();
+      var live = current && current.rangeCount > 0 ? current.getRangeAt(0) : null;
+      if (live && field.contains(live.startContainer)) {
+        live.deleteContents();
+        live.insertNode(document.createTextNode(text));
+      } else {
+        field.appendChild(document.createTextNode(text));
+      }
+    }
+    if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(field);
+    return;
+  }
   if (!field) return;
   var before = field.value;
   var start = typeof field.selectionStart === "number" ? field.selectionStart : before.length;
@@ -856,6 +919,15 @@ function ideaInsertText(field, text) {
 /** 仮トークンを実 URL へ置き換える。置換は undo の対象外でよく、キャレットは画像トークンの直後へ置く。 */
 function ideaInsertReplace(field, token, replacement) {
   if (!field) return false;
+  if (field.isContentEditable) {
+    var text = ideaEditorText(field);
+    if (text.indexOf(token) < 0) return false;
+    var next = text.split(token).join(replacement);
+    return ideaEditorRender(field, next).then(function () {
+      if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(field);
+      return true;
+    });
+  }
   var index = field.value.indexOf(token);
   if (index < 0) return false;
   var caret = typeof field.selectionStart === "number" ? field.selectionStart : index;
@@ -870,6 +942,14 @@ function ideaInsertReplace(field, token, replacement) {
 function ideaPasteField(event) {
   var target = event.target;
   if (!target || !target.closest) return null;
+  if (target.closest("[data-idea-body-editor]")) {
+    var editorRoot = target.closest("[data-idea-body-editor]");
+    var composerRoot = editorRoot.closest("[data-idea-composer]");
+    if (composerRoot) return { field: editorRoot, composer: composerRoot, detail: null };
+    var detailRoot = editorRoot.closest("[data-idea-detail]");
+    if (!detailRoot || detailRoot.hidden !== false) return null;
+    return { field: editorRoot, composer: null, detail: detailRoot };
+  }
   if (target.closest("[data-idea-composer-body]")) {
     var composer = target.closest("[data-idea-composer]");
     return composer ? { field: target, composer: composer, detail: null } : null;
@@ -892,9 +972,10 @@ function ideaPasteDetailImages(root, field, images) {
     ideaPrepareAttachment(file).then(function (prepared) {
       return ideaUploadAttachment(noteId, prepared, null);
     }).then(function (attachment) {
-      ideaInsertReplace(field, token, "![](" + attachment.url + ")");
-      ideaGrowDetail(root);
-      ideaDetailSave(root);
+      return Promise.resolve(ideaInsertReplace(field, token, "![](" + attachment.url + ")")).then(function () {
+        ideaGrowDetail(root);
+        ideaDetailSave(root);
+      });
     }).catch(function (error) {
       // 失敗した仮トークンだけをエラー文言へ置き換え、本文の他の部分はそのまま残す。
       ideaInsertReplace(field, token, ideaInsertErrorMessage(error));
@@ -1321,6 +1402,8 @@ function ideaDetailOpen(card) {
   var body = ideaDetailField(root, "body");
   if (title) title.value = card.getAttribute("data-idea-title") || "";
   if (body) body.value = card.getAttribute("data-idea-body") || "";
+  var detailEditor = root.querySelector("[data-idea-body-editor]");
+  if (detailEditor) ideaEditorRender(detailEditor, card.getAttribute("data-idea-body") || "");
   ideaDetailSetColor(root, card.getAttribute("data-idea-color") || "default");
   var pin = ideaDetailField(root, "pin");
   if (pin) pin.setAttribute("aria-pressed", card.getAttribute("data-idea-pinned") === "true" ? "true" : "false");
@@ -1350,7 +1433,7 @@ function initializeIdeaDetail(page) {
   if (!root) return;
   var timer = null;
   ["title", "body"].forEach(function (name) {
-    var field = ideaDetailField(root, name);
+    var field = name === "body" ? root.querySelector("[data-idea-body-editor]") : ideaDetailField(root, name);
     if (!field) return;
     field.addEventListener("input", function () {
       clearTimeout(timer);
