@@ -10,6 +10,12 @@ import {
 } from "../idea-attachment";
 import type { IdeaAttachment } from "../idea-attachment";
 import { extractIdeaPreviewUrl } from "../idea-link-preview";
+import {
+  DescriptionTabList,
+  descriptionPanelId,
+  descriptionTabId,
+} from "../components/DescriptionTabs";
+import type { DescriptionTab } from "../components/DescriptionTabs";
 import { displayHostname, displayUrl } from "../url-display";
 
 const IDEA_ATTACHMENT_ACCEPT = IDEA_ATTACHMENT_CONTENT_TYPES.join(",");
@@ -99,6 +105,68 @@ function IdeaComposerAttachments() {
   );
 }
 
+/**
+ * Ideas の本文は既定で「編集」を開く（短文が多いため）。
+ * プレビューは DS / Tasks の description と同じ [data-description-tabs] を
+ * 使うので、タブ切替とプレビュー更新は共通スクリプトが担う。
+ */
+/** Ideas の本文は既定で編集を開く。 */
+function ideaBodyDefaultTab(): DescriptionTab {
+  return "edit";
+}
+
+function IdeaBodyTabs({
+  prefix,
+  textareaClass,
+  rows,
+  maxlength,
+  placeholder,
+  label,
+  textareaAttributes,
+}: {
+  readonly prefix: string;
+  readonly textareaClass: string;
+  readonly rows: number;
+  readonly maxlength?: number;
+  readonly placeholder?: string;
+  readonly label: string;
+  readonly textareaAttributes: Record<string, string>;
+}): JSX.Element {
+  const selected = ideaBodyDefaultTab();
+  return (
+    <div class={`${prefix}__tabs idea-body-tabs`} data-description-tabs data-default-tab={selected}>
+      <DescriptionTabList prefix={prefix} selected={selected} />
+      <div
+        id={descriptionPanelId(prefix, "edit")}
+        class="description-tabs__panel"
+        role="tabpanel"
+        aria-labelledby={descriptionTabId(prefix, "edit")}
+        data-description-panel="edit"
+        hidden={selected !== "edit"}
+      >
+        <textarea
+          class={textareaClass}
+          rows={rows}
+          maxlength={maxlength}
+          placeholder={placeholder}
+          aria-label={label}
+          data-description-value
+          {...textareaAttributes}
+        />
+      </div>
+      <div
+        id={descriptionPanelId(prefix, "preview")}
+        class="description-tabs__panel description-preview"
+        role="tabpanel"
+        aria-labelledby={descriptionTabId(prefix, "preview")}
+        data-description-panel="preview"
+        data-description-preview
+        hidden={selected !== "preview"}
+      ></div>
+    </div>
+  );
+}
+
 function IdeaComposer() {
   return (
     <div class="idea-composer" data-idea-composer data-idea-composer-open="false" data-idea-color="default">
@@ -116,14 +184,14 @@ function IdeaComposer() {
           aria-label="メモのタイトル"
           data-idea-composer-title
         />
-        <textarea
-          class="idea-composer__body"
-          name="body"
+        <IdeaBodyTabs
+          prefix="idea-composer"
+          textareaClass="idea-composer__body"
           rows={3}
           placeholder="本文。Ctrl+V で画像を貼り付けできます。"
-          aria-label="メモの本文"
-          data-idea-composer-body
-        ></textarea>
+          label="メモの本文"
+          textareaAttributes={{ "data-idea-composer-body": "" }}
+        />
         <IdeaComposerColors />
         <div class="idea-composer__images" data-idea-composer-images hidden>
           <ul class="idea-composer__image-list" data-idea-composer-image-list></ul>
@@ -660,12 +728,13 @@ function IdeaDetailDialog() {
           </button>
         </div>
         <div class="idea-detail__body" data-idea-detail-scroll>
-          <textarea
-            class="idea-detail__text"
+          <IdeaBodyTabs
+            prefix="idea-detail"
+            textareaClass="idea-detail__text"
             rows={2}
             maxlength={16384}
-            aria-label="メモの本文"
-            data-idea-detail-body
+            label="メモの本文"
+            textareaAttributes={{ "data-idea-detail-body": "" }}
           />
           <div class="idea-detail__images" data-idea-detail-images />
           <IdeaDetailAttachments />
