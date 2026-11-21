@@ -1197,4 +1197,24 @@ export const IDEA_CSS = `
   font-size: 10px;
   max-width: 96px;
 }
+
+/* Ideas の本文タブ（DS / Tasks の description と同じ見た目に合わせる） */
+.idea-body-tabs {
+  display: grid;
+  gap: 6px;
+}
+
+.idea-body-tabs .description-tabs__panel {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.idea-body-tabs .description-preview {
+  background: #f4f4f4;
+  border: 1px solid #8b8b8b;
+  border-radius: 6px;
+  min-height: 40px;
+  padding: 8px;
+}
 `;
