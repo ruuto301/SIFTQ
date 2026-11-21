@@ -1402,13 +1402,6 @@
       "api": "ideas_notes_bulk"
     },
     {
-      "screen": "P14",
-      "trigger": "POST",
-      "view": "screen:P14",
-      "gateway": "idea-scripts.ts",
-      "api": "markdown_preview"
-    },
-    {
       "screen": "P03",
       "trigger": "POST",
       "view": "screen:P03",

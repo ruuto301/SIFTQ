@@ -847,37 +847,54 @@ function ideaEditorText(editor) {
   if (typeof descriptionEditorValue === "function") return descriptionEditorValue(editor);
   return editor.innerText.replace(/\\n$/, "");
 }
-/** 本文テキストを本文エディタへ描画する。画像トークンはサーバー描画で <img> になる。 */
+/** 改行を保ったテキストノードを作る（Markdown の整形はしない）。 */
+function ideaBodyTextNode(text) {
+  var fragment = document.createDocumentFragment();
+  var lines = String(text).split("\\n");
+  lines.forEach(function (line, index) {
+    if (index > 0) fragment.appendChild(document.createElement("br"));
+    if (line !== "") fragment.appendChild(document.createTextNode(line));
+  });
+  return fragment;
+}
+/** 画像トークンの直前にある Markdown の前置き（感嘆符・角括弧・丸括弧）を落とす。 */
+function ideaBodyStripImagePrefix(text) {
+  var trimmed = text.replace(/\\s+$/, "");
+  if (trimmed.charAt(trimmed.length - 1) !== "(") return text;
+  var open = trimmed.lastIndexOf("![");
+  if (open < 0) return text;
+  if (trimmed.charAt(open + 2) !== "]") return text;
+  return text.slice(0, open) + text.slice(trimmed.length);
+}
+var IDEA_BODY_IMAGE_SRC = /\\/api\\/(?:images|attachments)\\/[0-9A-Za-z_-]+/g;
+/**
+ * 本文を本文エディタへ描画する。テキストは素のまま、画像トークンだけ <img> にする
+ * （Markdown の見出し・強調・リンク化はしない）。
+ */
 function ideaEditorRender(editor, text) {
   if (!editor) return Promise.resolve();
-  var value = text || "";
-  if (value.trim() === "") {
-    editor.innerHTML = "";
-    if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
-    return Promise.resolve();
+  var value = text === undefined || text === null ? "" : String(text);
+  var fragment = document.createDocumentFragment();
+  var pattern = new RegExp(IDEA_BODY_IMAGE_SRC.source, "g");
+  var last = 0;
+  var match = pattern.exec(value);
+  while (match !== null) {
+    fragment.appendChild(ideaBodyTextNode(ideaBodyStripImagePrefix(value.slice(last, match.index))));
+    var src = match[0];
+    var image = document.createElement("img");
+    image.setAttribute("src", src);
+    image.setAttribute("alt", "");
+    image.setAttribute("data-token", "![](" + src + ")");
+    fragment.appendChild(image);
+    last = match.index + src.length;
+    if (value.charAt(last) === ")") last += 1;
+    match = pattern.exec(value);
   }
-  // 描画 API を待つ間も本文が見えるように、まず素のテキストを置く（キャレットも置ける）。
-  editor.textContent = value;
+  fragment.appendChild(ideaBodyTextNode(value.slice(last)));
+  editor.innerHTML = "";
+  editor.appendChild(fragment);
   if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
-  return fetch("/api/markdown/preview", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text: value })
-  }).then(function (response) {
-    if (!response.ok) throw new Error("preview failed");
-    return response.json();
-  }).then(function (result) {
-    editor.innerHTML = result && typeof result.html === "string" ? result.html : "";
-    // 保存時に画像をトークンへ戻せるよう、描画した img へ data-token を持たせる。
-    Array.prototype.slice.call(editor.querySelectorAll("img")).forEach(function (image) {
-      if (image.getAttribute("data-token")) return;
-      var src = image.getAttribute("src") || "";
-      image.setAttribute("data-token", src.indexOf("/api/") === 0 ? "![](" + src + ")" : src);
-    });
-    if (typeof syncDescriptionEditor === "function") syncDescriptionEditor(editor);
-  }).catch(function () {
-    editor.textContent = value;
-  });
+  return Promise.resolve();
 }
 function ideaInsertText(field, text) {
   if (field && field.isContentEditable) {
