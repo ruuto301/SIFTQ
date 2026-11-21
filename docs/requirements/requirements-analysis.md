@@ -110,6 +110,7 @@ Task Management MVP の振る舞いを、要求 ID、仕様 ID、BDD ID で追�
 | SPEC-TM-048 | REQ-TM-034 | GitHub ログインの state は HMAC 署名付きの URL パラメータとして発行し、有効期限 30 分・Cookie 非依存で検証する（Cookie がある場合は一致も確認する二段構え）。失敗は `state_missing` / `state_mismatch` / `state_expired` / `denied` / `exchange_failed` / `not_allowed` の 6 コードに分け、画面にはコードを出さず原因別の文言と対処だけを表示する（コードは `github_login_failed` としてサーバーログに残す）。失敗時は OAuth 用 Cookie を属性を揃えて削除し、セッションを発行しない。`POST /auth/reset` は `Clear-Site-Data: "cookies"` を返して Cookie を破棄し、ログイン画面へ戻す。`not_allowed` のときは `/auth/github?switch=1` から authorize に `prompt=select_account` を付けて GitHub のアカウント選択画面を出し、併せて GitHub ログアウトとシークレットウィンドウの案内を表示する。switch の試行回数は Cookie で数え、上限（2 回）に達したら `switch_exhausted` を返して切り替え導線を出さない。state の署名は base64url で URL 安全にする。GitHub の認証情報は保存せず、ログに code・access_token・state を出さない。 | BDD-TM-056 |
 | SPEC-TM-049 | REQ-TM-035 | Ideas の詳細ダイアログと「メモを取る...」の本文では、貼り付けた画像をカーソル位置へ `![](/api/attachments/<id>)` として 1 枚だけ挿入する。アップロード中は仮トークンを置き、完了後に実 URL へ置き換えてキャレットを画像の直後へ置く。失敗時はその仮トークンだけをエラー文言へ置き換える。画像以外のファイルとドラッグ&ドロップは従来どおり添付欄へ入れる。カードの本文は画像・リンク・テキストのセグメントで描画し、画像は最大幅 100%・角丸で表示する。 | BDD-TM-058 |
 | SPEC-TM-051 | REQ-TM-036 | Ideas の詳細ダイアログと「メモを取る...」composer の本文は、DS / Tasks の description と同じ contenteditable（`data-description-editor`）で編集する。貼り付けた画像は本文中のその位置に `<img data-token>` として表示し、編集/プレビューのタブは置かない。背景色・文字色は Ideas の既存エディタ（composer / detail）に合わせる。保存値は `data-token`（`![](/api/attachments/<id>)`）を連結したテキストで、既存メモの形式を変えない。画像は従来どおり Ideas の添付 API を使い、`/api/images` へは送らない。 | BDD-TM-061 |
+| SPEC-TM-052 | REQ-TM-036 | Ideas の本文はテキストをそのまま表示し、Markdown（見出し・強調・リンク化）として整形しない。画像トークン（`![](/api/attachments/<id>)`・`![](/api/images/<id>)`・裸の `/api/attachments/<id>`・`/api/images/<id>`）だけを `<img>` としてプレビュー表示する。改行はそのまま改行で表示する。保存値の形式は変えない。 | BDD-TM-062 |
 
 BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを正常・準正常・例外に分類する。該当が無い分類は「なし」と明示する。例外は現状なしとし、認証失敗や 5xx は専用の契約テストが担当する。期待値と因子水準は [テスト要求仕様（TRS）](trs.md) の因子表を正本とする。
 
@@ -167,6 +168,7 @@ BDD の ID を受け入れ基準（AC）の ID として扱い、振る舞いを
 | BDD-TM-058 | SPEC-TM-049 | Ideas の詳細ダイアログと「メモを取る...」の本文にスクリーンショットを貼り付けると、カーソル位置に画像が 1 枚だけ入り、添付欄は増えない。再読み込み後もカードの本文に画像が表示される。 | 正常 |
 | BDD-TM-059 | SPEC-TM-048 | ログイン失敗画面に内部の原因コードが表示されず、原因はサーバーログで特定できる。ログには認証情報・state・authorization code を出さない。 | 異常 |
 | BDD-TM-061 | SPEC-TM-051 | Ideas の本文に画像を貼り付けると、タブ切替なしにその場で画像が表示され、保存後もカードと詳細で画像が見える。 | 正常 |
+| BDD-TM-062 | SPEC-TM-052 | `# 見出し` や `**強調**` が記号のまま表示され、画像トークンだけが画像として表示される。 | 正常 |
 ## 未決事項
 
 - `Do`、`Done`、`Skipped` をユーザー表示名の正とするか、日本語表示名を正とするか。

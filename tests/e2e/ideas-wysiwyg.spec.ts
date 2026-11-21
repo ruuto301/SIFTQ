@@ -24,6 +24,32 @@ async function pasteInto(page: Page, selector: string): Promise<void> {
   await page.locator(selector).evaluate(dispatchPaste, PIXEL_PNG.toString("base64"));
 }
 
+test("shows Markdown syntax as plain text and previews only images (BDD-TM-062)", async ({ page }) => {
+  await signIn(page);
+  await page.evaluate(async () => {
+    await fetch("/api/ideas/notes", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: `Ideas plain ${Date.now()}`,
+        body: "# 見出し\n**強調**\n![](/api/attachments/att_plain)\n本文",
+      }),
+    });
+  });
+  await page.goto("/ideas");
+  const card = page.locator(".idea-card").filter({ hasText: "見出し" }).first();
+  await card.locator(".idea-card__title").click();
+  const detail = page.locator("[data-idea-detail-dialog]");
+  const editor = detail.locator("[data-idea-body-editor]");
+  await expect(editor).toBeVisible();
+  // Markdown として整形されず、記号がそのまま見える。
+  await expect(editor).toContainText("# 見出し");
+  await expect(editor).toContainText("**強調**");
+  await expect(editor.locator("h1")).toHaveCount(0);
+  await expect(editor.locator("strong")).toHaveCount(0);
+  await expect(editor.locator("img")).toHaveCount(1);
+});
+
 test("edits the Ideas body without a tab switch and shows images inline (BDD-TM-061)", async ({ page }) => {
   await signIn(page);
   await page.goto("/ideas");
