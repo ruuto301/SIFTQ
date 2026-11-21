@@ -23,7 +23,7 @@ test("shows the seven colors, the new memo button and the agreed wording (BDD-TM
   await expect(page.locator("[data-idea-composer-editor]")).toBeVisible();
   await expect(page.locator("[data-idea-composer]").getByLabel("メモのタイトル")).toBeFocused();
   await expect(page.getByPlaceholder("新しいメモのタイトル")).toBeVisible();
-  await expect(page.getByPlaceholder("本文。Ctrl+V で画像を貼り付けできます。")).toBeVisible();
+  await expect(page.locator("[data-idea-composer] [data-idea-body-editor]")).toBeVisible();
   await expect(page.getByText("📋 Ctrl+V で画像を貼り付け")).toBeVisible();
 });
 

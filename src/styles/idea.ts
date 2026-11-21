@@ -1146,23 +1146,36 @@ export const IDEA_CSS = `
   max-width: 96px;
 }
 
-/* Ideas の本文タブ（DS / Tasks の description と同じ見た目に合わせる） */
-.idea-body-tabs {
+/* Ideas の本文は WYSIWYG。背景・文字色は従来のエディタ（composer / detail）に合わせる。 */
+.idea-body-editor {
   display: grid;
-  gap: 6px;
-}
-
-.idea-body-tabs .description-tabs__panel {
-  display: grid;
-  gap: 6px;
   min-width: 0;
 }
 
-.idea-body-tabs .description-preview {
-  background: #f4f4f4;
-  border: 1px solid #8b8b8b;
+.idea-body-editor__surface {
+  outline: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.idea-body-editor__surface img {
   border-radius: 6px;
-  min-height: 40px;
-  padding: 8px;
+  display: block;
+  margin: 6px 0;
+  max-width: 100%;
+}
+
+.idea-composer__body.idea-body-editor__surface {
+  min-height: 44px;
+}
+
+.idea-body-editor__surface:empty::before {
+  color: #8b8b8b;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.idea-detail__text.idea-body-editor__surface {
+  min-height: 32px;
 }
 `;
