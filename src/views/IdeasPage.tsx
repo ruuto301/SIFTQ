@@ -758,14 +758,6 @@ function IdeaDetailDialog() {
   );
 }
 
-function IdeaSnackbar() {
-  return (
-    <div class="idea-snackbar" data-idea-snackbar role="status" hidden>
-      <span class="idea-snackbar__message" data-idea-snackbar-message></span>
-    </div>
-  );
-}
-
 function IdeaHeader() {
   return (
     <div class="page-header">
@@ -834,7 +826,6 @@ export function IdeasPage({
         </section>
       </div>
       <IdeaDetailDialog />
-      <IdeaSnackbar />
     </div>
   );
 }

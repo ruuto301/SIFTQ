@@ -471,26 +471,6 @@ export const IDEA_CSS = `
   margin: 0;
 }
 
-.idea-snackbar {
-  align-items: center;
-  background: #1b1f24;
-  border-radius: 8px;
-  bottom: 20px;
-  color: #fff;
-  display: flex;
-  gap: 12px;
-  left: 50%;
-  padding: 10px 16px;
-  position: fixed;
-  transform: translateX(-50%);
-  z-index: 40;
-}
-
-.idea-snackbar .button {
-  background: #fff;
-  color: #1b1f24;
-}
-
 .idea-dates,
 .idea-sort,
 .idea-saved {
