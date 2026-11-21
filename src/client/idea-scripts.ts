@@ -719,49 +719,6 @@ function ideaBulk(body) {
   if (body.ids.length === 0) return;
   ideaRun("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify(body) });
 }
-var ideaSnackbarTimer = null;
-function ideaSnackbar() { return document.querySelector("[data-idea-snackbar]"); }
-function ideaHideSnackbar() {
-  var bar = ideaSnackbar();
-  if (bar) bar.hidden = true;
-  if (ideaSnackbarTimer) { clearTimeout(ideaSnackbarTimer); ideaSnackbarTimer = null; }
-}
-function ideaShowSnackbar(message) {
-  var bar = ideaSnackbar();
-  ideaHideSnackbar();
-  if (!bar) { ideaReload(); return; }
-  var text = bar.querySelector("[data-idea-snackbar-message]");
-  if (text) text.textContent = message;
-  bar.hidden = false;
-  ideaSnackbarTimer = setTimeout(ideaReload, 5000);
-}
-function ideaBulkAction(body, message) {
-  ideaApi("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify(body) }).then(function () {
-    ideaShowSnackbar(message);
-  }).catch(function () {});
-}
-function ideaBulkArchive() {
-  var ids = ideaSelectedIds();
-  if (ids.length === 0) return;
-  ideaBulkAction({ ids: ids, action: "archive" }, ids.length + "件をアーカイブしました。");
-}
-function ideaBulkTrash() {
-  var ids = ideaSelectedIds();
-  if (ids.length === 0) return;
-  ideaBulkAction({ ids: ids, action: "trash" }, { ids: ids, action: "restore" }, ids.length + "件をゴミ箱へ移動しました。");
-}
-function ideaBulkRestore() {
-  var ids = ideaSelectedIds();
-  if (ids.length === 0) return;
-  ideaBulkAction({ ids: ids, action: "restore" }, { ids: ids, action: "trash" }, ids.length + "件を復元しました。");
-}
-function ideaBulkPurge() {
-  var ids = ideaSelectedIds();
-  if (ids.length === 0) return;
-  ideaConfirm("選択した" + ids.length + "件のメモを完全に削除しますか？", function () {
-    ideaApi("/api/ideas/notes/bulk", { method: "POST", body: JSON.stringify({ ids: ids, action: "purge" }) }).then(ideaReload).catch(function () {});
-  });
-}
 function ideaSearchUrl(form) {
   var params = new URLSearchParams();
   form.querySelectorAll('input[type="hidden"]').forEach(function (hidden) {
