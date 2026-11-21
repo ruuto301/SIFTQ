@@ -10,6 +10,11 @@ export const BASE_CSS = `
   box-sizing: border-box;
 }
 
+/* 作者 CSS の display 指定より hidden を優先する（空の snackbar が黒い四角として残った再発防止）。 */
+[hidden] {
+  display: none !important;
+}
+
 /* 編集中の画像も既定は小さめ（横 300px / 縦 180px・比率維持）。 */
 .description-image {
   border: 1px solid #d8dde3;
@@ -211,10 +216,6 @@ a {
   margin-bottom: 0;
 }
 
-.task-status-filter[hidden],
-.task-selection-summary[hidden] {
-  display: none;
-}
 
 .task-selection-summary {
   align-items: center;

@@ -142,9 +142,6 @@ textarea {
   min-height: 0;
 }
 
-.description-tabs__panel[hidden] {
-  display: none;
-}
 
 .description-field label {
   margin-bottom: 0;
@@ -256,9 +253,6 @@ textarea {
   z-index: 200;
 }
 
-.description-lightbox[hidden] {
-  display: none;
-}
 
 .description-lightbox__backdrop {
   background: rgb(20 20 22 / 78%);

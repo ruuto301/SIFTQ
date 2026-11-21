@@ -66,8 +66,6 @@ export const SETTINGS_CSS = `
   color: #303030;
   font-size: 12px;
 }
-.settings-error[hidden] { display: none; }
-
 /* Narrow screens: the name takes its own line, the id and count share the next
    one, and the actions sit on a full-width row. Nothing overlaps or overflows. */
 @media (width < 40rem) {
