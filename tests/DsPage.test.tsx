@@ -242,6 +242,13 @@ describe("DsPage task list", () => {
     expect(html).toContain('aria-current="true"');
     expect(html).toContain(">done<");
   });
+
+  it("keeps the tabs off the task-list toolbar rule that stretches them (Issue #804)", () => {
+    const html = renderToString(page([taskFixture()], taskFixture()));
+
+    expect(html).toContain('class="task-status-filter ds__status-tabs"');
+    expect(html).not.toContain("task-status-filter--toolbar");
+  });
 });
 
 describe("DsPage description tabs", () => {

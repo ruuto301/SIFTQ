@@ -22,7 +22,7 @@ type TaskPaneProps = {
 
 function StatusTabs({ active }: { active: TaskStatus }) {
   return (
-    <nav class="task-status-filter task-status-filter--toolbar ds__status-tabs" aria-label="Filter tasks by status" data-task-status-tabs>
+    <nav class="task-status-filter ds__status-tabs" aria-label="Filter tasks by status" data-task-status-tabs>
       {TASK_STATUSES.map((status) => (
         <a
           key={status}

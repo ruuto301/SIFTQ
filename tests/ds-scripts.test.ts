@@ -72,11 +72,17 @@ describe("DS pane resizer", () => {
       '"resize"',
       "matchMedia",
       "data-ds-back",
+      "--ds-shell-height",
     ]) {
       expect(DS_SCRIPT).toContain(hook);
     }
     // The old fixed 180-520px clamp is gone.
     expect(DS_SCRIPT).not.toContain("Math.min(520");
+  });
+
+  it("uses the same 60rem breakpoint in the script as the stylesheet", () => {
+    expect(DS_SCRIPT).toContain("(width < 60rem)");
+    expect(DS_SCRIPT).not.toContain("900px");
   });
 
   it("supports double-click reset and keyboard width adjustment", () => {

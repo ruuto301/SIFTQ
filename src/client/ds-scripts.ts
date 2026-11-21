@@ -45,6 +45,10 @@ export const DS_SCRIPT = `(function () {
   function paintResizer() {
     var limits = dsLayoutLimits(containerWidth());
     root.style.setProperty("--ds-left", layout.left + "px");
+    // The narrow shell fills the space below the header, which wraps to a
+    // variable number of rows, so measure it instead of assuming a fixed offset.
+    var top = root.getBoundingClientRect().top + window.scrollY;
+    root.style.setProperty("--ds-shell-height", Math.max(320, window.innerHeight - top - 10) + "px");
     resizerHandles().forEach(function (handle) {
       handle.setAttribute("aria-valuenow", String(layout.left));
       handle.setAttribute("aria-valuemin", String(limits.min));
@@ -114,7 +118,7 @@ export const DS_SCRIPT = `(function () {
       }
     });
   }
-  if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 900px)").matches) {
+  if (typeof window.matchMedia === "function" && window.matchMedia("(width < 60rem)").matches) {
     var requestedTask = new URLSearchParams(window.location.search).get("task");
     root.setAttribute("data-ds-view", requestedTask === null ? "list" : "detail");
   }
