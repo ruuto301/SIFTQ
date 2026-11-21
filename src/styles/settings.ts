@@ -65,5 +65,5 @@ export const SETTINGS_CSS = `
   color: #303030;
   font-size: 12px;
 }
-.settings-error[hidden] { display: none; }
+
 `;

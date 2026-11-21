@@ -175,9 +175,6 @@ export const IDEA_CSS = `
   padding: 16px;
 }
 
-.idea-composer__editor[hidden] {
-  display: none;
-}
 
 .idea-composer__title,
 .idea-composer__body {
@@ -209,10 +206,6 @@ export const IDEA_CSS = `
   justify-content: flex-end;
 }
 
-.idea-composer__images[hidden],
-.idea-composer__error[hidden] {
-  display: none;
-}
 
 .idea-composer__image-list {
   display: flex;
@@ -696,9 +689,6 @@ export const IDEA_CSS = `
   z-index: 100;
 }
 
-.idea-detail[hidden] {
-  display: none !important;
-}
 
 .idea-detail__backdrop {
   background: rgb(32 33 36 / 50%);
@@ -896,9 +886,6 @@ export const IDEA_CSS = `
   padding: 0 6px;
 }
 
-.idea-detail__swatches[hidden] {
-  display: none;
-}
 
 .idea-detail__close {
   background: transparent;
@@ -918,9 +905,6 @@ export const IDEA_CSS = `
   margin: 0 16px 10px;
 }
 
-.idea-detail__error[hidden] {
-  display: none;
-}
 
 /* 既存 Idea（カード・詳細）への添付と、R2 添付のチップ表示 */
 .idea-card--dragover {
@@ -943,9 +927,6 @@ export const IDEA_CSS = `
   z-index: 2;
 }
 
-.idea-card__attachment-drop[hidden] {
-  display: none;
-}
 
 .idea-card__attachments {
   display: grid;
@@ -958,9 +939,6 @@ export const IDEA_CSS = `
   font-size: 11px;
 }
 
-.idea-card__attachment-count[hidden] {
-  display: none;
-}
 
 .idea-card__attachment-items,
 .idea-detail__attachment-items {
@@ -976,10 +954,6 @@ export const IDEA_CSS = `
   margin: 0;
 }
 
-.idea-card__attachment-status[hidden],
-.idea-detail__attachment-status[hidden] {
-  display: none;
-}
 
 .idea-card__attachment-status[data-idea-attachment-status-bad="true"],
 .idea-detail__attachment-status[data-idea-attachment-status-bad="true"] {
@@ -1050,9 +1024,6 @@ export const IDEA_CSS = `
   width: 100%;
 }
 
-.idea-attachment__progress[hidden] {
-  display: none;
-}
 
 .idea-attachment__progress i {
   background: #7fd1a3;
@@ -1148,9 +1119,6 @@ export const IDEA_CSS = `
   z-index: 3;
 }
 
-.idea-detail__drop[hidden] {
-  display: none;
-}
 
 .idea-composer__image-icon {
   font-size: 22px;

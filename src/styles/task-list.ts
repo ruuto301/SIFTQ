@@ -264,10 +264,6 @@ export const TASK_LIST_CSS = `
   background: #d8d8d8;
 }
 
-.task-bulk-actions[hidden],
-.task-selection-feedback[hidden] {
-  display: none;
-}
 
 .task-selection-feedback {
   background: #e8e8e8;
