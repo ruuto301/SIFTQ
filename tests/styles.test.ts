@@ -81,6 +81,20 @@ describe("styles regression guards", () => {
     expect(link?.[0]).toContain("grid-template-columns: minmax(0, 1fr);");
     expect(link?.[0]).not.toContain("48px");
   });
+
+  it("keeps the mobile bulk-action buttons content-sized with a uniform height (Issue #810)", () => {
+    const buttons = cssBlock(/(?:^|\n) {2}\.task-bulk-actions \.button \{([^}]*)\}/);
+    expect(buttons).toContain("height: 40px;");
+    expect(buttons).toContain("flex: 0 0 auto;");
+    expect(buttons).toContain("white-space: nowrap;");
+    expect(buttons).not.toContain("flex: 1;");
+
+    // The menu opens flush with the button's left edge instead of hanging off-screen.
+    const menu = cssBlock(/(?:^|\n) {2}\.task-bulk-menu-items \{([^}]*)\}/);
+    expect(menu).toContain("left: 0;");
+    expect(menu).toContain("right: auto;");
+    expect(menu).toContain("max-width: calc(100vw - 24px);");
+  });
 });
 
 describe("DS project groups", () => {

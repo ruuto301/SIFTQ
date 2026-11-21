@@ -356,25 +356,35 @@ export const TASK_LIST_RESPONSIVE_CSS = `
   }
 
   .task-bulk-actions {
+    align-items: center;
+    gap: 4px;
     margin-left: 0;
     width: 100%;
   }
 
-  .task-bulk-actions .button {
-    flex: 1;
+  .task-bulk-actions [data-task-bulk-actions] {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .task-bulk-actions [data-task-bulk-actions] {
-    flex: 1;
+  .task-bulk-actions .button {
+    align-items: center;
+    flex: 0 0 auto;
+    height: 40px;
+    justify-content: center;
+    padding: 0 8px;
+    white-space: nowrap;
   }
 
   .task-bulk-menu {
-    flex: 1;
+    flex: 0 0 auto;
   }
 
-  .task-bulk-menu summary {
-    justify-content: center;
-    width: 100%;
+  .task-bulk-menu-items {
+    left: 0;
+    max-width: calc(100vw - 24px);
+    right: auto;
   }
 }
 `;
